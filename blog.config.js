@@ -24,7 +24,7 @@ const BLOG = {
     googleSiteVerification: '' // Remove the value or replace it with your own google site verification code
   },
   notionPageId: '5f4b0ceba01342e388a8d07002dc191c', // DO NOT CHANGE THIS！！！
-  notionAccessToken: 'token_v2=vv03%3AeyJhbGciOiJkaXIiLCJraWQiOiJwcm9kdWN0aW9uOnRva2VuLXYzOjIwMjQtMTEtMDciLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIn0..ElzCxR634GvNqqGUju4gsA.5EjbXizRYnyQQ8AX20P3h9HTfP5xPpEXNA2SBiPx0f3QEDTN_NboVFny9bx3PFy-Oh_c1AsDPg436-zRulrlUAtdNkcFsMbsnQUuuqQMTNlSkTmdcAOp2oPgNTC1HPrskxMc5p2sNpG-xut4qvB_YX1SJF2DLXYyyQPy_murSfDwY7R_KebZ0Ra1X5xyGpYZJRGd-G1QCS_VrxL-RIJS0dZ_EkGYABUFQmiUvdkmMjbDWKfKBeIkC6Ok_HMhA8M37VWHQrd3lEKB1y5g8xwpFtEiTDJsyDYm_SUHZgrN4PPywrp8FbLHZC0VpWW_d1XpWRgasqJ92gmxZwvJdwSLxLJS2X_3yKwwZ0f3JzKa3J2-QqRwFUVjE3j_JhHYg6QXQynJBAKRal1u8c-G_eUk-aGwSQL-rJWBJA90RxMw-OU.c2eVpW0VGrTYQzKza4FpcG3FS23jnNlF0Um_8MpdPpE', // Useful if you prefer not to make your database public
+  notionAccessToken: 'vv03%3AeyJhbGciOiJkaXIiLCJraWQiOiJwcm9kdWN0aW9uOnRva2VuLXYzOjIwMjQtMTEtMDciLCJlbmMiOiJBMjU2Q0JDLUhTNTEyIn0..ElzCxR634GvNqqGUju4gsA.5EjbXizRYnyQQ8AX20P3h9HTfP5xPpEXNA2SBiPx0f3QEDTN_NboVFny9bx3PFy-Oh_c1AsDPg436-zRulrlUAtdNkcFsMbsnQUuuqQMTNlSkTmdcAOp2oPgNTC1HPrskxMc5p2sNpG-xut4qvB_YX1SJF2DLXYyyQPy_murSfDwY7R_KebZ0Ra1X5xyGpYZJRGd-G1QCS_VrxL-RIJS0dZ_EkGYABUFQmiUvdkmMjbDWKfKBeIkC6Ok_HMhA8M37VWHQrd3lEKB1y5g8xwpFtEiTDJsyDYm_SUHZgrN4PPywrp8FbLHZC0VpWW_d1XpWRgasqJ92gmxZwvJdwSLxLJS2X_3yKwwZ0f3JzKa3J2-QqRwFUVjE3j_JhHYg6QXQynJBAKRal1u8c-G_eUk-aGwSQL-rJWBJA90RxMw-OU.c2eVpW0VGrTYQzKza4FpcG3FS23jnNlF0Um_8MpdPpE', // Useful if you prefer not to make your database public
   analytics: {
     provider: '', // Currently we support Google Analytics and Ackee, please fill with 'ga' or 'ackee', leave it empty to disable it.
     ackeeConfig: {
