@@ -1,0 +1,23 @@
+---
+// layout import
+import BaseLayout from "./BaseLayout.astro";
+
+const { frontmatter } = Astro.props;
+const { title, description } = frontmatter;
+---
+
+<BaseLayout title={title} description={description}>
+    <section class="container-grid">
+        <section class="container-side"></section>
+
+        <section class="container-main">
+            <article class="slide-enter-content">
+                <h1>{title}<span class="text-red">.</span></h1>
+                <p class="text-tx-2">{description}</p>
+                <slot />
+            </article>
+        </section>
+
+        <section class="container-side"></section>
+    </section>
+</BaseLayout>

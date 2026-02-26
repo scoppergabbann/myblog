@@ -1,0 +1,41 @@
+---
+// Content import
+import Content, { frontmatter } from "../../content/footer_nav.mdx";
+
+const year = new Date().getFullYear().toString();
+const { title } = frontmatter;
+---
+
+{/* FOOTER NAVIGATION SECTION */}
+<section class="container-grid border-t-ui border-t pt-16 pb-4">
+    <section class="container-side"></section>
+
+    <section class="container-main">
+        <article class="slide-enter-content">
+            <h2>{title}</h2>
+            <Content />
+        </article>
+    </section>
+
+    <section class="container-side"></section>
+</section>
+
+{/* COPYRIGHT SECTION */}
+<footer class="container-grid animate-slide-enter @container">
+    <section class="container-side"></section>
+
+    <section class="container-main flex items-start gap-y-4 pt-4 pb-12 text-sm">
+        <span>
+            <a
+                href="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+                target="_blank"
+                class="text-tx-2 hover:text-red decoration-tx-3 inline-block underline underline-offset-4"
+            >
+                CC BY-NC-SA 4.0
+            </a>
+            <span class="text-tx-2">{year} &copy; Odhy Pradhana</span>
+        </span>
+    </section>
+
+    <section class="container-side"></section>
+</footer>

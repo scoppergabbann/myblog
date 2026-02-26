@@ -1,0 +1,37 @@
+---
+draft: false
+title: "SIPD-RI Helper"
+description: "A command-line automation tool for SIPD-RI 2025 web application 💼"
+pubDate: 2024-10-27
+updatedDate: 2025-09-29
+tags: ["Python", "Web Automation"]
+toc: false
+version: "2.3"
+---
+
+import Wrapper from "../../components/page/Wrapper.astro";
+import CTA from "../../components/page/CTA.astro";
+import Alert from "../../components/page/Alert.astro";
+
+**SIPD-RI Helper** is a Python-based command-line application that automates tasks on the [SIPD-RI](https://sipd.kemendagri.go.id/landing) web application. It helps reduce human error and saves time by automating browser interactions using Playwright.
+
+<Alert type="important" title="So...">
+
+I decided to continue the project in a private repository because it contains many secrets and internal-only features that should not be public.
+
+Also, most users of SIPD-RI (the target of this automation) do not code and do not use English, so maintaining a public codebase here is not useful for them.
+
+{/* prettier-ignore */}
+<Wrapper class="flex justify-center *:w-fit mb-4">
+  <CTA href="https://github.com/odhyp/sipd-ri-helper" text="Source Code (Archive)" icon="simple-icons:github" />
+</Wrapper>
+
+</Alert>
+
+## Features
+
+- Automates browser workflows: login, navigation, form submission, and file downloads
+- Retry mechanism for unstable elements (e.g. 404 errors, missing dropdowns)
+- CLI interface and readable logging
+- Modular structure, easy to tweak or extend for future automation needs
+- Can be compiled into `.exe` for use on Windows without Python

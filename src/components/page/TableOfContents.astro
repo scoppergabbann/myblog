@@ -1,0 +1,100 @@
+---
+import type { MarkdownHeading } from "astro";
+
+interface Props {
+    headings: MarkdownHeading[];
+}
+
+const { headings = [] } = Astro.props;
+
+const filteredHeadings = headings.filter((h) => h.depth <= 3);
+
+// Explicit types for grouped structure
+type TOCItem = MarkdownHeading & { children: MarkdownHeading[] };
+
+const groupedHeadings: TOCItem[] = [];
+let currentH2: TOCItem | null = null;
+
+for (const heading of filteredHeadings) {
+    if (heading.depth === 2) {
+        // create a TOCItem (MarkdownHeading + children array)
+        currentH2 = { ...(heading as MarkdownHeading), children: [] };
+        groupedHeadings.push(currentH2);
+    } else if (heading.depth === 3 && currentH2) {
+        currentH2.children.push(heading as MarkdownHeading);
+    }
+}
+---
+
+<nav
+    id="toc"
+    aria-label="Table Of Contents"
+    class="sticky top-24 w-full max-w-56 text-sm 2xl:max-w-64"
+>
+    <span class="text-tx-2 font-semibold">Table Of Contents</span>
+    <ul class="mt-4 flex flex-col gap-y-2">
+        {
+            groupedHeadings.map((h2) => (
+                <li>
+                    <a
+                        href={`#${h2.slug}`}
+                        class="hover:text-tx text-tx-2 decoration-tx-2 hover:decoration-tx py-1 transition-colors duration-300 ease-in-out"
+                    >
+                        {h2.text}
+                    </a>
+
+                    {h2.children.length > 0 && (
+                        <ul class="border-ui mt-1 ml-2 flex flex-col gap-y-1 border-l pl-2">
+                            {h2.children.map((h3) => (
+                                <li>
+                                    <a
+                                        href={`#${h3.slug}`}
+                                        class="hover:text-tx text-tx-2 decoration-tx-2 hover:decoration-tx py-0.5 text-[0.9em] transition-colors duration-300 ease-in-out"
+                                    >
+                                        {h3.text}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </li>
+            ))
+        }
+    </ul>
+</nav>
+
+<script is:inline>
+    function initTOCScrollspy() {
+        const toc = document.getElementById("toc");
+        if (!toc) return;
+
+        const tocLinks = toc.querySelectorAll("a");
+        const headingTargets = Array.from(tocLinks).map((link) => {
+            const id = link.getAttribute("href").slice(1);
+            return document.getElementById(id);
+        });
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    const index = headingTargets.indexOf(entry.target);
+                    if (index !== -1) {
+                        const link = tocLinks[index];
+                        if (entry.isIntersecting) {
+                            tocLinks.forEach((l) =>
+                                l.classList.remove("text-tx!", "underline")
+                            );
+                            link.classList.add("text-tx!", "underline");
+                        }
+                    }
+                });
+            },
+            { rootMargin: "0px 0px -70% 0px", threshold: 0 }
+        );
+
+        headingTargets.forEach((el) => el && observer.observe(el));
+    }
+
+    document.addEventListener("astro:page-load", initTOCScrollspy);
+    document.addEventListener("astro:after-swap", initTOCScrollspy);
+</script>

@@ -1,0 +1,34 @@
+---
+draft: false
+type: "log"
+title: "Digital Garden #3 - Visualizing Data with Charts"
+description: "Adding dynamic charts to my digital garden using Chart.js for better data visualization"
+pubDate: 2025-09-16T07:46:13+07:00
+updatedDate: 2025-09-19T07:46:13+07:00
+tags: ["Digital Garden", "Chart.js"]
+toc: false
+---
+
+import Chart1 from "../../components/charts/example/line.astro";
+import Chart2 from "../../components/charts/example/bar.astro";
+import Chart3 from "../../components/charts/example/pie.astro";
+
+I've added support to create charts using [Chart.js](https://www.chartjs.org) for data visualization. These are some of the examples:
+
+## Line Chart
+
+Line charts are great for showing trends over time or continuous data. For example, this could be used to show website traffic growth, stock prices, or temperature changes across a week.
+
+<Chart1 />
+
+## Bar Chart
+
+Bar charts are useful for comparing categories side by side. They highlight differences in scale and are often easier to interpret at a glance.
+
+<Chart2 />
+
+## Pie Chart
+
+Pie charts show proportions of a whole. A simple example would be showing market share percentages, or the distribution of tasks within a project.
+
+<Chart3 />

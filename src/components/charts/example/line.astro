@@ -1,0 +1,106 @@
+---
+let canvasId = "line-chart-example";
+---
+
+<div class="bleed relative">
+    <canvas id={canvasId} aria-label="Sample Chart" role="img" class="w-full">
+        <p>Your browser does not support the canvas element!</p>
+    </canvas>
+
+    <div class="absolute top-1/2 -right-64 hidden -translate-y-1/2 xl:block">
+        <div
+            class="not-prose border-ui w-52 rounded-md border p-4 text-sm shadow-sm"
+        >
+            <p>
+                <span class="font-semibold">Note:</span>
+                <p>You can click the legend to show/hide a dataset!</p>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    import Chart from "chart.js/auto";
+
+    function generateMonths(count: number) {
+        const months = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ];
+        return months.slice(0, count);
+    }
+
+    function initChart() {
+        const ctx = document.getElementById("line-chart-example");
+
+        const data = {
+            labels: generateMonths(5),
+            datasets: [
+                {
+                    label: "Dataset 1",
+                    data: [10, 20, 30, 25, 40, 35, 48],
+                    borderColor: "red",
+                    backgroundColor: "red",
+                },
+                {
+                    label: "Dataset 2",
+                    data: [5, 15, 10, 30, 20, 45, 40],
+                    borderColor: "#ccc",
+                    backgroundColor: "#ccc",
+                },
+            ],
+        };
+
+        const config = {
+            type: "line",
+            data: data,
+            options: {
+                maintainAspectRatio: true,
+                interaction: {
+                    mode: "index",
+                    intersect: false,
+                },
+                stacked: false,
+                plugins: {
+                    legend: { position: "top" },
+                    title: {
+                        display: true,
+                        text: "Line Chart Example",
+                    },
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Months",
+                        },
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Values",
+                        },
+                        max: 60,
+                        ticks: {
+                            stepSize: 20,
+                        },
+                    },
+                },
+            },
+        };
+
+        new Chart(ctx, config);
+    }
+
+    document.addEventListener("astro:page-load", initChart);
+</script>

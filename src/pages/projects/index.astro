@@ -1,0 +1,49 @@
+---
+// layout import
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+// component import
+import CardProject from "../../components/ui/CardProject.astro";
+
+import { getCollection } from "astro:content";
+
+let projects = await getCollection("projects", ({ data }) => {
+    if (import.meta.env.DEV) {
+        return true;
+    }
+    return data.draft !== true;
+});
+
+projects = projects.sort(
+    (a, b) => b.data.updatedDate.valueOf() - a.data.updatedDate.valueOf()
+);
+
+const {
+    title = "Projects",
+    description = "Work and experiments I have built or contributed to.",
+} = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+    <section class="container-grid">
+        <section class="container-side"></section>
+
+        <section class="container-main">
+            {/* FEATURED PROJECTS */}
+            <article>
+                <h1>{title}<span class="text-red">.</span></h1>
+                <p class="text-tx-2">{description}</p>
+            </article>
+
+            <div class="@container mt-8 flex flex-col gap-y-4">
+                {
+                    projects.map((project) => (
+                        <CardProject post={project} collection="projects" />
+                    ))
+                }
+            </div>
+        </section>
+
+        <section class="container-side"></section>
+    </section>
+</BaseLayout>

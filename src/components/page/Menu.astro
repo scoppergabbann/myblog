@@ -1,0 +1,31 @@
+---
+import { Icon } from "astro-icon/components";
+
+interface Props {
+    href: string;
+    icon: string;
+    title: string;
+    description?: string;
+}
+
+const { href, icon, title, description, ...rest } = Astro.props;
+---
+
+<a
+    href={href}
+    class="not-prose group border-ui/0 hover:border-ui flex gap-x-2.5 rounded-sm border p-4 transition-all duration-300 ease-in-out hover:shadow-lg"
+    {...rest}
+>
+    <Icon
+        name={icon}
+        size={20}
+        class="text-tx-2 group-hover:text-tx shrink-0 translate-y-0.5 transition-colors duration-300 ease-in-out"
+    />
+    <div class="flex flex-col gap-y-1.5">
+        <span
+            class="decoration-tx-3 group-hover:text-red group-hover:decoration-red font-medium underline underline-offset-4 transition-all duration-300 ease-in-out"
+            >{title}</span
+        >
+        {description && <p class="text-tx-2 text-sm">{description}</p>}
+    </div>
+</a>

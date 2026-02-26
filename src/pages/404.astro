@@ -1,0 +1,36 @@
+---
+// Layout import
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+// Component import
+import CTA from "../components/page/CTA.astro";
+
+const { title = "404", description = "This page is missing." } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+    <section class="container-grid">
+        <section class="container-side"></section>
+
+        <section class="container-main">
+            <article class="pb-16">
+                <h1>Whoops<span class="text-red">.</span></h1>
+                <p class="text-tx-2">
+                    Everything in its right place, except this page!
+                </p>
+                <div class="flex flex-col items-center justify-center">
+                    <img
+                        src="/images/404.jpg"
+                        alt="Watunene Beach, Yogyakarta"
+                        title="Watunene Beach, Yogyakarta"
+                        loading="eager"
+                        class="mt-0 mb-4 w-full rounded-lg object-cover shadow-md"
+                    />
+                    <CTA href="/" text="Go Home" icon="material-symbols:home" />
+                </div>
+            </article>
+        </section>
+
+        <section class="container-side"></section>
+    </section>
+</BaseLayout>

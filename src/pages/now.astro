@@ -1,0 +1,36 @@
+---
+// layout import
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+// content import
+import Content, { frontmatter } from "../content/now.mdx";
+
+// utils import
+import { formatDate } from "../utils/formatDate";
+
+const { title, description, updatedDate } = frontmatter;
+---
+
+<BaseLayout title={title} description={description}>
+    <section class="container-grid">
+        <section class="container-side"></section>
+
+        <section class="container-main">
+            <article class="slide-enter-content">
+                <h1>What I'm doing now<span class="text-red">.</span></h1>
+                <p class="mt-0 mb-8 text-sm">
+                    <span data-time={updatedDate} class="text-tx-2 font-medium">
+                        Updated:
+                    </span>
+                    <span class="text-tx-2">
+                        {formatDate(updatedDate, "long")}
+                    </span>
+                </p>
+
+                <Content />
+            </article>
+        </section>
+
+        <section class="container-side"></section>
+    </section>
+</BaseLayout>
