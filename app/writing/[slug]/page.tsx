@@ -8,6 +8,11 @@ import {
 import { formatDate, extractToc } from '@/lib/utils';
 import { mdxComponents } from '@/components/mdx-components';
 import { ReadingProgress } from '@/components/reading-progress';
+import { Reactions } from '@/components/reactions';
+import { ViewCounter } from '@/components/view-counter';
+import { CommentsSection } from '@/components/comments-section';
+import { NewsletterSignup } from '@/components/newsletter-signup';
+import { getReactionsForSlug, getViewCount } from '@/lib/queries';
 import { siteConfig } from '@/lib/site-config';
 
 export async function generateStaticParams() {
@@ -52,6 +57,12 @@ export default async function WritingDetailPage({
 
   const toc = extractToc(w.content);
 
+  // Fetch dynamic data in parallel
+  const [reactions, viewCount] = await Promise.all([
+    getReactionsForSlug(slug),
+    getViewCount(slug),
+  ]);
+
   // Dynamic import of the MDX file as a React component
   let MDXContent;
   try {
@@ -93,6 +104,8 @@ export default async function WritingDetailPage({
                   <span>·</span>
                   <span>{w.readingTime}</span>
                   <span>·</span>
+                  <ViewCounter slug={slug} initialCount={viewCount} />
+                  <span>·</span>
                   <span>{w.tags.join(', ')}</span>
                 </div>
                 <h1 className="mb-3.5 text-[34px] font-medium leading-[1.2] tracking-[-0.03em] text-[var(--color-ink)] max-sm:text-[26px]">
@@ -106,6 +119,12 @@ export default async function WritingDetailPage({
               <div className="article-body">
                 <MDXContent components={mdxComponents} />
               </div>
+
+              <Reactions slug={slug} initialCounts={reactions} />
+
+              <NewsletterSignup />
+
+              <CommentsSection slug={slug} />
             </div>
 
             <aside className="max-md:hidden">

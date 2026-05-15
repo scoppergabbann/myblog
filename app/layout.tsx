@@ -40,12 +40,28 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     title: `${siteConfig.shortName} — ${siteConfig.name}`,
     description: siteConfig.description,
+    images: [
+      {
+        url: '/og-default.png',
+        width: 1200,
+        height: 630,
+        alt: siteConfig.name,
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: `${siteConfig.shortName} — ${siteConfig.name}`,
     description: siteConfig.description,
     creator: siteConfig.author.twitter,
+    images: ['/og-default.png'],
+  },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-32.png', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: '/apple-icon.png',
   },
   robots: { index: true, follow: true },
 };
