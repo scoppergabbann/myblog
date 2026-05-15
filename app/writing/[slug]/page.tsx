@@ -1,18 +1,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { MDXRemote } from 'next-mdx-remote/rsc';
+import { serialize } from 'next-mdx-remote/serialize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
 import rehypePrettyCode from 'rehype-pretty-code';
 import { getAllWritingSlugs, getWritingBySlug } from '@/lib/posts';
 import { formatDate, extractToc } from '@/lib/utils';
-import { mdxComponents } from '@/components/mdx-components';
 import { ReadingProgress } from '@/components/reading-progress';
 import { Reactions } from '@/components/reactions';
 import { ViewCounter } from '@/components/view-counter';
 import { CommentsSection } from '@/components/comments-section';
 import { NewsletterSignup } from '@/components/newsletter-signup';
+import { MdxRenderer } from '@/components/mdx-renderer';
 import { getReactionsForSlug, getViewCount } from '@/lib/queries';
 import { siteConfig } from '@/lib/site-config';
 
@@ -73,6 +73,19 @@ export default async function WritingDetailPage({
     getViewCount(slug),
   ]);
 
+  // Compile MDX once on the server. The serialized result is passed to a
+  // client component that renders it.
+  const mdxSource = await serialize(w.content, {
+    mdxOptions: {
+      remarkPlugins: [remarkGfm],
+      rehypePlugins: [
+        rehypeSlug,
+        [rehypePrettyCode, prettyCodeOptions] as never,
+      ],
+    },
+    parseFrontmatter: false,
+  });
+
   return (
     <>
       <ReadingProgress />
@@ -118,19 +131,7 @@ export default async function WritingDetailPage({
               </header>
 
               <div className="article-body">
-                <MDXRemote
-                  source={w.content}
-                  components={mdxComponents}
-                  options={{
-                    mdxOptions: {
-                      remarkPlugins: [remarkGfm],
-                      rehypePlugins: [
-                        rehypeSlug,
-                        [rehypePrettyCode, prettyCodeOptions],
-                      ],
-                    },
-                  }}
-                />
+                <MdxRenderer source={mdxSource} />
               </div>
 
               <Reactions slug={slug} initialCounts={reactions} />

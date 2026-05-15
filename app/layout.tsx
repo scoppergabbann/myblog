@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
+import { NavProgress } from '@/components/nav-progress';
 import { ThemeProvider } from '@/components/theme-provider';
 import { siteConfig } from '@/lib/site-config';
 import './globals.css';
@@ -97,6 +99,9 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
+          <Suspense fallback={null}>
+            <NavProgress />
+          </Suspense>
           <Nav />
           <main>{children}</main>
           <Footer />

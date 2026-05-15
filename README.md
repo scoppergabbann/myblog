@@ -2,22 +2,24 @@
 
 Personal site dengan Next.js, TypeScript, Tailwind v4, Supabase (all-content), NextAuth (GitHub OAuth), MDX runtime rendering. A quiet corner on the internet.
 
-## Status: Sesi 1 dari 3 (foundation complete)
+## Status: Sesi 2 dari 3 (CRUD content + moderation + image upload complete)
 
 **Yang sudah ada di build ini:**
 - All public pages render dari Supabase
 - Admin auth via GitHub OAuth (single-user allowlist)
 - Admin shell + overview dashboard
-- Admin guestbook (full moderasi: approve/reject/delete, bulk actions, filter)
-- Placeholder admin pages untuk posts/projects/now/comments/subscribers/views
+- **Posts CRUD**: list, create, edit, delete, publish/unpublish, bulk actions, MDX editor with image upload
+- **Projects CRUD**: list, create, edit, delete, status toggle, display order, bulk actions
+- **Comments moderation**: approve/reject/delete with article slug link
+- **Guestbook moderation**: full table with bulk actions
+- **Image upload** to Supabase Storage from post editor
+- Top nav progress bar (replaces jarring "loading..." text)
 
-**Yang menunggu Sesi 2-3:**
-- CRUD posts (MDX editor, draft state, image upload)
-- CRUD projects
-- Edit Now page
-- Moderasi comments
+**Yang menunggu Sesi 3:**
+- Edit Now page from admin
 - Manage subscribers (export CSV, manual confirm)
-- Views statistics dashboard
+- Views statistics dashboard with chart
+- Polish (empty states, toasts, keyboard shortcuts)
 
 ## Stack
 
@@ -229,18 +231,33 @@ supabase/
     002_content.sql         # posts, projects, now_items, now_meta + seed
 ```
 
-## Penting: cara publish artikel sekarang
+## Cara publish artikel sekarang
 
 **Tidak lagi via git push** — semua konten di Supabase.
 
-**Saat ini (Sesi 1):** insert artikel langsung di Supabase Table Editor:
-1. Buka `posts` table di Supabase dashboard
-2. Klik **Insert row**
-3. Isi `slug`, `title`, `summary`, `content` (MDX string), `tags`, `status='published'`, `published_at=now()`
-4. Save
-5. Article muncul di `/writing` dalam ≤60 detik (ISR revalidate)
+**Via admin panel** (Sesi 2):
 
-**Sesi 2 nanti:** admin panel posts editor untuk pengalaman yang lebih nyaman.
+1. Buka `/admin/posts` → klik **New post**
+2. Isi:
+   - **title**: judul artikel
+   - **slug**: URL-friendly identifier (e.g., `belajar-pelan-pelan`) — auto-validated lowercase + dash only
+   - **summary**: preview text untuk list dan OG image
+   - **content**: MDX. Markdown standar + komponen kustom `<Figure>`, `<Callout kind="note|tip|warning">`
+   - **tags**: comma-separated (e.g., `engineering, reflection`)
+   - **status**: `draft` (hidden), `published` (live), `archived` (hidden)
+   - **published at**: optional, auto-set saat publish
+3. **Upload image** dari editor — klik "upload image", select file, URL otomatis di-append sebagai markdown `![](url)` di content
+4. **Save**. Jika published, artikel muncul di `/writing` dalam ≤60 detik (ISR revalidate path triggered otomatis)
+
+**Bulk actions** di `/admin/posts`:
+- Select multiple → publish/draft/archive/delete sekaligus
+- Filter cepat by title/slug/tag
+
+**Image upload constraints**:
+- Max 5 MB per file
+- Allowed: PNG, JPEG, WebP, GIF, SVG
+- Disimpan di Supabase Storage bucket `bbs-images/<YYYYMM>/<random>.<ext>`
+- Public URL via Supabase CDN, optimisasi via `next/image`
 
 ## Auth model
 
@@ -314,19 +331,17 @@ Vercel auto-detected. Pastikan **Output Directory** kosong / `.next` (jangan `di
 - ✓ Guestbook + comments + reactions + newsletter (Supabase-backed)
 - ✓ View counter atomic per article
 
-### Admin (Sesi 1 deliverables)
+### Admin (Sesi 1 + 2 deliverables)
 - ✓ GitHub OAuth via NextAuth v5
 - ✓ Single-user allowlist enforcement
 - ✓ Middleware + layout + action 3-layer protection
 - ✓ Overview dashboard with stats cards
-- ✓ Guestbook moderation page (live, functional)
-- ✓ Reusable DataTable component (filter, bulk actions, optimistic UI)
-
-### Coming in Sesi 2
-- [ ] Posts CRUD with MDX editor
-- [ ] Projects CRUD
-- [ ] Comments moderation
-- [ ] Image upload to Supabase Storage
+- ✓ Top progress bar on navigation (no jarring "loading..." text)
+- ✓ Reusable DataTable (filter, bulk actions, optimistic UI)
+- ✓ Posts CRUD with MDX editor + image upload to Supabase Storage
+- ✓ Projects CRUD with display order
+- ✓ Comments moderation (with article link)
+- ✓ Guestbook moderation
 
 ### Coming in Sesi 3
 - [ ] Now page editor
