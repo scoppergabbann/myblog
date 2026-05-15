@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import {
-  getAllWritingSlugs,
-  getWritingBySlug,
-} from '@/lib/mdx';
+import { MDXRemote } from 'next-mdx-remote/rsc';
+import rehypeSlug from 'rehype-slug';
+import remarkGfm from 'remark-gfm';
+import rehypePrettyCode from 'rehype-pretty-code';
+import { getAllWritingSlugs, getWritingBySlug } from '@/lib/posts';
 import { formatDate, extractToc } from '@/lib/utils';
 import { mdxComponents } from '@/components/mdx-components';
 import { ReadingProgress } from '@/components/reading-progress';
@@ -15,8 +16,13 @@ import { NewsletterSignup } from '@/components/newsletter-signup';
 import { getReactionsForSlug, getViewCount } from '@/lib/queries';
 import { siteConfig } from '@/lib/site-config';
 
+// Revalidate every 60s — admin edits show up within a minute
+export const revalidate = 60;
+export const dynamicParams = true; // Allow new slugs after build
+
 export async function generateStaticParams() {
-  return getAllWritingSlugs().map((slug) => ({ slug }));
+  const slugs = await getAllWritingSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({
@@ -25,7 +31,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const w = getWritingBySlug(slug);
+  const w = await getWritingBySlug(slug);
   if (!w) return {};
   return {
     title: w.title,
@@ -46,31 +52,26 @@ export async function generateMetadata({
   };
 }
 
+const prettyCodeOptions = {
+  theme: { light: 'github-light', dark: 'github-dark-dimmed' },
+  keepBackground: false,
+};
+
 export default async function WritingDetailPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const w = getWritingBySlug(slug);
+  const w = await getWritingBySlug(slug);
   if (!w) notFound();
 
   const toc = extractToc(w.content);
 
-  // Fetch dynamic data in parallel
   const [reactions, viewCount] = await Promise.all([
     getReactionsForSlug(slug),
     getViewCount(slug),
   ]);
-
-  // Dynamic import of the MDX file as a React component
-  let MDXContent;
-  try {
-    const mod = await import(`@/content/writings/${slug}.mdx`);
-    MDXContent = mod.default;
-  } catch {
-    notFound();
-  }
 
   return (
     <>
@@ -117,7 +118,19 @@ export default async function WritingDetailPage({
               </header>
 
               <div className="article-body">
-                <MDXContent components={mdxComponents} />
+                <MDXRemote
+                  source={w.content}
+                  components={mdxComponents}
+                  options={{
+                    mdxOptions: {
+                      remarkPlugins: [remarkGfm],
+                      rehypePlugins: [
+                        rehypeSlug,
+                        [rehypePrettyCode, prettyCodeOptions],
+                      ],
+                    },
+                  }}
+                />
               </div>
 
               <Reactions slug={slug} initialCounts={reactions} />

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { projects } from '@/content/projects';
+import { getAllProjects } from '@/lib/content-queries';
 import { ProjectCard } from '@/components/project-card';
 
 export const metadata: Metadata = {
@@ -7,7 +7,10 @@ export const metadata: Metadata = {
   description: 'Hal-hal kecil yang saya bangun.',
 };
 
-export default function ProjectsPage() {
+export const revalidate = 60;
+
+export default async function ProjectsPage() {
+  const projects = await getAllProjects();
   return (
     <div className="page-fade mx-auto max-w-[680px] px-6">
       <div className="py-20 pb-10">

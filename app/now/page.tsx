@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { nowData } from '@/content/now';
+import { getNowData } from '@/lib/content-queries';
 import { formatDate } from '@/lib/utils';
 import type { NowSection } from '@/types/content';
 
@@ -8,7 +8,10 @@ export const metadata: Metadata = {
   description: 'Apa yang sedang saya kerjakan, baca, dan pikirkan.',
 };
 
-export default function NowPage() {
+export const revalidate = 60;
+
+export default async function NowPage() {
+  const nowData = await getNowData();
   return (
     <div className="page-fade mx-auto max-w-[680px] px-6">
       <div className="py-20 pb-10">

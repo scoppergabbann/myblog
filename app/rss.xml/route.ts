@@ -1,11 +1,11 @@
 import { Feed } from 'feed';
-import { getAllWritings } from '@/lib/mdx';
+import { getAllWritings } from '@/lib/posts';
 import { siteConfig } from '@/lib/site-config';
 
-export const dynamic = 'force-static';
+export const revalidate = 300; // Refresh feed every 5 minutes
 
 export async function GET() {
-  const writings = getAllWritings();
+  const writings = await getAllWritings();
 
   const feed = new Feed({
     title: `${siteConfig.name} — writings`,

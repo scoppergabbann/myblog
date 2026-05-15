@@ -1,25 +1,19 @@
-import createMDX from '@next/mdx';
-import remarkGfm from 'remark-gfm';
-import rehypeSlug from 'rehype-slug';
-import rehypePrettyCode from 'rehype-pretty-code';
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  pageExtensions: ['ts', 'tsx', 'md', 'mdx'],
-};
-
-/** @type {import('rehype-pretty-code').Options} */
-const prettyCodeOptions = {
-  theme: { light: 'github-light', dark: 'github-dark-dimmed' },
-  keepBackground: false,
-};
-
-const withMDX = createMDX({
-  options: {
-    remarkPlugins: [remarkGfm],
-    rehypePlugins: [rehypeSlug, [rehypePrettyCode, prettyCodeOptions]],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+      },
+    ],
   },
-});
+};
 
-export default withMDX(nextConfig);
+export default nextConfig;

@@ -1,8 +1,8 @@
 import type { MetadataRoute } from 'next';
-import { getAllWritings } from '@/lib/mdx';
+import { getAllWritings } from '@/lib/posts';
 import { siteConfig } from '@/lib/site-config';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
     '',
     '/about',
@@ -18,12 +18,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: path === '' ? 1.0 : 0.7,
   }));
 
-  const writings = getAllWritings().map((w) => ({
+  const writings = await getAllWritings();
+  const writingRoutes = writings.map((w) => ({
     url: `${siteConfig.url}/writing/${w.slug}`,
     lastModified: new Date(w.date),
     changeFrequency: 'yearly' as const,
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...writings];
+  return [...staticRoutes, ...writingRoutes];
 }

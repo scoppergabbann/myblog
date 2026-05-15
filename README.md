@@ -1,81 +1,260 @@
 # bbs/ — belutbakarsurabaya
 
-Personal site built with Next.js, TypeScript, Tailwind v4, MDX, and Supabase. A quiet corner on the internet.
+Personal site dengan Next.js, TypeScript, Tailwind v4, Supabase (all-content), NextAuth (GitHub OAuth), MDX runtime rendering. A quiet corner on the internet.
+
+## Status: Sesi 1 dari 3 (foundation complete)
+
+**Yang sudah ada di build ini:**
+- All public pages render dari Supabase
+- Admin auth via GitHub OAuth (single-user allowlist)
+- Admin shell + overview dashboard
+- Admin guestbook (full moderasi: approve/reject/delete, bulk actions, filter)
+- Placeholder admin pages untuk posts/projects/now/comments/subscribers/views
+
+**Yang menunggu Sesi 2-3:**
+- CRUD posts (MDX editor, draft state, image upload)
+- CRUD projects
+- Edit Now page
+- Moderasi comments
+- Manage subscribers (export CSV, manual confirm)
+- Views statistics dashboard
 
 ## Stack
 
 - **Framework**: Next.js 15.5 (App Router, Server Components)
 - **Language**: TypeScript strict
 - **React**: 18.3
-- **Styling**: Tailwind CSS v4 (CSS-first config via `@theme`)
-- **Content**: MDX via `@next/mdx` (file-based, git-versioned)
-- **Database**: Supabase (Postgres) for guestbook, comments, reactions, views, newsletter
-- **Syntax highlighting**: `rehype-pretty-code` + Shiki (server-rendered)
-- **Fonts**: Inter + JetBrains Mono via `next/font`
+- **Styling**: Tailwind CSS v4 (CSS-first via `@theme`)
+- **Database**: Supabase Postgres (all content here, including articles)
+- **MDX**: `next-mdx-remote/rsc` (runtime compile from DB string)
+- **Auth**: NextAuth v5 / Auth.js dengan GitHub provider
+- **Syntax highlighting**: `rehype-pretty-code` + Shiki
 - **Theme**: `next-themes` (no FOUC)
 - **Hosting**: Vercel (recommended)
 
-## Quick start
+## Setup — first time
+
+### 1. Install
 
 ```bash
-# 1. Copy env template
-cp .env.example .env.local
-
-# 2. Fill in Supabase credentials (see "Supabase setup" below)
-# Edit .env.local
-
-# 3. Install + run
 npm install
-npm run dev
+cp .env.example .env.local
 ```
 
-Open http://localhost:3000.
+### 2. Supabase project
 
-> First install fetches Tailwind v4 and Google Fonts. Make sure outbound internet is allowed.
+Buka https://supabase.com → New Project (Singapore region untuk Indonesia).
 
-## Supabase setup
-
-### 1. Create project
-
-Go to https://supabase.com → New Project. Choose a region close to you (Singapore for Indonesia).
-
-### 2. Run migrations
-
-Open SQL Editor → New query → paste contents of `supabase/migrations/001_initial.sql` → Run.
-
-Verify tables exist: Table Editor → should see `guestbook`, `comments`, `reactions`, `subscribers`, `views`.
-
-### 3. Get credentials
-
-Settings → API → copy:
-
-- `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
-- `anon` `public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `service_role` `secret` key → `SUPABASE_SERVICE_ROLE_KEY` ⚠️ never expose
-
-### 4. Generate admin secret
+Setelah project ready, copy credentials dari **Settings → API**:
 
 ```bash
+# In .env.local
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=ey...
+SUPABASE_SERVICE_ROLE_KEY=ey...  # secret!
+NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET=bbs-images
+```
+
+### 3. Run SQL migrations — **urutan penting**
+
+Buka **SQL Editor** di Supabase dashboard. Run dua file secara berurutan:
+
+**File 1**: `supabase/migrations/001_initial.sql`
+→ Bikin tables: guestbook, comments, reactions, subscribers, views + RLS
+
+**File 2**: `supabase/migrations/002_content.sql`
+→ Bikin tables: posts, projects, now_items, now_meta + RLS + seed 4 sample articles + projects + now data
+
+Verifikasi: **Table Editor** harus menampilkan 9 tables total.
+
+### 4. Setup Supabase Storage (untuk image upload)
+
+Storage bucket harus dibuat manual di dashboard (tidak via SQL):
+
+1. Supabase dashboard → **Storage** → **New bucket**
+2. Name: `bbs-images`
+3. ✅ Centang **Public bucket** (so images can be embedded in articles)
+4. File size limit: 5 MB (recommended)
+5. Allowed MIME types: `image/*`
+6. Klik **Create bucket**
+
+Bucket ini akan dipakai di Sesi 2 untuk upload gambar dari admin posts editor. Untuk sekarang, biarkan kosong.
+
+### 5. GitHub OAuth App — step-by-step
+
+NextAuth perlu OAuth app dari GitHub:
+
+1. Buka https://github.com/settings/developers
+2. Klik **OAuth Apps** → **New OAuth App**
+3. Isi form:
+   - **Application name**: `bbs admin` (atau apa saja)
+   - **Homepage URL**: `http://localhost:3000` (development)
+   - **Authorization callback URL**: `http://localhost:3000/api/auth/callback/github`
+4. Klik **Register application**
+5. Di halaman aplikasi:
+   - Copy **Client ID** → `AUTH_GITHUB_ID`
+   - Klik **Generate a new client secret** → copy → `AUTH_GITHUB_SECRET`
+
+**Untuk production (Vercel)** nanti, kamu perlu OAuth app kedua atau update yang ini:
+- **Homepage URL**: `https://belutbakarsurabaya.com`
+- **Authorization callback URL**: `https://belutbakarsurabaya.com/api/auth/callback/github`
+
+> Tip: bisa juga keep satu OAuth app dengan callback URL development, lalu di production set ke URL production—pakai 2 set env vars di Vercel (Production vs Development).
+
+### 6. Generate secrets
+
+```bash
+# Generate AUTH_SECRET (for JWT signing)
+openssl rand -base64 32
+
+# Generate ADMIN_SECRET (for IP-hash salting)
 openssl rand -hex 32
 ```
 
-Use the output as `ADMIN_SECRET`. Used for IP hash salt + future admin auth.
+Paste ke `.env.local`.
 
-### Row Level Security
+### 7. Set admin username
 
-All tables have RLS enabled. Anon role can only:
-- READ approved guestbook + comments
-- READ all reactions + views
+```bash
+# In .env.local
+ADMIN_GITHUB_USERNAME=your-github-username
+```
 
-All WRITE operations go through server actions using `service_role` key (bypasses RLS), with built-in:
-- Honeypot field (catches bots)
-- IP-hash rate limiting (3 guestbook / hour, 5 comments / hour, etc.)
-- Input validation (length, format)
-- Privacy: only SHA-256 of IP is stored, never raw IP
+⚠️ Username ini case-insensitive tapi typo-sensitive. Pastikan exact match dengan GitHub login kamu (`https://github.com/<this-username>`).
+
+Tanpa env ini di-set, semua login attempt akan ditolak (intentional fail-safe).
+
+### 8. Jalankan dev
+
+```bash
+npm run dev
+```
+
+Buka:
+- http://localhost:3000 → public site
+- http://localhost:3000/admin → akan redirect ke login
+- http://localhost:3000/admin/login → klik **Sign in with GitHub**
+
+Jika username GitHub kamu match `ADMIN_GITHUB_USERNAME`, kamu akan masuk dashboard. Jika tidak, akan ditolak dengan error.
+
+## Folder structure
+
+```
+app/
+  layout.tsx                # Root layout (public site)
+  page.tsx                  # Home (fetches from Supabase)
+  globals.css               # Tailwind v4 + design tokens
+  error.tsx, global-error.tsx, loading.tsx
+  not-found.tsx, manifest.ts, sitemap.ts, robots.ts
+
+  about/page.tsx
+  uses/page.tsx
+  projects/page.tsx         # Now from Supabase
+  now/page.tsx              # Now from Supabase
+
+  writing/
+    page.tsx                # List from Supabase
+    writing-filter.tsx
+    [slug]/
+      page.tsx              # Runtime MDX from DB via MDXRemote
+      comment-actions.ts
+      reaction-actions.ts
+
+  guestbook/
+    page.tsx, guestbook-form.tsx, actions.ts
+
+  api/
+    auth/[...nextauth]/route.ts  # NextAuth handlers
+    og/route.tsx
+    subscribe/actions.ts
+
+  rss.xml/route.ts
+
+  admin/
+    (auth)/                 # Public auth pages (no protection)
+      layout.tsx
+      login/
+        page.tsx
+        login-button.tsx
+    (protected)/            # Protected by middleware + layout auth check
+      layout.tsx            # Sidebar nav + sign out
+      page.tsx              # Overview dashboard
+      guestbook/
+        page.tsx            # Live moderation
+        guestbook-table.tsx
+        actions.ts
+      posts/, projects/, now/, comments/, subscribers/, views/
+                            # Placeholders (Sesi 2-3)
+
+auth.ts                     # NextAuth config (root)
+middleware.ts               # Protect /admin/*
+
+components/
+  nav.tsx, footer.tsx
+  theme-provider.tsx, theme-toggle.tsx
+  reading-progress.tsx
+  writing-item.tsx, project-card.tsx
+  client-code-block.tsx
+  mdx-components.tsx, mdx-custom.tsx
+  reactions.tsx, view-counter.tsx
+  comments-section.tsx, comment-form.tsx
+  newsletter-signup.tsx
+  admin/
+    data-table.tsx          # Reusable spreadsheet-like table
+    providers.tsx           # SessionProvider wrapper
+    sign-out-button.tsx
+    coming-soon.tsx
+
+content/
+  _archive/                 # Old MDX/TS files (kept for git history reference)
+                            # NOT USED at runtime — all content in Supabase
+
+lib/
+  posts.ts                  # Article queries (replaces lib/mdx.ts)
+  content-queries.ts        # Projects + Now queries
+  queries.ts                # Guestbook/comments/reactions/views queries
+  site-config.ts
+  utils.ts
+  ip-hash.ts, rate-limit.ts
+  supabase/
+    browser.ts, server.ts, admin.ts
+
+types/
+  content.ts
+  next-auth.d.ts            # Session type augmentation
+
+supabase/
+  migrations/
+    001_initial.sql         # guestbook, comments, reactions, subscribers, views
+    002_content.sql         # posts, projects, now_items, now_meta + seed
+```
+
+## Penting: cara publish artikel sekarang
+
+**Tidak lagi via git push** — semua konten di Supabase.
+
+**Saat ini (Sesi 1):** insert artikel langsung di Supabase Table Editor:
+1. Buka `posts` table di Supabase dashboard
+2. Klik **Insert row**
+3. Isi `slug`, `title`, `summary`, `content` (MDX string), `tags`, `status='published'`, `published_at=now()`
+4. Save
+5. Article muncul di `/writing` dalam ≤60 detik (ISR revalidate)
+
+**Sesi 2 nanti:** admin panel posts editor untuk pengalaman yang lebih nyaman.
+
+## Auth model
+
+- **Single-user allowlist**: hanya GitHub username di `ADMIN_GITHUB_USERNAME` yang bisa akses `/admin/*`
+- **Session strategy**: JWT (no DB for session storage)
+- **Middleware protection**: edge-level redirect untuk semua `/admin/*` kecuali `/admin/login`
+- **Layout-level second check**: `(protected)/layout.tsx` redirect lagi jika somehow lolos middleware
+- **Server actions check**: `requireAdmin()` di setiap admin action untuk defense in depth
+
+Kalau OAuth callback gagal verify username, user akan dikembalikan ke `/admin/login?error=AccessDenied`.
 
 ## Vercel deployment
 
-### 1. Push to GitHub
+### 1. Push ke GitHub
 
 ```bash
 git init
@@ -85,251 +264,76 @@ git remote add origin git@github.com:you/bbs-site.git
 git push -u origin main
 ```
 
-### 2. Import to Vercel
+### 2. Import ke Vercel
 
-https://vercel.com → New Project → Import your repo. Framework auto-detected.
+vercel.com → Import → pilih repo. Framework auto-detected as Next.js.
 
-### 3. Add environment variables
+### 3. Environment variables
 
-In Vercel project settings → Environment Variables, add:
+Pre-deploy, di Project Settings → Environment Variables, paste semua yang ada di `.env.local`, **kecuali**:
+- `NEXT_PUBLIC_SITE_URL` → set ke `https://belutbakarsurabaya.com` (URL production kamu)
+- `AUTH_URL` → optional, but recommended: `https://belutbakarsurabaya.com`
 
-```
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-NEXT_PUBLIC_SITE_URL=https://your-domain.com
-ADMIN_SECRET
-```
+Pastikan **Production**, **Preview**, dan **Development** semua ter-set (atau minimal Production).
 
-Set all to **Production**, **Preview**, and **Development** (or just the ones you need).
+### 4. Update GitHub OAuth callback
 
-### 4. Add custom domain
+Setelah deploy:
+- Buka GitHub → Settings → Developer settings → OAuth Apps → your app
+- Update **Authorization callback URL** ke `https://your-vercel-url.vercel.app/api/auth/callback/github`
+- Atau setelah custom domain attached: `https://belutbakarsurabaya.com/api/auth/callback/github`
 
-Project Settings → Domains → Add `belutbakarsurabaya.com` (and `www.` redirect if you like). Vercel handles SSL automatically.
+### 5. Build settings
 
-### 5. Update siteConfig
+Vercel auto-detected. Pastikan **Output Directory** kosong / `.next` (jangan `dist`).
 
-After your real domain is live, edit `lib/site-config.ts`:
+## Common pitfalls
 
-```ts
-url: 'https://belutbakarsurabaya.com',
-```
+**Halaman `/writing` kosong setelah migrasi** — pastikan `002_content.sql` sudah dijalankan dan `status='published'` di seed data. Cek `posts` table langsung.
 
-Commit + push. Vercel auto-deploys.
+**"Unauthorized" saat sign in** — `ADMIN_GITHUB_USERNAME` tidak ter-set atau typo. Cek logs server untuk warning `[auth] ADMIN_GITHUB_USERNAME not set`.
 
-## Folder structure
+**"Configuration" error di NextAuth** — `AUTH_SECRET` belum di-generate atau kosong.
 
-```
-app/
-  layout.tsx                # Root layout + fonts + theme + metadata
-  page.tsx                  # Home
-  error.tsx                 # Error boundary (per-page)
-  global-error.tsx          # Root error (catastrophic)
-  loading.tsx               # Loading state
-  not-found.tsx             # 404
-  manifest.ts               # PWA manifest
-  sitemap.ts                # Auto sitemap
-  robots.ts
-  globals.css               # Tailwind v4 + design tokens
-  api/
-    og/route.tsx            # Dynamic OG image
-    subscribe/actions.ts    # Newsletter subscribe action
-  rss.xml/route.ts          # RSS feed
-  writing/
-    page.tsx                # List + search + filter
-    writing-filter.tsx      # Client filter component
-    [slug]/
-      page.tsx              # Article (MDX + reactions + comments + newsletter)
-      comment-actions.ts    # Comment server action
-      reaction-actions.ts   # Toggle reaction + increment view
-  guestbook/
-    page.tsx                # Server: fetch from Supabase
-    guestbook-form.tsx      # Client form (useActionState)
-    actions.ts              # Server action: insert entry
-  about/page.tsx
-  projects/page.tsx
-  now/page.tsx
-  uses/page.tsx
+**OAuth callback 404** — Authorization callback URL di GitHub OAuth app tidak match `<your-url>/api/auth/callback/github`.
 
-components/
-  nav.tsx
-  footer.tsx
-  theme-provider.tsx
-  theme-toggle.tsx
-  reading-progress.tsx
-  writing-item.tsx
-  project-card.tsx
-  client-code-block.tsx     # Pre+copy button wrapper for code blocks
-  mdx-components.tsx        # MDX renderer overrides
-  mdx-custom.tsx            # <Figure>, <Callout> for MDX
-  reactions.tsx             # 4-emoji reactions per article
-  view-counter.tsx          # Auto-increment + display
-  comments-section.tsx      # Server: fetch comments
-  comment-form.tsx          # Client form
-  newsletter-signup.tsx     # Inline footer signup
+**Middleware infinite redirect** — pastikan `(auth)/login` ada di route group `(auth)`, bukan `(protected)`. Middleware sudah exclude `/admin/login` secara eksplisit.
 
-content/
-  writings/*.mdx            # Articles
-  projects.ts               # Projects list
-  now.ts                    # Now page data
+**ISR tidak refresh setelah edit data di Supabase** — page revalidate setiap 60 detik. Tunggu, atau di Vercel dashboard klik **Purge cache**. Sesi 2 akan tambah `revalidatePath()` otomatis dari admin actions.
 
-lib/
-  mdx.ts                    # MDX loader + frontmatter + reading time
-  site-config.ts            # Brand metadata
-  utils.ts                  # formatDate, slugify, etc.
-  ip-hash.ts                # Privacy-preserving IP hashing
-  rate-limit.ts             # In-memory rate limiter
-  queries.ts                # All Supabase read fetchers
-  supabase/
-    browser.ts              # Browser client (anon)
-    server.ts               # Server client (anon, cookie-aware)
-    admin.ts                # Service-role client (server-only, RLS bypass)
+## Features
 
-supabase/
-  migrations/
-    001_initial.sql         # Schema + RLS + functions
+### Public site
+- ✓ All pages render dari Supabase (posts, projects, now)
+- ✓ Runtime MDX rendering (admin edit → langsung live dalam ≤60s)
+- ✓ Reading progress, TOC sticky, copy code button
+- ✓ Dark mode (no FOUC)
+- ✓ Dynamic OG images + default fallback
+- ✓ RSS, sitemap, robots, manifest
+- ✓ Custom MDX components: `<Figure>`, `<Callout>`
+- ✓ Guestbook + comments + reactions + newsletter (Supabase-backed)
+- ✓ View counter atomic per article
 
-types/content.ts            # TS types for content
-mdx-components.tsx          # Required by @next/mdx at root
-next.config.mjs             # MDX pipeline
-public/
-  favicon.ico, favicon-32.png, apple-icon.png
-  icon-192.png, icon-512.png, icon-512-maskable.png
-  og-default.png            # 1200×630 default OG image
-```
+### Admin (Sesi 1 deliverables)
+- ✓ GitHub OAuth via NextAuth v5
+- ✓ Single-user allowlist enforcement
+- ✓ Middleware + layout + action 3-layer protection
+- ✓ Overview dashboard with stats cards
+- ✓ Guestbook moderation page (live, functional)
+- ✓ Reusable DataTable component (filter, bulk actions, optimistic UI)
 
-## Writing a new post
+### Coming in Sesi 2
+- [ ] Posts CRUD with MDX editor
+- [ ] Projects CRUD
+- [ ] Comments moderation
+- [ ] Image upload to Supabase Storage
 
-Create `content/writings/your-slug.mdx`:
-
-```mdx
----
-title: 'Judul tulisan kamu'
-date: '2026-05-15'
-summary: 'Ringkasan satu kalimat untuk preview.'
-tags: ['engineering', 'reflection']
-draft: false
----
-
-Markdown standar didukung.
-
-## Heading otomatis jadi anchor TOC
-
-Pakai komponen kustom:
-
-<Callout kind="tip">
-  Ini callout berguna untuk tips atau catatan.
-</Callout>
-
-<Figure
-  src="/images/screenshot.png"
-  alt="Deskripsi gambar"
-  caption="Caption gambar"
-  width={1200}
-  height={800}
-/>
-```
-
-Available custom components in MDX:
-- `<Callout kind="note|warning|tip">…</Callout>`
-- `<Figure src="..." alt="..." caption="..." width={n} height={n} />`
-
-Place images under `public/images/`.
-
-## Anti-spam strategy
-
-Built-in for every public form:
-
-1. **Honeypot** — invisible `website` field; bots fill it, humans don't
-2. **Rate limit** — per IP-hash (privacy-preserving)
-3. **Length validation** — server-side check before insert
-4. **No PII storage** — only SHA-256 of IP, salted with `ADMIN_SECRET`
-
-For higher-volume sites later, add:
-- Upstash Ratelimit (replace `lib/rate-limit.ts`)
-- hCaptcha / Turnstile on forms
-
-## Moderation
-
-All `guestbook` and `comments` entries default to `approved=true` (show immediately). To moderate manually:
-
-1. In Supabase Table Editor, flip `approved=false` on spam
-2. Or set the default to `false` in the migration if you want pre-approval workflow
-
-For comment moderation tooling, see the roadmap below.
-
-## Newsletter — completing the flow
-
-The current implementation collects emails and generates a `confirm_token`, but does NOT send confirmation emails. To complete double opt-in:
-
-1. Sign up for Resend or Postmark
-2. Add `RESEND_API_KEY` env var
-3. In `app/api/subscribe/actions.ts`, after insert, send email:
-
-```ts
-import { Resend } from 'resend';
-const resend = new Resend(process.env.RESEND_API_KEY);
-await resend.emails.send({
-  from: 'bbs <hi@belutbakarsurabaya.com>',
-  to: trimmed,
-  subject: 'Konfirmasi langganan',
-  html: `<p>Klik untuk konfirmasi: <a href="${siteConfig.url}/api/confirm?token=${token}">Confirm</a></p>`,
-});
-```
-
-4. Create `/api/confirm/route.ts` that flips `confirmed=true` for the token
-
-## Features (Tier 1 + Supabase complete)
-
-- ✓ All public pages (Home, About, Writing, Projects, Now, Uses, Guestbook)
-- ✓ MDX with frontmatter, draft state, reading time
-- ✓ Server-side syntax highlighting (Shiki dual theme)
-- ✓ Copy code button
-- ✓ Sticky TOC + reading progress
-- ✓ Custom MDX components (`<Figure>`, `<Callout>`)
-- ✓ Dark mode (system default, persists, no FOUC)
-- ✓ Dynamic OG images (`/api/og`) + default OG fallback
-- ✓ Favicon, apple-icon, PWA manifest, all icon sizes
-- ✓ Sitemap, RSS, robots
-- ✓ Error boundaries (`error.tsx`, `global-error.tsx`, `loading.tsx`)
-- ✓ Mobile-first responsive
-
-**Supabase-powered:**
-- ✓ Guestbook with persistence + rate limit + honeypot
-- ✓ Comments per article
-- ✓ 4-emoji reactions per article (optimistic UI)
-- ✓ View counter per article (atomic increment, dedup per IP)
-- ✓ Newsletter signup (storage + token; email sending TODO)
-- ✓ Row Level Security on all tables
-- ✓ Privacy-preserving IP-hash anti-spam
-
-## Roadmap (Tier 2-3)
-
-- [ ] Confirmation email for newsletter (Resend integration)
-- [ ] Related posts at article footer (by tag overlap)
-- [ ] Prev/next article navigation
-- [ ] CMS dashboard (admin UI: moderate guestbook/comments, write MDX)
-- [ ] Command palette (cmd+k) — fuzzy search articles
-- [ ] Webmentions
-- [ ] Comment threading / replies
-- [ ] Spotify now-playing on /now (via API)
-- [ ] /colophon and /changelog pages
-- [ ] JSON Feed alongside RSS
-
-## Troubleshooting
-
-**"Missing NEXT_PUBLIC_SUPABASE_URL"** → run `cp .env.example .env.local` and fill in.
-
-**Build fails fetching Google Fonts** → ensure outbound internet during build. Behind firewall, replace `next/font/google` with `next/font/local` and self-host woff2.
-
-**Form submits but nothing appears** → check Supabase logs (Database → Logs). RLS policy may block read for unapproved entries. Check `approved=true` in row.
-
-**Rate limit triggered too aggressively** → tune limits in each `actions.ts` file. Defaults are conservative.
-
-**MDX not refreshing in dev** → restart `npm run dev` after adding new MDX files; webpack discovers them at boot.
-
-**Reactions don't toggle off** → localStorage-backed memory. Clear `bbs-reacted:*` keys in browser DevTools if state drifts.
+### Coming in Sesi 3
+- [ ] Now page editor
+- [ ] Subscribers manage + CSV export + confirm email
+- [ ] Views statistics dashboard
+- [ ] Polish (empty states, error toasts, keyboard shortcuts)
 
 ## License
 
-MIT — fork and adapt for your own site.
+MIT — fork dan adapt untuk site personal kamu.

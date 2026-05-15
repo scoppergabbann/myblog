@@ -1,12 +1,18 @@
 import Link from 'next/link';
-import { getAllWritings } from '@/lib/mdx';
-import { projects } from '@/content/projects';
+import { getAllWritings } from '@/lib/posts';
+import { getAllProjects } from '@/lib/content-queries';
 import { WritingItem } from '@/components/writing-item';
 import { ProjectCard } from '@/components/project-card';
 
-export default function HomePage() {
-  const writings = getAllWritings().slice(0, 3);
-  const featuredProjects = projects.slice(0, 4);
+export const revalidate = 60;
+
+export default async function HomePage() {
+  const [allWritings, allProjects] = await Promise.all([
+    getAllWritings(),
+    getAllProjects(),
+  ]);
+  const writings = allWritings.slice(0, 3);
+  const featuredProjects = allProjects.slice(0, 4);
 
   return (
     <div className="page-fade mx-auto max-w-[680px] px-6">

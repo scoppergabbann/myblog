@@ -1,7 +1,7 @@
 export const siteConfig = {
   name: 'belutbakarsurabaya',
   shortName: 'bbs/',
-  url: 'https://belutbakarsurabaya.com',
+  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://belutbakarsurabaya.com',
   description:
     'A quiet corner on the internet. Catatan, proyek, dan refleksi dari seorang software engineer, writer, dan investor muda.',
   tagline: 'a quiet corner on the internet',

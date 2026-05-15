@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getAllWritings, getAllTags } from '@/lib/mdx';
+import { getAllWritings, getAllTags } from '@/lib/posts';
 import { WritingFilter } from './writing-filter';
 
 export const metadata: Metadata = {
@@ -8,9 +8,12 @@ export const metadata: Metadata = {
     'Catatan tentang engineering, menulis, investasi pelan-pelan, dan internet personal.',
 };
 
-export default function WritingPage() {
-  const writings = getAllWritings();
-  const tags = ['all', ...getAllTags()];
+// Revalidate every 60 seconds (ISR). Edits in admin show up within 1 minute.
+export const revalidate = 60;
+
+export default async function WritingPage() {
+  const writings = await getAllWritings();
+  const tags = ['all', ...(await getAllTags())];
 
   return (
     <div className="page-fade mx-auto max-w-[680px] px-6">
