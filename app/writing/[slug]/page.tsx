@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getWritingBySlug, getAdjacentWritings, getRelatedWritings } from '@/lib/posts';
+import { getAllWritingSlugs, getWritingBySlug, getAdjacentWritings, getRelatedWritings } from '@/lib/posts';
 import { formatDate, extractToc } from '@/lib/utils';
 import { compileMdx } from '@/lib/mdx-compile';
 import { mdxComponents } from '@/components/mdx-components';
@@ -14,27 +14,23 @@ import { ArticleFooterNav } from '@/components/article-footer-nav';
 import { getReactionsForSlug, getViewCount } from '@/lib/queries';
 import { siteConfig } from '@/lib/site-config';
 
-// `searchParams` (for ?preview=) requires dynamic rendering. Trade off ISR
-// for simpler preview handling — Supabase queries are fast enough.
-export const dynamic = 'force-dynamic';
+// ISR: revalidate every 60s. Admin edits visible within 1 minute.
+// Preview-of-drafts lives at /writing/preview/[slug] (dynamic, separate route).
+export const revalidate = 60;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  const slugs = await getAllWritingSlugs();
+  return slugs.map((slug) => ({ slug }));
+}
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ preview?: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const sp = await searchParams;
-
-  let isPreview = false;
-  if (sp.preview) {
-    const { verifyDraftToken } = await import('@/lib/draft-token');
-    isPreview = verifyDraftToken(slug, sp.preview);
-  }
-
-  const w = await getWritingBySlug(slug, { includeDraft: isPreview });
+  const w = await getWritingBySlug(slug);
   if (!w) return {};
 
   const ogImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(w.title)}&subtitle=${encodeURIComponent(w.summary)}`;
@@ -70,28 +66,17 @@ export async function generateMetadata({
     other: {
       'og:image:secure_url': ogImage,
     },
-    robots: isPreview ? { index: false, follow: false } : undefined,
   };
 }
 
 export default async function WritingDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ preview?: string }>;
 }) {
   const { slug } = await params;
-  const sp = await searchParams;
 
-  // Draft preview: validate HMAC token before showing unpublished posts
-  let isPreview = false;
-  if (sp.preview) {
-    const { verifyDraftToken } = await import('@/lib/draft-token');
-    isPreview = verifyDraftToken(slug, sp.preview);
-  }
-
-  const w = await getWritingBySlug(slug, { includeDraft: isPreview });
+  const w = await getWritingBySlug(slug);
   if (!w) notFound();
 
   const toc = extractToc(w.content);
@@ -106,43 +91,36 @@ export default async function WritingDetailPage({
 
   return (
     <>
-      {!isPreview && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'Article',
-              headline: w.title,
-              description: w.summary,
-              datePublished: w.date,
-              author: {
-                '@type': 'Person',
-                name: siteConfig.author.name,
-                url: siteConfig.url,
-              },
-              publisher: {
-                '@type': 'Person',
-                name: siteConfig.author.name,
-                url: siteConfig.url,
-              },
-              mainEntityOfPage: {
-                '@type': 'WebPage',
-                '@id': `${siteConfig.url}/writing/${w.slug}`,
-              },
-              keywords: w.tags.join(', '),
-              image: `${siteConfig.url}/api/og?title=${encodeURIComponent(w.title)}`,
-            }),
-          }}
-        />
-      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Article',
+            headline: w.title,
+            description: w.summary,
+            datePublished: w.date,
+            author: {
+              '@type': 'Person',
+              name: siteConfig.author.name,
+              url: siteConfig.url,
+            },
+            publisher: {
+              '@type': 'Person',
+              name: siteConfig.author.name,
+              url: siteConfig.url,
+            },
+            mainEntityOfPage: {
+              '@type': 'WebPage',
+              '@id': `${siteConfig.url}/writing/${w.slug}`,
+            },
+            keywords: w.tags.join(', '),
+            image: `${siteConfig.url}/api/og?title=${encodeURIComponent(w.title)}`,
+          }),
+        }}
+      />
       <ReadingProgress />
       <div className="page-fade mx-auto max-w-[920px] px-6">
-        {isPreview && (
-          <div className="mt-4 rounded-[10px] border border-[color-mix(in_srgb,var(--color-accent)_40%,transparent)] bg-[var(--color-accent-soft)] px-4 py-2.5 font-mono text-[12px] text-[var(--color-accent)]">
-            // preview mode: ini adalah draft, hanya visible dengan link preview
-          </div>
-        )}
         <article className="py-14 pb-10">
           <Link
             href="/writing"
