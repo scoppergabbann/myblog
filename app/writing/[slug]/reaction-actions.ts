@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
 import { getIpHash } from '@/lib/ip-hash';
 import { rateLimit } from '@/lib/rate-limit';
@@ -39,6 +40,7 @@ export async function toggleReaction(
   if (existing) {
     const { error } = await supabase.from('reactions').delete().eq('id', existing.id);
     if (error) return { ok: false, error: 'Failed.' };
+    revalidatePath(`/writing/${slug}`);
     return { ok: true, toggled: 'removed' };
   } else {
     const { error } = await supabase.from('reactions').insert({
@@ -47,6 +49,7 @@ export async function toggleReaction(
       ip_hash: ipHash,
     });
     if (error) return { ok: false, error: 'Failed.' };
+    revalidatePath(`/writing/${slug}`);
     return { ok: true, toggled: 'added' };
   }
 }

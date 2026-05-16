@@ -1,6 +1,7 @@
 'use client';
 
 import { useOptimistic, useTransition, useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { toggleReaction } from '@/app/writing/[slug]/reaction-actions';
 import type { ReactionCounts } from '@/lib/queries';
 
@@ -49,6 +50,7 @@ export function Reactions({
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const [wiggling, setWiggling] = useState<string | null>(null);
   const wiggleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
 
   // Restore previous reactions from localStorage
   useEffect(() => {
@@ -107,6 +109,11 @@ export function Reactions({
         } catch {
           // ignore
         }
+      } else {
+        // Refresh the route's RSC payload so `initialCounts` reflects the
+        // server truth. Without this, useOptimistic would revert to the
+        // (stale) initialCounts when the transition completes.
+        router.refresh();
       }
     });
   };
