@@ -16,10 +16,12 @@ export type Comment = {
 };
 
 export type ReactionCounts = {
-  heart: number;
+  love: number;
   fire: number;
-  thinking: number;
-  star: number;
+  wow: number;
+  lol: number;
+  brain: number;
+  poop: number;
 };
 
 export async function getGuestbookEntries(): Promise<GuestbookEntry[]> {
@@ -68,7 +70,14 @@ export async function getCommentsForSlug(slug: string): Promise<Comment[]> {
 export async function getReactionsForSlug(
   slug: string
 ): Promise<ReactionCounts> {
-  const empty: ReactionCounts = { heart: 0, fire: 0, thinking: 0, star: 0 };
+  const empty: ReactionCounts = {
+    love: 0,
+    fire: 0,
+    wow: 0,
+    lol: 0,
+    brain: 0,
+    poop: 0,
+  };
   try {
     const supabase = await createSupabaseServer();
     const { data, error } = await supabase

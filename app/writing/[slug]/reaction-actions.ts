@@ -4,7 +4,7 @@ import { createSupabaseAdmin } from '@/lib/supabase/admin';
 import { getIpHash } from '@/lib/ip-hash';
 import { rateLimit } from '@/lib/rate-limit';
 
-const VALID_EMOJI = ['heart', 'fire', 'thinking', 'star'] as const;
+const VALID_EMOJI = ['love', 'fire', 'wow', 'lol', 'brain', 'poop'] as const;
 export type EmojiKind = (typeof VALID_EMOJI)[number];
 
 export type ReactionActionResult =
