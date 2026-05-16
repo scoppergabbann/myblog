@@ -3,10 +3,17 @@ import { siteConfig } from '@/lib/site-config';
 
 export const runtime = 'edge';
 
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 1).trimEnd() + '…';
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const title = searchParams.get('title') || siteConfig.name;
-  const subtitle = searchParams.get('subtitle') || siteConfig.tagline;
+  const rawTitle = searchParams.get('title') || siteConfig.name;
+  const rawSubtitle = searchParams.get('subtitle') || siteConfig.tagline;
+  const title = truncate(rawTitle, 90);
+  const subtitle = truncate(rawSubtitle, 160);
 
   return new ImageResponse(
     (
@@ -73,6 +80,14 @@ export async function GET(request: Request) {
         </div>
       </div>
     ),
-    { width: 1200, height: 630 }
+    {
+      width: 1200,
+      height: 630,
+      headers: {
+        // Cache for 1 hour at edge, 24 hours in WhatsApp/social caches.
+        // Aggressive cache helps WhatsApp not re-fetch every share.
+        'cache-control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
+      },
+    }
   );
 }

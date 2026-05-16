@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
 import { NavProgress } from '@/components/nav-progress';
+import { Analytics } from '@/components/analytics';
 import { ThemeProvider } from '@/components/theme-provider';
 import { siteConfig } from '@/lib/site-config';
 import './globals.css';
@@ -33,6 +34,9 @@ export const metadata: Metadata = {
       'application/rss+xml': [
         { url: '/rss.xml', title: `${siteConfig.name} — writings RSS` },
       ],
+      'application/feed+json': [
+        { url: '/feed.json', title: `${siteConfig.name} — JSON Feed` },
+      ],
     },
   },
   openGraph: {
@@ -44,10 +48,11 @@ export const metadata: Metadata = {
     description: siteConfig.description,
     images: [
       {
-        url: '/og-default.png',
+        url: `${siteConfig.url}/api/og?title=${encodeURIComponent(siteConfig.shortName)}&subtitle=${encodeURIComponent(siteConfig.description)}`,
         width: 1200,
         height: 630,
         alt: siteConfig.name,
+        type: 'image/png',
       },
     ],
   },
@@ -56,7 +61,15 @@ export const metadata: Metadata = {
     title: `${siteConfig.shortName} — ${siteConfig.name}`,
     description: siteConfig.description,
     creator: siteConfig.author.twitter,
-    images: ['/og-default.png'],
+    images: [
+      `${siteConfig.url}/api/og?title=${encodeURIComponent(siteConfig.shortName)}&subtitle=${encodeURIComponent(siteConfig.description)}`,
+    ],
+  },
+  // WhatsApp & messaging apps read these too
+  other: {
+    'og:image:secure_url': `${siteConfig.url}/api/og?title=${encodeURIComponent(siteConfig.shortName)}&subtitle=${encodeURIComponent(siteConfig.description)}`,
+    // WhatsApp wraps preview based on these — keep within ~300 chars
+    'og:rich_attachment': 'true',
   },
   icons: {
     icon: [
@@ -106,6 +119,7 @@ export default function RootLayout({
           <main>{children}</main>
           <Footer />
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

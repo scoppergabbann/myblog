@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
+import { makeDraftToken } from '@/lib/draft-token';
 import { PostEditor } from '../post-editor';
 
 export const dynamic = 'force-dynamic';
@@ -22,5 +23,7 @@ export default async function EditPostPage({
 
   if (error || !data) notFound();
 
-  return <PostEditor post={data} />;
+  const previewToken = makeDraftToken(data.slug);
+
+  return <PostEditor post={data} previewToken={previewToken} />;
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getAllWritingSlugs, getWritingBySlug } from '@/lib/posts';
+import { getAllWritingSlugs, getWritingBySlug, getAdjacentWritings, getRelatedWritings } from '@/lib/posts';
 import { formatDate, extractToc } from '@/lib/utils';
 import { compileMdx } from '@/lib/mdx-compile';
 import { mdxComponents } from '@/components/mdx-components';
@@ -10,6 +10,7 @@ import { Reactions } from '@/components/reactions';
 import { ViewCounter } from '@/components/view-counter';
 import { CommentsSection } from '@/components/comments-section';
 import { NewsletterSignup } from '@/components/newsletter-signup';
+import { ArticleFooterNav } from '@/components/article-footer-nav';
 import { getReactionsForSlug, getViewCount } from '@/lib/queries';
 import { siteConfig } from '@/lib/site-config';
 
@@ -24,12 +25,25 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const w = await getWritingBySlug(slug);
+  const sp = await searchParams;
+
+  let isPreview = false;
+  if (sp.preview) {
+    const { verifyDraftToken } = await import('@/lib/draft-token');
+    isPreview = verifyDraftToken(slug, sp.preview);
+  }
+
+  const w = await getWritingBySlug(slug, { includeDraft: isPreview });
   if (!w) return {};
+
+  const ogImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(w.title)}&subtitle=${encodeURIComponent(w.summary)}`;
+
   return {
     title: w.title,
     description: w.summary,
@@ -39,37 +53,101 @@ export async function generateMetadata({
       type: 'article',
       publishedTime: w.date,
       url: `${siteConfig.url}/writing/${w.slug}`,
+      siteName: siteConfig.name,
+      locale: siteConfig.locale,
       tags: w.tags,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: w.title,
+          type: 'image/png',
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: w.title,
       description: w.summary,
+      images: [ogImage],
     },
+    other: {
+      'og:image:secure_url': ogImage,
+    },
+    robots: isPreview ? { index: false, follow: false } : undefined,
   };
 }
 
 export default async function WritingDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }) {
   const { slug } = await params;
-  const w = await getWritingBySlug(slug);
+  const sp = await searchParams;
+
+  // Draft preview: validate HMAC token before showing unpublished posts
+  let isPreview = false;
+  if (sp.preview) {
+    const { verifyDraftToken } = await import('@/lib/draft-token');
+    isPreview = verifyDraftToken(slug, sp.preview);
+  }
+
+  const w = await getWritingBySlug(slug, { includeDraft: isPreview });
   if (!w) notFound();
 
   const toc = extractToc(w.content);
 
-  const [reactions, viewCount, mdxContent] = await Promise.all([
+  const [reactions, viewCount, mdxContent, adjacent, related] = await Promise.all([
     getReactionsForSlug(slug),
     getViewCount(slug),
     compileMdx(w.content, mdxComponents),
+    getAdjacentWritings(slug),
+    getRelatedWritings(slug, 3),
   ]);
 
   return (
     <>
+      {!isPreview && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Article',
+              headline: w.title,
+              description: w.summary,
+              datePublished: w.date,
+              author: {
+                '@type': 'Person',
+                name: siteConfig.author.name,
+                url: siteConfig.url,
+              },
+              publisher: {
+                '@type': 'Person',
+                name: siteConfig.author.name,
+                url: siteConfig.url,
+              },
+              mainEntityOfPage: {
+                '@type': 'WebPage',
+                '@id': `${siteConfig.url}/writing/${w.slug}`,
+              },
+              keywords: w.tags.join(', '),
+              image: `${siteConfig.url}/api/og?title=${encodeURIComponent(w.title)}`,
+            }),
+          }}
+        />
+      )}
       <ReadingProgress />
       <div className="page-fade mx-auto max-w-[920px] px-6">
+        {isPreview && (
+          <div className="mt-4 rounded-[10px] border border-[color-mix(in_srgb,var(--color-accent)_40%,transparent)] bg-[var(--color-accent-soft)] px-4 py-2.5 font-mono text-[12px] text-[var(--color-accent)]">
+            // preview mode: ini adalah draft, hanya visible dengan link preview
+          </div>
+        )}
         <article className="py-14 pb-10">
           <Link
             href="/writing"
@@ -99,8 +177,24 @@ export default async function WritingDetailPage({
                   <span>{w.readingTime}</span>
                   <span>·</span>
                   <ViewCounter slug={slug} initialCount={viewCount} />
-                  <span>·</span>
-                  <span>{w.tags.join(', ')}</span>
+                  {w.tags.length > 0 && (
+                    <>
+                      <span>·</span>
+                      <span className="flex flex-wrap gap-x-1">
+                        {w.tags.map((t, i) => (
+                          <span key={t}>
+                            <Link
+                              href={`/writing/tag/${encodeURIComponent(t.toLowerCase())}`}
+                              className="transition-colors hover:text-[var(--color-accent)]"
+                            >
+                              #{t}
+                            </Link>
+                            {i < w.tags.length - 1 && ' '}
+                          </span>
+                        ))}
+                      </span>
+                    </>
+                  )}
                 </div>
                 <h1 className="mb-3.5 text-[34px] font-medium leading-[1.2] tracking-[-0.03em] text-[var(--color-ink)] max-sm:text-[26px]">
                   {w.title}
@@ -115,6 +209,8 @@ export default async function WritingDetailPage({
               </div>
 
               <Reactions slug={slug} initialCounts={reactions} />
+
+              <ArticleFooterNav prev={adjacent.prev} next={adjacent.next} related={related} />
 
               <NewsletterSignup />
 

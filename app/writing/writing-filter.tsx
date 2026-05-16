@@ -21,10 +21,13 @@ export function WritingFilter({
       const searchOk =
         !q ||
         w.title.toLowerCase().includes(q) ||
-        w.summary.toLowerCase().includes(q);
+        w.summary.toLowerCase().includes(q) ||
+        w.tags.some((t) => t.toLowerCase().includes(q));
       return tagOk && searchOk;
     });
   }, [writings, activeTag, search]);
+
+  const isFiltering = search.trim() !== '' || activeTag !== 'all';
 
   return (
     <>
@@ -69,6 +72,26 @@ export function WritingFilter({
       </div>
 
       <div className="flex flex-col">
+        {isFiltering && (
+          <p className="mb-2 font-mono text-[11.5px] text-[var(--color-ink-4)]">
+            {filtered.length} hasil
+            {(search || activeTag !== 'all') && (
+              <>
+                {' '}·{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setActiveTag('all');
+                  }}
+                  className="text-[var(--color-ink-3)] underline-offset-2 transition-colors hover:text-[var(--color-accent)] hover:underline"
+                >
+                  reset filter
+                </button>
+              </>
+            )}
+          </p>
+        )}
         {filtered.length === 0 ? (
           <p className="py-6 text-sm text-[var(--color-ink-3)]">
             Tidak ada tulisan yang cocok.

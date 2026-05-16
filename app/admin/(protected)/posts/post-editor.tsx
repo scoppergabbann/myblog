@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ImageUploadButton } from '@/components/admin/image-upload-button';
 import { useToast } from '@/components/admin/toast';
+import { slugify } from '@/lib/utils';
 import { createPost, updatePost, deletePost, type PostFormState } from './actions';
 
 type Post = {
@@ -29,7 +30,13 @@ const DEFAULT_POST: Post = {
   published_at: null,
 };
 
-export function PostEditor({ post = DEFAULT_POST }: { post?: Post }) {
+export function PostEditor({
+  post = DEFAULT_POST,
+  previewToken,
+}: {
+  post?: Post;
+  previewToken?: string;
+}) {
   const isNew = !post.id;
   const action = isNew
     ? createPost
@@ -41,9 +48,86 @@ export function PostEditor({ post = DEFAULT_POST }: { post?: Post }) {
   );
 
   const [content, setContent] = useState(post.content);
+  const [title, setTitle] = useState(post.title);
+  const [slug, setSlug] = useState(post.slug);
+  // Track whether user manually edited slug. If yes, stop auto-syncing.
+  // For existing posts (edit mode), default to manual to avoid clobbering.
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(!isNew);
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saved'>('idle');
   const [, startTransition] = useTransition();
   const router = useRouter();
   const toast = useToast();
+
+  // localStorage auto-save (content only — never auto-save status/published_at)
+  const storageKey = `bbs:post-draft:${post.id ?? 'new'}`;
+
+  // Auto-generate slug from title for new posts (until user edits slug manually)
+  useEffect(() => {
+    if (slugManuallyEdited) return;
+    setSlug(slugify(title));
+  }, [title, slugManuallyEdited]);
+
+  // Restore prompt on mount: if there's a localStorage draft newer than what
+  // came from the server, offer to restore.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      if (!saved) return;
+      const parsed = JSON.parse(saved) as { content: string; savedAt: number };
+      if (parsed.content && parsed.content !== post.content) {
+        const age = Math.round((Date.now() - parsed.savedAt) / 1000);
+        const ageLabel = age < 60 ? `${age}d lalu` : `${Math.round(age / 60)}m lalu`;
+        if (
+          confirm(
+            `Ada draft tersimpan otomatis di browser ini (${ageLabel}). Restore?`
+          )
+        ) {
+          setContent(parsed.content);
+        } else {
+          window.localStorage.removeItem(storageKey);
+        }
+      } else if (parsed.content === post.content) {
+        // Clean stale match (server already has this content)
+        window.localStorage.removeItem(storageKey);
+      }
+    } catch {
+      // ignore corrupted localStorage
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced save to localStorage as user types
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (content === post.content) {
+      // No diff vs server — clear any stale saved draft
+      window.localStorage.removeItem(storageKey);
+      setAutosaveStatus('idle');
+      return;
+    }
+    const t = setTimeout(() => {
+      try {
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify({ content, savedAt: Date.now() })
+        );
+        setAutosaveStatus('saved');
+      } catch {
+        // localStorage full / disabled — silently ignore
+      }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [content, post.content, storageKey]);
+
+  // Clear localStorage draft after successful save (state.ok)
+  useEffect(() => {
+    if (state?.ok && typeof window !== 'undefined') {
+      window.localStorage.removeItem(storageKey);
+      setAutosaveStatus('idle');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   // Surface success/error from the form action via toast
   useEffect(() => {
@@ -92,14 +176,27 @@ export function PostEditor({ post = DEFAULT_POST }: { post?: Post }) {
           </h1>
         </div>
 
-        {!isNew && post.status === 'published' && (
-          <Link
-            href={`/writing/${post.slug}`}
-            target="_blank"
-            className="font-mono text-[12px] text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
-          >
-            view live →
-          </Link>
+        {!isNew && (
+          <div className="flex items-center gap-3">
+            {post.status !== 'published' && previewToken && (
+              <Link
+                href={`/writing/${post.slug}?preview=${previewToken}`}
+                target="_blank"
+                className="font-mono text-[12px] text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
+              >
+                preview draft →
+              </Link>
+            )}
+            {post.status === 'published' && (
+              <Link
+                href={`/writing/${post.slug}`}
+                target="_blank"
+                className="font-mono text-[12px] text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
+              >
+                view live →
+              </Link>
+            )}
+          </div>
         )}
       </div>
 
@@ -111,7 +208,8 @@ export function PostEditor({ post = DEFAULT_POST }: { post?: Post }) {
             <input
               type="text"
               name="title"
-              defaultValue={post.title}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               required
               maxLength={200}
               autoFocus={isNew}
@@ -120,16 +218,40 @@ export function PostEditor({ post = DEFAULT_POST }: { post?: Post }) {
           </div>
           <div>
             <Label>slug</Label>
-            <input
-              type="text"
-              name="slug"
-              defaultValue={post.slug}
-              required
-              pattern="[a-z0-9-]+"
-              maxLength={80}
-              placeholder="my-post-slug"
-              className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 font-mono text-[13px] text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                name="slug"
+                value={slug}
+                onChange={(e) => {
+                  setSlug(e.target.value);
+                  setSlugManuallyEdited(true);
+                }}
+                required
+                pattern="[a-z0-9-]+"
+                maxLength={80}
+                placeholder="auto-generate dari title"
+                className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 pr-[68px] font-mono text-[13px] text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
+              />
+              {slugManuallyEdited && isNew && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSlug(slugify(title));
+                    setSlugManuallyEdited(false);
+                  }}
+                  title="Reset to auto-generated from title"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-ink-3)] transition-colors hover:border-[color-mix(in_srgb,var(--color-accent)_30%,transparent)] hover:text-[var(--color-accent)]"
+                >
+                  reset
+                </button>
+              )}
+            </div>
+            {isNew && !slugManuallyEdited && title && (
+              <p className="mt-1 font-mono text-[10.5px] text-[var(--color-ink-4)]">
+                auto-generated · klik untuk edit manual
+              </p>
+            )}
           </div>
         </div>
 
@@ -159,9 +281,12 @@ export function PostEditor({ post = DEFAULT_POST }: { post?: Post }) {
             spellCheck
             className="w-full resize-y rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-3 font-mono text-[13.5px] leading-[1.65] text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
           />
-          <p className="mt-1.5 font-mono text-[11px] text-[var(--color-ink-4)]">
-            markdown + MDX. tersedia: &lt;Figure&gt;, &lt;Callout kind="note|tip|warning"&gt;
-          </p>
+          <div className="mt-1.5 flex items-baseline justify-between gap-3">
+            <p className="font-mono text-[11px] text-[var(--color-ink-4)]">
+              markdown + MDX. tersedia: &lt;Figure&gt;, &lt;Callout kind=&quot;note|tip|warning&quot;&gt;
+            </p>
+            <ContentMeta content={content} autosave={autosaveStatus} />
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
@@ -251,5 +376,33 @@ function SubmitButton({ isNew }: { isNew: boolean }) {
     >
       {pending ? 'Saving...' : isNew ? 'Create post' : 'Save changes'}
     </button>
+  );
+}
+
+function ContentMeta({
+  content,
+  autosave,
+}: {
+  content: string;
+  autosave: 'idle' | 'saved';
+}) {
+  // Strip MDX/markdown markers for a cleaner word count
+  const text = content
+    .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks
+    .replace(/`[^`]*`/g, ' ') // inline code
+    .replace(/<[^>]+>/g, ' ') // JSX tags
+    .replace(/[#*_>\-[\]()!]/g, ' ');
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(1, Math.round(words / 200));
+
+  return (
+    <p className="flex-shrink-0 font-mono text-[11px] text-[var(--color-ink-4)]">
+      {words.toLocaleString('id-ID')} kata · {minutes} min
+      {autosave === 'saved' && (
+        <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+          · auto-saved
+        </span>
+      )}
+    </p>
   );
 }
