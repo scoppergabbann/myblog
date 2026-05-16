@@ -9,18 +9,18 @@ export function Footer() {
           <span className="font-mono">{siteConfig.shortName}</span> · last
           updated{' '}
           <span className="font-mono text-[var(--color-ink-3)]">
-            3 days ago
+            Sabtu, 17 Mei 2026
           </span>
         </p>
         <div className="flex gap-[18px]">
           <a
-            href="/rss.xml"
+            href="#"
             className="text-[12.5px] text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
           >
-            rss
+            © Copyright 2026
           </a>
           <a
-            href={`https://github.com/${siteConfig.author.github}`}
+            href={`#`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-[12.5px] text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
@@ -28,7 +28,7 @@ export function Footer() {
             github
           </a>
           <a
-            href={`mailto:${siteConfig.author.email}`}
+            href={`mailto:mcfawwaz@hotmail.com`}
             className="text-[12.5px] text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
           >
             email
