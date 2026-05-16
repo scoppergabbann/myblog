@@ -1,18 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { serialize } from 'next-mdx-remote/serialize';
-import rehypeSlug from 'rehype-slug';
-import remarkGfm from 'remark-gfm';
-import rehypePrettyCode from 'rehype-pretty-code';
 import { getAllWritingSlugs, getWritingBySlug } from '@/lib/posts';
 import { formatDate, extractToc } from '@/lib/utils';
+import { compileMdx } from '@/lib/mdx-compile';
+import { mdxComponents } from '@/components/mdx-components';
 import { ReadingProgress } from '@/components/reading-progress';
 import { Reactions } from '@/components/reactions';
 import { ViewCounter } from '@/components/view-counter';
 import { CommentsSection } from '@/components/comments-section';
 import { NewsletterSignup } from '@/components/newsletter-signup';
-import { MdxRenderer } from '@/components/mdx-renderer';
 import { getReactionsForSlug, getViewCount } from '@/lib/queries';
 import { siteConfig } from '@/lib/site-config';
 
@@ -52,11 +49,6 @@ export async function generateMetadata({
   };
 }
 
-const prettyCodeOptions = {
-  theme: { light: 'github-light', dark: 'github-dark-dimmed' },
-  keepBackground: false,
-};
-
 export default async function WritingDetailPage({
   params,
 }: {
@@ -68,23 +60,11 @@ export default async function WritingDetailPage({
 
   const toc = extractToc(w.content);
 
-  const [reactions, viewCount] = await Promise.all([
+  const [reactions, viewCount, mdxContent] = await Promise.all([
     getReactionsForSlug(slug),
     getViewCount(slug),
+    compileMdx(w.content, mdxComponents),
   ]);
-
-  // Compile MDX once on the server. The serialized result is passed to a
-  // client component that renders it.
-  const mdxSource = await serialize(w.content, {
-    mdxOptions: {
-      remarkPlugins: [remarkGfm],
-      rehypePlugins: [
-        rehypeSlug,
-        [rehypePrettyCode, prettyCodeOptions] as never,
-      ],
-    },
-    parseFrontmatter: false,
-  });
 
   return (
     <>
@@ -131,7 +111,7 @@ export default async function WritingDetailPage({
               </header>
 
               <div className="article-body">
-                <MdxRenderer source={mdxSource} />
+                {mdxContent}
               </div>
 
               <Reactions slug={slug} initialCounts={reactions} />
