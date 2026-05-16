@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     'Catatan tentang engineering, menulis, investasi pelan-pelan, dan internet personal.',
 };
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 const PAGE_SIZE = 6;
 

@@ -14,10 +14,16 @@ import { ArticleFooterNav } from '@/components/article-footer-nav';
 import { getReactionsForSlug, getViewCount } from '@/lib/queries';
 import { siteConfig } from '@/lib/site-config';
 
+<<<<<<< HEAD
 // ISR: revalidate every 60s. Admin edits visible within 1 minute.
 // Preview-of-drafts lives at /writing/preview/[slug] (dynamic, separate route).
 export const revalidate = 60;
 export const dynamicParams = true;
+=======
+// Revalidate every 60s — admin edits show up within a minute
+export const revalidate = 60;
+export const dynamicParams = true; // Allow new slugs after build
+>>>>>>> parent of 0b8288b (fix: writing pages)
 
 export async function generateStaticParams() {
   const slugs = await getAllWritingSlugs();
