@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { getAllWritings, getAllTags } from '@/lib/posts';
 import { WritingFilter } from './writing-filter';
 
@@ -8,12 +9,28 @@ export const metadata: Metadata = {
     'Catatan tentang engineering, menulis, investasi pelan-pelan, dan internet personal.',
 };
 
-// Revalidate every 60 seconds (ISR). Edits in admin show up within 1 minute.
 export const revalidate = 60;
 
-export default async function WritingPage() {
-  const writings = await getAllWritings();
+const PAGE_SIZE = 6;
+
+export default async function WritingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const sp = await searchParams;
+  const allWritings = await getAllWritings();
   const tags = ['all', ...(await getAllTags())];
+
+  const totalPages = Math.max(1, Math.ceil(allWritings.length / PAGE_SIZE));
+  const requested = Number(sp.page ?? 1);
+  const page = Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : 1;
+
+  // Out-of-range page → 404
+  if (page > totalPages) notFound();
+
+  const start = (page - 1) * PAGE_SIZE;
+  const paginated = allWritings.slice(start, start + PAGE_SIZE);
 
   return (
     <div className="page-fade mx-auto max-w-[680px] px-6">
@@ -24,12 +41,19 @@ export default async function WritingPage() {
           </h1>
           <p className="text-[15.5px] text-[var(--color-ink-3)]">
             Catatan tentang engineering, menulis, investasi pelan-pelan, dan
-            internet personal. {writings.length} artikel, ditulis ketika
+            internet personal. {allWritings.length} artikel, ditulis ketika
             senggang.
           </p>
         </div>
 
-        <WritingFilter writings={writings} tags={tags} />
+        <WritingFilter
+          paginated={paginated}
+          allWritings={allWritings}
+          tags={tags}
+          page={page}
+          totalPages={totalPages}
+          pageSize={PAGE_SIZE}
+        />
       </div>
     </div>
   );
