@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getAllWritingSlugs, getWritingBySlug, getAdjacentWritings, getRelatedWritings } from '@/lib/posts';
+import { getWritingBySlug, getAdjacentWritings, getRelatedWritings } from '@/lib/posts';
 import { formatDate, extractToc } from '@/lib/utils';
 import { compileMdx } from '@/lib/mdx-compile';
 import { mdxComponents } from '@/components/mdx-components';
@@ -14,14 +14,9 @@ import { ArticleFooterNav } from '@/components/article-footer-nav';
 import { getReactionsForSlug, getViewCount } from '@/lib/queries';
 import { siteConfig } from '@/lib/site-config';
 
-// Revalidate every 60s — admin edits show up within a minute
-export const revalidate = 60;
-export const dynamicParams = true; // Allow new slugs after build
-
-export async function generateStaticParams() {
-  const slugs = await getAllWritingSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
+// `searchParams` (for ?preview=) requires dynamic rendering. Trade off ISR
+// for simpler preview handling — Supabase queries are fast enough.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
