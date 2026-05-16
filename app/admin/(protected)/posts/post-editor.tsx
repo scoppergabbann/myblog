@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ImageUploadButton } from '@/components/admin/image-upload-button';
+import { useToast } from '@/components/admin/toast';
 import { createPost, updatePost, deletePost, type PostFormState } from './actions';
 
 type Post = {
@@ -42,17 +43,26 @@ export function PostEditor({ post = DEFAULT_POST }: { post?: Post }) {
   const [content, setContent] = useState(post.content);
   const [, startTransition] = useTransition();
   const router = useRouter();
+  const toast = useToast();
 
-  // On successful create (new post), navigate to its edit page
+  // Surface success/error from the form action via toast
   useEffect(() => {
-    if (isNew && state?.ok && state.id) {
-      router.push(`/admin/posts/${state.id}`);
+    if (!state) return;
+    if (state.ok) {
+      toast.success(isNew ? 'Post berhasil dibuat.' : 'Perubahan tersimpan.');
+      if (isNew && state.id) {
+        router.push(`/admin/posts/${state.id}`);
+      }
+    } else {
+      toast.error(state.error);
     }
-  }, [isNew, state, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   const onImageUploaded = (url: string) => {
     const snippet = `\n\n![](${url})\n\n`;
     setContent((c) => c + snippet);
+    toast.success('Image uploaded.');
   };
 
   const onDelete = () => {
@@ -194,18 +204,6 @@ export function PostEditor({ post = DEFAULT_POST }: { post?: Post }) {
             </p>
           </div>
         </div>
-
-        {/* Status feedback */}
-        {state && !state.ok && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-[13px] text-red-600 dark:text-red-400">
-            {state.error}
-          </div>
-        )}
-        {state?.ok && (
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[13px] text-emerald-600 dark:text-emerald-400">
-            Saved.
-          </div>
-        )}
 
         {/* Action row */}
         <div className="flex items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5">

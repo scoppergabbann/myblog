@@ -1,4 +1,5 @@
 import { createSupabaseServer } from './supabase/server';
+import { parseSpotifyEmbedUrl } from './spotify-embed';
 import type { Project, NowData, NowSection } from '@/types/content';
 
 type ProjectRow = {
@@ -51,6 +52,7 @@ export async function getNowData(): Promise<NowData> {
     working: [],
     consuming: [],
     focus: '',
+    spotifyEmbedUrl: null,
   };
 
   try {
@@ -61,7 +63,11 @@ export async function getNowData(): Promise<NowData> {
         .from('now_items')
         .select('section, role, content')
         .order('display_order', { ascending: false }),
-      supabase.from('now_meta').select('focus, updated_at').eq('id', 1).maybeSingle(),
+      supabase
+        .from('now_meta')
+        .select('focus, updated_at, spotify_url')
+        .eq('id', 1)
+        .maybeSingle(),
     ]);
 
     if (itemsRes.error || metaRes.error) {
@@ -86,6 +92,7 @@ export async function getNowData(): Promise<NowData> {
       working,
       consuming,
       focus: metaRes.data?.focus ?? '',
+      spotifyEmbedUrl: parseSpotifyEmbedUrl(metaRes.data?.spotify_url ?? null),
     };
   } catch {
     return empty;

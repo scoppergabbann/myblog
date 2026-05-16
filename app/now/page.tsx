@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getNowData } from '@/lib/content-queries';
 import { formatDate } from '@/lib/utils';
+import { SpotifyEmbed } from '@/components/spotify-embed';
 import type { NowSection } from '@/types/content';
 
 export const metadata: Metadata = {
@@ -39,6 +40,19 @@ export default async function NowPage() {
         <NowList title="// sedang belajar" items={nowData.learning} />
         <NowList title="// sedang dikerjakan" items={nowData.working} />
         <NowList title="// sedang dikonsumsi" items={nowData.consuming} />
+
+        {nowData.spotifyEmbedUrl && (
+          <section className="mb-9">
+            <h2 className="mb-3 font-mono text-[13px] font-medium lowercase text-[var(--color-ink-3)]">
+              // music
+            </h2>
+            <p className="mb-4 text-[14.5px] leading-[1.65] text-[var(--color-ink-3)]">
+              Berdasarkan Spotify Wrapped tahun lalu, top songs saya kebanyakan
+              dari Radiohead dan Coldplay.
+            </p>
+            <SpotifyEmbed embedUrl={nowData.spotifyEmbedUrl} />
+          </section>
+        )}
 
         <section className="mb-9">
           <h2 className="mb-3 font-mono text-[13px] font-medium lowercase text-[var(--color-ink-3)]">

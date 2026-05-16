@@ -2,7 +2,7 @@
 
 Personal site dengan Next.js, TypeScript, Tailwind v4, Supabase (all-content), NextAuth (GitHub OAuth), MDX runtime rendering. A quiet corner on the internet.
 
-## Status: Sesi 2 dari 3 (CRUD content + moderation + image upload complete)
+## Status: All 3 sessions complete ✓
 
 **Yang sudah ada di build ini:**
 - All public pages render dari Supabase
@@ -12,14 +12,12 @@ Personal site dengan Next.js, TypeScript, Tailwind v4, Supabase (all-content), N
 - **Projects CRUD**: list, create, edit, delete, status toggle, display order, bulk actions
 - **Comments moderation**: approve/reject/delete with article slug link
 - **Guestbook moderation**: full table with bulk actions
+- **Subscribers**: list, confirm/unconfirm, delete, bulk actions, CSV export
+- **Now page editor**: focus textarea + CRUD items per section (learning/working/consuming) + reorder up/down
+- **Views dashboard**: top 10 articles with bar chart, all articles list, orphan records detection
 - **Image upload** to Supabase Storage from post editor
-- Top nav progress bar (replaces jarring "loading..." text)
-
-**Yang menunggu Sesi 3:**
-- Edit Now page from admin
-- Manage subscribers (export CSV, manual confirm)
-- Views statistics dashboard with chart
-- Polish (empty states, toasts, keyboard shortcuts)
+- **Toast notifications** for all admin actions (success/error/info)
+- Top nav progress bar on navigation
 
 ## Stack
 
@@ -331,23 +329,30 @@ Vercel auto-detected. Pastikan **Output Directory** kosong / `.next` (jangan `di
 - ✓ Guestbook + comments + reactions + newsletter (Supabase-backed)
 - ✓ View counter atomic per article
 
-### Admin (Sesi 1 + 2 deliverables)
+### Admin (complete)
 - ✓ GitHub OAuth via NextAuth v5
 - ✓ Single-user allowlist enforcement
 - ✓ Middleware + layout + action 3-layer protection
 - ✓ Overview dashboard with stats cards
 - ✓ Top progress bar on navigation (no jarring "loading..." text)
 - ✓ Reusable DataTable (filter, bulk actions, optimistic UI)
+- ✓ Toast notification system (success/error/info)
 - ✓ Posts CRUD with MDX editor + image upload to Supabase Storage
 - ✓ Projects CRUD with display order
 - ✓ Comments moderation (with article link)
 - ✓ Guestbook moderation
+- ✓ Subscribers manage + CSV export + manual confirm
+- ✓ Now page editor (focus + items with reorder)
+- ✓ Views statistics dashboard with bar chart + orphan detection
 
-### Coming in Sesi 3
-- [ ] Now page editor
-- [ ] Subscribers manage + CSV export + confirm email
-- [ ] Views statistics dashboard
-- [ ] Polish (empty states, error toasts, keyboard shortcuts)
+### Beyond v1 (optional future)
+- [ ] Confirmation email for newsletter (Resend integration)
+- [ ] Related posts at article footer
+- [ ] Prev/next article navigation
+- [ ] Command palette (cmd+k)
+- [ ] Webmentions
+- [ ] Comment threading
+- [ ] Spotify now-playing on /now
 
 ## License
 

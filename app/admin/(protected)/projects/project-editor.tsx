@@ -4,6 +4,7 @@ import { useActionState, useEffect, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useToast } from '@/components/admin/toast';
 import {
   createProject,
   updateProject,
@@ -44,13 +45,20 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
   );
   const [, startTransition] = useTransition();
   const router = useRouter();
+  const toast = useToast();
 
-  // On successful create, navigate to its edit page
   useEffect(() => {
-    if (isNew && state?.ok && state.id) {
-      router.push(`/admin/projects/${state.id}`);
+    if (!state) return;
+    if (state.ok) {
+      toast.success(isNew ? 'Project berhasil dibuat.' : 'Perubahan tersimpan.');
+      if (isNew && state.id) {
+        router.push(`/admin/projects/${state.id}`);
+      }
+    } else {
+      toast.error(state.error);
     }
-  }, [isNew, state, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   const onDelete = () => {
     if (!project.id) return;
@@ -164,17 +172,6 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
             />
           </div>
         </div>
-
-        {state && !state.ok && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-[13px] text-red-600 dark:text-red-400">
-            {state.error}
-          </div>
-        )}
-        {state?.ok && (
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-[13px] text-emerald-600 dark:text-emerald-400">
-            Saved.
-          </div>
-        )}
 
         <div className="flex items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5">
           <SubmitButton isNew={isNew} />

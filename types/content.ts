@@ -32,6 +32,7 @@ export type NowData = {
   working: NowSection[];
   consuming: NowSection[];
   focus: string;
+  spotifyEmbedUrl: string | null;
 };
 
 export type Heading = {
