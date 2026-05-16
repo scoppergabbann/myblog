@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useTransition } from 'react';
+import { useActionState, useEffect, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -44,6 +44,13 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
   );
   const [, startTransition] = useTransition();
   const router = useRouter();
+
+  // On successful create, navigate to its edit page
+  useEffect(() => {
+    if (isNew && state?.ok && state.id) {
+      router.push(`/admin/projects/${state.id}`);
+    }
+  }, [isNew, state, router]);
 
   const onDelete = () => {
     if (!project.id) return;

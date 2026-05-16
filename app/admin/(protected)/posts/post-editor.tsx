@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState, useTransition } from 'react';
+import { useActionState, useEffect, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -42,6 +42,13 @@ export function PostEditor({ post = DEFAULT_POST }: { post?: Post }) {
   const [content, setContent] = useState(post.content);
   const [, startTransition] = useTransition();
   const router = useRouter();
+
+  // On successful create (new post), navigate to its edit page
+  useEffect(() => {
+    if (isNew && state?.ok && state.id) {
+      router.push(`/admin/posts/${state.id}`);
+    }
+  }, [isNew, state, router]);
 
   const onImageUploaded = (url: string) => {
     const snippet = `\n\n![](${url})\n\n`;

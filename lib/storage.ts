@@ -62,6 +62,23 @@ export async function uploadImage(formData: FormData): Promise<UploadResult> {
 
   if (uploadErr) {
     console.error('[upload]', uploadErr);
+    // Translate common Supabase errors into user-friendly Indonesian
+    const msg = uploadErr.message.toLowerCase();
+    if (msg.includes('bucket not found')) {
+      return {
+        ok: false,
+        error: `Bucket "${BUCKET}" belum dibuat di Supabase. Buka dashboard → Storage → New bucket → name: ${BUCKET} (public).`,
+      };
+    }
+    if (msg.includes('row-level security') || msg.includes('rls')) {
+      return {
+        ok: false,
+        error: 'Storage bucket belum di-set "Public". Buka Supabase → Storage → klik bucket → Settings → Public bucket: on.',
+      };
+    }
+    if (msg.includes('duplicate')) {
+      return { ok: false, error: 'File dengan nama yang sama sudah ada. Coba lagi.' };
+    }
     return { ok: false, error: uploadErr.message };
   }
 

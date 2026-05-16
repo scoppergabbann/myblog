@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { auth, isAdmin } from '@/auth';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
@@ -83,7 +82,7 @@ export async function createProject(
   revalidatePath('/projects');
   revalidatePath('/');
 
-  redirect(`/admin/projects/${data.id}`);
+  return { ok: true, id: data.id };
 }
 
 export async function updateProject(

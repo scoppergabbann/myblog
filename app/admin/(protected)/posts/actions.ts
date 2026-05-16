@@ -1,6 +1,5 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { auth, isAdmin } from '@/auth';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
@@ -98,7 +97,7 @@ export async function createPost(
     revalidatePath(`/writing/${data.slug}`);
   }
 
-  redirect(`/admin/posts/${data.id}`);
+  return { ok: true, id: data.id, slug: data.slug };
 }
 
 export async function updatePost(
