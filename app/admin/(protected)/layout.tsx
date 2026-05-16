@@ -14,6 +14,8 @@ const nav = [
   { href: '/admin', label: 'overview', exact: true },
   { href: '/admin/posts', label: 'posts' },
   { href: '/admin/projects', label: 'projects' },
+  { href: '/admin/home', label: 'home' },
+  { href: '/admin/about', label: 'about' },
   { href: '/admin/now', label: 'now' },
   { href: '/admin/guestbook', label: 'guestbook' },
   { href: '/admin/comments', label: 'comments' },
