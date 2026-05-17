@@ -180,7 +180,7 @@ export function PostEditor({
           <div className="flex items-center gap-3">
             {post.status !== 'published' && previewToken && (
               <Link
-                href={`/writing/preview/${post.slug}?token=${previewToken}`}
+                href={`/writing/${post.slug}?preview=${previewToken}`}
                 target="_blank"
                 className="font-mono text-[12px] text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
               >
