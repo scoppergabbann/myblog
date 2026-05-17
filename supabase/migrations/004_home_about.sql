@@ -57,7 +57,6 @@ create index if not exists home_quick_links_order_idx
 insert into public.home_quick_links (label, href, display_order)
 select * from (values
   ('tentang saya', '/about', 100),
-  ('tools yang saya pakai', '/uses', 90),
   ('apa yang sedang saya kerjakan', '/now', 80),
   ('tinggalkan pesan', '/guestbook', 70),
   ('rss feed', '/rss.xml', 60)

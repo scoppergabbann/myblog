@@ -62,3 +62,38 @@ export function extractToc(content: string): Heading[] {
 export function cn(...classes: (string | undefined | false | null)[]): string {
   return classes.filter(Boolean).join(' ');
 }
+
+/**
+ * Format an ISO date as relative time in Indonesian.
+ *   <60s          → "baru saja"
+ *   <60m          → "5 menit lalu"
+ *   <24h          → "3 jam lalu"
+ *   <7 days       → "2 hari lalu"
+ *   <30 days      → "3 minggu lalu"
+ *   else          → "12 Mei 2026"
+ */
+export function relativeTimeId(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return iso;
+  const diffSec = (Date.now() - then) / 1000;
+
+  if (diffSec < 60) return 'baru saja';
+  if (diffSec < 3600) {
+    const m = Math.floor(diffSec / 60);
+    return `${m} menit lalu`;
+  }
+  if (diffSec < 86400) {
+    const h = Math.floor(diffSec / 3600);
+    return `${h} jam lalu`;
+  }
+  if (diffSec < 86400 * 7) {
+    const d = Math.floor(diffSec / 86400);
+    return `${d} hari lalu`;
+  }
+  if (diffSec < 86400 * 30) {
+    const w = Math.floor(diffSec / (86400 * 7));
+    return `${w} minggu lalu`;
+  }
+  // Fall back to absolute date for older posts
+  return formatDate(iso);
+}

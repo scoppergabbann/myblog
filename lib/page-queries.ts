@@ -22,10 +22,9 @@ const HOME_FALLBACK: HomeData = {
     'Membaca ulang Designing Data-Intensive Applications. Belajar bahasa Jepang menuju N3. Mengurangi screen time di malam hari dan kembali ke buku fisik.',
   quickLinks: [
     { id: -1, label: 'tentang saya', href: '/about' },
-    { id: -2, label: 'tools yang saya pakai', href: '/uses' },
-    { id: -3, label: 'apa yang sedang saya kerjakan', href: '/now' },
-    { id: -4, label: 'tinggalkan pesan', href: '/guestbook' },
-    { id: -5, label: 'rss feed', href: '/rss.xml' },
+    { id: -2, label: 'apa yang sedang saya kerjakan', href: '/now' },
+    { id: -3, label: 'tinggalkan pesan', href: '/guestbook' },
+    { id: -4, label: 'rss feed', href: '/rss.xml' },
   ],
 };
 
