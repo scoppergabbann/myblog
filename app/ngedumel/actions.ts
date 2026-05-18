@@ -4,6 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { auth, isAdmin } from '@/auth';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
 import { cloudinaryUpload, cloudinaryDelete } from '@/lib/cloudinary';
+
+import { DUMEL_PAGE_SIZE } from './types';
+
 import type {
   DumelResult,
   DumelImageInput,
@@ -15,7 +18,7 @@ import type {
 } from './types';
 
 // Re-export constant so feed.tsx etc. can still import it from here
-export { DUMEL_PAGE_SIZE } from './types';
+// export { DUMEL_PAGE_SIZE } from './types';
 
 // =============================================================================
 // Constants
