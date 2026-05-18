@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Avatar } from './avatar';
 import { deleteDumel, loadMoreDumels } from './actions';
 import { Lightbox } from './lightbox';
+import { FileViewer } from './file-viewer';
 import { relativeTimeId, formatDate } from '@/lib/utils';
 
 type DumelImage = {
@@ -15,17 +16,27 @@ type DumelImage = {
   position: number;
 };
 
+type DumelFile = {
+  url: string;
+  name: string;
+  size: number;
+  mime: string;
+};
+
 type Dumel = {
   id: number;
   content: string;
   created_at: string;
   images: DumelImage[];
+  file: DumelFile | null;
 };
 
 type LightboxState = {
   images: DumelImage[];
   startIndex: number;
 } | null;
+
+type FileViewerState = DumelFile | null;
 
 export function DumelFeed({
   initialDumels,
@@ -51,6 +62,7 @@ export function DumelFeed({
   const [, startTransition] = useTransition();
   const router = useRouter();
   const [lightbox, setLightbox] = useState<LightboxState>(null);
+  const [fileViewer, setFileViewer] = useState<FileViewerState>(null);
 
   // Infinite scroll state
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -134,6 +146,7 @@ export function DumelFeed({
             onImageClick={(idx) =>
               setLightbox({ images: d.images, startIndex: idx })
             }
+            onFileClick={() => d.file && setFileViewer(d.file)}
             onDelete={() => {
               if (!confirm('Hapus dumel ini?')) return;
               startTransition(async () => {
@@ -177,6 +190,10 @@ export function DumelFeed({
           onClose={() => setLightbox(null)}
         />
       )}
+
+      {fileViewer && (
+        <FileViewer file={fileViewer} onClose={() => setFileViewer(null)} />
+      )}
     </>
   );
 }
@@ -188,6 +205,7 @@ function DumelCard({
   login,
   onDelete,
   onImageClick,
+  onFileClick,
 }: {
   dumel: Dumel;
   avatarUrl?: string;
@@ -195,6 +213,7 @@ function DumelCard({
   login: string;
   onDelete: () => void;
   onImageClick: (idx: number) => void;
+  onFileClick: () => void;
 }) {
   return (
     <article className="group rounded-[14px] border border-[var(--color-line)] bg-[var(--color-paper)] p-3 transition-colors hover:border-[var(--color-line-2)] sm:p-4">
@@ -256,7 +275,62 @@ function DumelCard({
           />
         </div>
       )}
+
+      {dumel.file && (
+        <div className="ml-0 mt-2 sm:ml-[46px]">
+          <FileChip file={dumel.file} onClick={onFileClick} />
+        </div>
+      )}
     </article>
+  );
+}
+
+function FileChip({
+  file,
+  onClick,
+}: {
+  file: DumelFile;
+  onClick: () => void;
+}) {
+  const ext = file.name.includes('.')
+    ? file.name.split('.').pop()!.toLowerCase()
+    : '';
+  const sizeStr =
+    file.size < 1024
+      ? `${file.size} B`
+      : file.size < 1024 * 1024
+        ? `${(file.size / 1024).toFixed(1)} KB`
+        : `${(file.size / 1024 / 1024).toFixed(1)} MB`;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group/chip inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1.5 text-left transition-all hover:border-[color-mix(in_srgb,var(--color-accent)_40%,transparent)] hover:bg-[var(--color-accent-soft)]"
+    >
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="flex-shrink-0 text-[var(--color-ink-3)] transition-colors group-hover/chip:text-[var(--color-accent)]"
+        aria-hidden="true"
+      >
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+      </svg>
+      <span className="truncate text-[12.5px] font-medium text-[var(--color-ink-2)] transition-colors group-hover/chip:text-[var(--color-accent)]">
+        {file.name}
+      </span>
+      <span className="flex-shrink-0 font-mono text-[10.5px] text-[var(--color-ink-4)]">
+        {ext && `${ext.toUpperCase()} · `}
+        {sizeStr}
+      </span>
+    </button>
   );
 }
 

@@ -21,11 +21,19 @@ type DumelImage = {
   position: number;
 };
 
+type DumelFile = {
+  url: string;
+  name: string;
+  size: number;
+  mime: string;
+};
+
 type Dumel = {
   id: number;
   content: string;
   created_at: string;
   images: DumelImage[];
+  file: DumelFile | null;
 };
 
 async function getDumels(): Promise<{
@@ -39,6 +47,7 @@ async function getDumels(): Promise<{
     .from('dumel')
     .select(
       `id, content, created_at,
+       file_url, file_name, file_size, file_mime,
        dumel_images (id, url, width, height, position)`
     )
     .order('created_at', { ascending: false })
@@ -51,7 +60,6 @@ async function getDumels(): Promise<{
   const hasMore = rows.length > PAGE_SIZE;
   const trimmed = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
 
-  // Normalize: sort each dumel's images by position
   const dumels = trimmed.map((d: any) => ({
     id: d.id,
     content: d.content,
@@ -59,6 +67,15 @@ async function getDumels(): Promise<{
     images: (d.dumel_images ?? []).sort(
       (a: DumelImage, b: DumelImage) => a.position - b.position
     ),
+    file:
+      d.file_url && d.file_name
+        ? {
+            url: d.file_url,
+            name: d.file_name,
+            size: d.file_size ?? 0,
+            mime: d.file_mime ?? 'application/octet-stream',
+          }
+        : null,
   }));
 
   return { dumels, hasMore };

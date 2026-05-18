@@ -8,11 +8,36 @@ import { createSupabaseAdmin } from '@/lib/supabase/admin';
 const BUCKET = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'bbs-images';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB per image
 const MAX_IMAGES = 4;
+const MAX_ATTACHED_FILE_SIZE = 10 * 1024 * 1024; // 10 MB for documents
 const ALLOWED_TYPES = new Set([
   'image/png',
   'image/jpeg',
   'image/webp',
   'image/gif',
+]);
+
+// File attachment types (PDF + Office + text)
+const ALLOWED_FILE_TYPES = new Set([
+  'application/pdf',
+  // Word
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  // Excel
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  // PowerPoint
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  // Plain text
+  'text/plain',
+  'text/markdown',
+  'text/csv',
+  // Some browsers send Markdown as octet-stream — handle in extension check
+]);
+
+const ALLOWED_FILE_EXTS = new Set([
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+  'txt', 'md', 'markdown', 'csv',
 ]);
 
 async function requireAdmin() {
@@ -89,17 +114,119 @@ export async function uploadDumelImage(
   return { ok: true, url: pub.publicUrl, storagePath: path };
 }
 
+// =============================================================================
+// File attachment upload (PDF, Office docs, text)
+// =============================================================================
+
+export type DumelFileInput = {
+  url: string;
+  storagePath: string;
+  name: string;
+  size: number;
+  mime: string;
+};
+
+export type UploadDumelFileResult =
+  | { ok: true; url: string; storagePath: string; name: string; size: number; mime: string }
+  | { ok: false; error: string };
+
+export async function uploadDumelFile(
+  formData: FormData
+): Promise<UploadDumelFileResult> {
+  await requireAdmin();
+
+  const file = formData.get('file');
+  if (!file || !(file instanceof File)) {
+    return { ok: false, error: 'No file provided' };
+  }
+  if (file.size === 0) {
+    return { ok: false, error: 'File is empty' };
+  }
+  if (file.size > MAX_ATTACHED_FILE_SIZE) {
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    return { ok: false, error: `File terlalu besar (${mb}MB, max 10MB)` };
+  }
+
+  // Validate by MIME OR extension (some browsers send odd MIME types)
+  const ext = file.name.includes('.')
+    ? file.name.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '')
+    : '';
+  const mimeOk = ALLOWED_FILE_TYPES.has(file.type);
+  const extOk = ALLOWED_FILE_EXTS.has(ext);
+  if (!mimeOk && !extOk) {
+    return {
+      ok: false,
+      error: `Tipe file tidak didukung: ${file.type || ext || 'unknown'}`,
+    };
+  }
+
+  // Path: dumel-files/yyyymm/random.ext
+  const now = new Date();
+  const folder = `dumel-files/${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const safeExt = ext.length > 0 && ext.length <= 5 ? ext : 'bin';
+  const storedName = `${randomBytes(8).toString('hex')}.${safeExt}`;
+  const path = `${folder}/${storedName}`;
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const supabase = createSupabaseAdmin();
+
+  // Use original mime if known, else fallback by extension
+  const contentType = mimeOk ? file.type : guessMimeFromExt(ext);
+
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, buffer, {
+      contentType,
+      cacheControl: '31536000',
+      upsert: false,
+    });
+
+  if (uploadError) {
+    console.error('[dumel.uploadFile]', uploadError);
+    return { ok: false, error: uploadError.message };
+  }
+
+  const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+
+  return {
+    ok: true,
+    url: pub.publicUrl,
+    storagePath: path,
+    name: file.name,
+    size: file.size,
+    mime: contentType,
+  };
+}
+
+function guessMimeFromExt(ext: string): string {
+  const map: Record<string, string> = {
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    txt: 'text/plain',
+    md: 'text/markdown',
+    markdown: 'text/markdown',
+    csv: 'text/csv',
+  };
+  return map[ext] || 'application/octet-stream';
+}
+
 export async function createDumel(
   content: string,
-  images: DumelImageInput[] = []
+  images: DumelImageInput[] = [],
+  file: DumelFileInput | null = null
 ): Promise<DumelResult> {
   await requireAdmin();
 
   const trimmed = content.trim();
 
-  // Allow image-only post (no text) — but at least one of them must exist
-  if (!trimmed && images.length === 0) {
-    return { ok: false, error: 'Tulis sesuatu atau upload foto dulu.' };
+  // Allow text-only, image-only, file-only, or any combination
+  if (!trimmed && images.length === 0 && !file) {
+    return { ok: false, error: 'Tulis sesuatu, upload foto, atau attach file.' };
   }
   if (trimmed.length > 2000) {
     return { ok: false, error: 'Terlalu panjang (max 2000 karakter).' };
@@ -110,14 +237,35 @@ export async function createDumel(
 
   const supabase = createSupabaseAdmin();
 
-  // Content column has NOT NULL — use empty string for image-only posts
+  const insertRow: {
+    content: string;
+    file_url?: string;
+    file_storage_path?: string;
+    file_name?: string;
+    file_size?: number;
+    file_mime?: string;
+  } = {
+    content: trimmed || '',
+  };
+  if (file) {
+    insertRow.file_url = file.url;
+    insertRow.file_storage_path = file.storagePath;
+    insertRow.file_name = file.name;
+    insertRow.file_size = file.size;
+    insertRow.file_mime = file.mime;
+  }
+
   const { data, error } = await supabase
     .from('dumel')
-    .insert({ content: trimmed || '' })
+    .insert(insertRow)
     .select('id')
     .single();
   if (error || !data) {
     console.error('[dumel.create]', error);
+    // Rollback uploaded file if dumel insert failed
+    if (file) {
+      await supabase.storage.from(BUCKET).remove([file.storagePath]);
+    }
     return { ok: false, error: error?.message || 'Gagal post.' };
   }
 
@@ -134,9 +282,10 @@ export async function createDumel(
     const { error: imgError } = await supabase.from('dumel_images').insert(rows);
     if (imgError) {
       console.error('[dumel.images.insert]', imgError);
-      // Try to rollback the dumel insert + uploaded images
+      // Rollback everything
       await supabase.from('dumel').delete().eq('id', data.id);
       const paths = images.map((img) => img.storagePath);
+      if (file) paths.push(file.storagePath);
       await supabase.storage.from(BUCKET).remove(paths);
       return { ok: false, error: imgError.message };
     }
@@ -150,11 +299,18 @@ export async function deleteDumel(id: number): Promise<DumelResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
 
-  // Fetch image paths first so we can delete from Storage
-  const { data: imgs } = await supabase
-    .from('dumel_images')
-    .select('storage_path')
-    .eq('dumel_id', id);
+  // Fetch all storage paths to cleanup (images + attached file)
+  const [imagesResult, dumelResult] = await Promise.all([
+    supabase
+      .from('dumel_images')
+      .select('storage_path')
+      .eq('dumel_id', id),
+    supabase
+      .from('dumel')
+      .select('file_storage_path')
+      .eq('id', id)
+      .maybeSingle(),
+  ]);
 
   // Delete dumel row — CASCADE will delete dumel_images rows automatically
   const { error } = await supabase.from('dumel').delete().eq('id', id);
@@ -163,10 +319,18 @@ export async function deleteDumel(id: number): Promise<DumelResult> {
     return { ok: false, error: error.message };
   }
 
-  // Clean up Storage (best effort — don't fail the whole op if this errors)
-  if (imgs && imgs.length > 0) {
-    const paths = imgs.map((r) => r.storage_path);
-    const { error: rmError } = await supabase.storage.from(BUCKET).remove(paths);
+  // Collect storage paths for cleanup (best effort — non-fatal if fails)
+  const pathsToRemove: string[] = [];
+  if (imagesResult.data) {
+    pathsToRemove.push(...imagesResult.data.map((r) => r.storage_path));
+  }
+  if (dumelResult.data?.file_storage_path) {
+    pathsToRemove.push(dumelResult.data.file_storage_path);
+  }
+  if (pathsToRemove.length > 0) {
+    const { error: rmError } = await supabase.storage
+      .from(BUCKET)
+      .remove(pathsToRemove);
     if (rmError) {
       console.error('[dumel.storage.cleanup]', rmError);
     }
@@ -182,6 +346,13 @@ export async function deleteDumel(id: number): Promise<DumelResult> {
 
 export const DUMEL_PAGE_SIZE = 20;
 
+export type DumelFile = {
+  url: string;
+  name: string;
+  size: number;
+  mime: string;
+};
+
 export type DumelWithImages = {
   id: number;
   content: string;
@@ -193,6 +364,7 @@ export type DumelWithImages = {
     height: number | null;
     position: number;
   }>;
+  file: DumelFile | null;
 };
 
 export type LoadMoreResult =
@@ -216,6 +388,7 @@ export async function loadMoreDumels(cursor: string): Promise<LoadMoreResult> {
     .from('dumel')
     .select(
       `id, content, created_at,
+       file_url, file_name, file_size, file_mime,
        dumel_images (id, url, width, height, position)`
     )
     .lt('created_at', cursor)
@@ -232,6 +405,10 @@ export async function loadMoreDumels(cursor: string): Promise<LoadMoreResult> {
     id: number;
     content: string;
     created_at: string;
+    file_url: string | null;
+    file_name: string | null;
+    file_size: number | null;
+    file_mime: string | null;
     dumel_images: DumelWithImages['images'];
   }>;
   const hasMore = rows.length > DUMEL_PAGE_SIZE;
@@ -242,6 +419,14 @@ export async function loadMoreDumels(cursor: string): Promise<LoadMoreResult> {
     content: d.content,
     created_at: d.created_at,
     images: (d.dumel_images ?? []).sort((a, b) => a.position - b.position),
+    file: d.file_url && d.file_name
+      ? {
+          url: d.file_url,
+          name: d.file_name,
+          size: d.file_size ?? 0,
+          mime: d.file_mime ?? 'application/octet-stream',
+        }
+      : null,
   }));
 
   return { ok: true, dumels, hasMore };
