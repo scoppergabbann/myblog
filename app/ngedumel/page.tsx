@@ -13,24 +13,44 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+type DumelImage = {
+  id: number;
+  url: string;
+  width: number | null;
+  height: number | null;
+  position: number;
+};
+
 type Dumel = {
   id: number;
   content: string;
   created_at: string;
+  images: DumelImage[];
 };
 
 async function getDumels(): Promise<Dumel[]> {
   const supabase = createSupabaseAdmin();
   const { data, error } = await supabase
     .from('dumel')
-    .select('id, content, created_at')
+    .select(
+      `id, content, created_at,
+       dumel_images (id, url, width, height, position)`
+    )
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) {
     console.error('[ngedumel.list]', error);
     return [];
   }
-  return (data ?? []) as Dumel[];
+  // Normalize: sort each dumel's images by position
+  return (data ?? []).map((d: any) => ({
+    id: d.id,
+    content: d.content,
+    created_at: d.created_at,
+    images: (d.dumel_images ?? []).sort(
+      (a: DumelImage, b: DumelImage) => a.position - b.position
+    ),
+  }));
 }
 
 export default async function NgedumelPage() {
