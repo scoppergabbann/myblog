@@ -1,4 +1,4 @@
-import { createSupabaseServer } from '@/lib/supabase/server';
+import { createSupabasePublic } from '@/lib/supabase/public';
 
 export type GuestbookEntry = {
   id: number;
@@ -26,7 +26,7 @@ export type ReactionCounts = {
 
 export async function getGuestbookEntries(): Promise<GuestbookEntry[]> {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
     const { data, error } = await supabase
       .from('guestbook')
       .select('id, name, message, created_at')
@@ -47,7 +47,7 @@ export async function getGuestbookEntries(): Promise<GuestbookEntry[]> {
 
 export async function getCommentsForSlug(slug: string): Promise<Comment[]> {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
     const { data, error } = await supabase
       .from('comments')
       .select('id, slug, name, message, created_at')
@@ -79,7 +79,7 @@ export async function getReactionsForSlug(
     poop: 0,
   };
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
     const { data, error } = await supabase
       .from('reactions')
       .select('emoji')
@@ -104,7 +104,7 @@ export async function getReactionsForSlug(
 
 export async function getViewCount(slug: string): Promise<number> {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
     const { data, error } = await supabase
       .from('views')
       .select('count')

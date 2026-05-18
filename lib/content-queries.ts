@@ -1,4 +1,4 @@
-import { createSupabaseServer } from './supabase/server';
+import { createSupabasePublic } from './supabase/public';
 import { parseSpotifyEmbedUrl } from './spotify-embed';
 import type { Project, NowData, NowSection } from '@/types/content';
 
@@ -13,7 +13,7 @@ type ProjectRow = {
 
 export async function getAllProjects(): Promise<Project[]> {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
     const { data, error } = await supabase
       .from('projects')
       .select('title, description, stack, status, url, github_url')
@@ -56,7 +56,7 @@ export async function getNowData(): Promise<NowData> {
   };
 
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
 
     const [itemsRes, metaRes] = await Promise.all([
       supabase

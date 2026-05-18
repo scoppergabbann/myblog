@@ -1,5 +1,5 @@
 import readingTimeFn from 'reading-time';
-import { createSupabaseServer } from './supabase/server';
+import { createSupabasePublic } from './supabase/public';
 import type { Writing } from '@/types/content';
 
 type PostRow = {
@@ -27,7 +27,7 @@ function rowToWriting(row: PostRow): Writing {
 
 export async function getAllWritingSlugs(): Promise<string[]> {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
     const { data, error } = await supabase
       .from('posts')
       .select('slug')
@@ -48,7 +48,7 @@ export async function getWritingBySlug(
   options: { includeDraft?: boolean } = {}
 ): Promise<Writing | null> {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
     let q = supabase
       .from('posts')
       .select('slug, title, summary, content, tags, status, published_at')
@@ -66,7 +66,7 @@ export async function getWritingBySlug(
 
 export async function getAllWritings(): Promise<Writing[]> {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
     const { data, error } = await supabase
       .from('posts')
       .select('slug, title, summary, content, tags, status, published_at')

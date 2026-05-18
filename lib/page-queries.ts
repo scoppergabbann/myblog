@@ -1,4 +1,4 @@
-import { createSupabaseServer } from './supabase/server';
+import { createSupabasePublic } from './supabase/public';
 import type {
   HomeData,
   AboutData,
@@ -30,7 +30,7 @@ const HOME_FALLBACK: HomeData = {
 
 export async function getHomeData(): Promise<HomeData> {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
 
     const [metaRes, linksRes] = await Promise.all([
       supabase
@@ -90,7 +90,7 @@ const ABOUT_FALLBACK: AboutData = {
 
 export async function getAboutData(): Promise<AboutData> {
   try {
-    const supabase = await createSupabaseServer();
+    const supabase = createSupabasePublic();
     const [metaRes, stackRes] = await Promise.all([
       supabase
         .from('about_meta')
