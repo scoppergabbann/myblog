@@ -249,6 +249,54 @@ body {
   animation: pulse-dot 2.4s ease-in-out infinite;
 }
 
+/* Maintenance page animations */
+@keyframes maintenanceDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+.maintenance-dot {
+  animation: maintenanceDot 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+@keyframes maintenanceWrench {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-10deg); }
+  75%      { transform: rotate(10deg); }
+}
+.maintenance-wrench {
+  animation: maintenanceWrench 3.2s ease-in-out infinite;
+}
+
+@keyframes maintenanceHammer {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  45%      { transform: rotate(-18deg) translateY(-4px); }
+  55%      { transform: rotate(8deg) translateY(0); }
+}
+.maintenance-hammer {
+  animation: maintenanceHammer 2s ease-in-out infinite;
+}
+
+@keyframes maintenanceSpark {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50%      { opacity: 1; transform: scale(1.2); }
+}
+.maintenance-spark {
+  animation: maintenanceSpark 1.2s ease-in-out infinite;
+}
+.maintenance-spark.spark-1 { animation-delay: 0s; }
+.maintenance-spark.spark-2 { animation-delay: 0.3s; }
+.maintenance-spark.spark-3 { animation-delay: 0.6s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .maintenance-dot,
+  .maintenance-wrench,
+  .maintenance-hammer,
+  .maintenance-spark {
+    animation: none !important;
+  }
+}
+
 /* Form elements */
 input, textarea {
   font-family: var(--font-sans);

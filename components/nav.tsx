@@ -40,6 +40,9 @@ export function Nav() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  // Hide nav entirely on the maintenance page
+  if (pathname === '/maintenance') return null;
+
   return (
     <>
       <nav className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[color-mix(in_srgb,var(--color-paper)_78%,transparent)] backdrop-blur-md transition-colors duration-200">

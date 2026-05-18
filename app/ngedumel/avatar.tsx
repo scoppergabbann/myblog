@@ -11,6 +11,17 @@ export function Avatar({
   name: string;
   size?: number;
 }) {
+  // Lock width AND height via inline style + flex-shrink-0 so the avatar
+  // never gets stretched by parent flexbox when sibling content grows.
+  const dimensions = {
+    width: `${size}px`,
+    height: `${size}px`,
+    minWidth: `${size}px`,
+    minHeight: `${size}px`,
+    maxWidth: `${size}px`,
+    maxHeight: `${size}px`,
+  };
+
   if (src) {
     return (
       <img
@@ -18,6 +29,7 @@ export function Avatar({
         alt={`${name} (@${login})`}
         width={size}
         height={size}
+        style={dimensions}
         className="flex-shrink-0 rounded-full border border-[var(--color-line)] object-cover"
       />
     );
@@ -26,7 +38,7 @@ export function Avatar({
   const initial = name.charAt(0).toUpperCase() || '?';
   return (
     <div
-      style={{ width: size, height: size }}
+      style={dimensions}
       className="flex flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-soft)] font-mono text-[14px] font-medium text-[var(--color-accent)]"
     >
       {initial}

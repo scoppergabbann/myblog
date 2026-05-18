@@ -6,6 +6,7 @@ import { Footer } from '@/components/footer';
 import { NavProgress } from '@/components/nav-progress';
 import { Analytics } from '@/components/analytics';
 import { ThemeProvider } from '@/components/theme-provider';
+import { HideOnMaintenance } from '@/components/hide-on-maintenance';
 import { siteConfig } from '@/lib/site-config';
 import './globals.css';
 
@@ -117,7 +118,9 @@ export default function RootLayout({
           </Suspense>
           <Nav />
           <main>{children}</main>
-          <Footer />
+          <HideOnMaintenance>
+            <Footer />
+          </HideOnMaintenance>
         </ThemeProvider>
         <Analytics />
       </body>
