@@ -82,35 +82,32 @@ function DumelCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="group rounded-[14px] border border-[var(--color-line)] bg-[var(--color-paper)] p-4 transition-colors hover:border-[var(--color-line-2)]">
-      <header className="mb-2 flex items-start gap-3">
+    <article className="group rounded-[14px] border border-[var(--color-line)] bg-[var(--color-paper)] p-3 transition-colors hover:border-[var(--color-line-2)] sm:p-4">
+      <header className="mb-2 flex items-start gap-2.5 sm:gap-3">
         <Avatar src={avatarUrl} login={login} name={displayName} size={36} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[14.5px] font-medium text-[var(--color-ink)]">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[14px] font-medium text-[var(--color-ink)] sm:text-[14.5px]">
               {displayName}
             </span>
-            <span className="font-mono text-[11.5px] text-[var(--color-ink-4)]">
+            <span className="truncate font-mono text-[11.5px] text-[var(--color-ink-4)]">
               @{login}
             </span>
-            <span className="font-mono text-[11.5px] text-[var(--color-ink-4)]">
-              ·
-            </span>
-            <time
-              dateTime={dumel.created_at}
-              title={formatDate(dumel.created_at, true)}
-              className="font-mono text-[11.5px] text-[var(--color-ink-4)]"
-            >
-              {relativeTimeId(dumel.created_at)}
-            </time>
           </div>
+          <time
+            dateTime={dumel.created_at}
+            title={formatDate(dumel.created_at, true)}
+            className="block font-mono text-[11px] text-[var(--color-ink-4)]"
+          >
+            {relativeTimeId(dumel.created_at)}
+          </time>
         </div>
         <button
           type="button"
           onClick={onDelete}
           aria-label="Delete dumel"
           title="Hapus"
-          className="-mr-1 -mt-1 inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[var(--color-ink-4)] opacity-0 transition-all hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100 dark:hover:text-red-400"
+          className="-mr-1 -mt-1 inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[var(--color-ink-4)] transition-all hover:bg-red-500/10 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100 dark:hover:text-red-400"
         >
           <svg
             width="14"
@@ -129,7 +126,7 @@ function DumelCard({
           </svg>
         </button>
       </header>
-      <div className="ml-[48px] whitespace-pre-wrap text-[15px] leading-[1.55] text-[var(--color-ink)]">
+      <div className="ml-0 whitespace-pre-wrap break-words text-[14.5px] leading-[1.55] text-[var(--color-ink)] sm:ml-[46px] sm:text-[15px]">
         {dumel.content}
       </div>
     </article>

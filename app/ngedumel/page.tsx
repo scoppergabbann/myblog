@@ -42,7 +42,7 @@ export default async function NgedumelPage() {
   const displayName = session?.user?.name || siteConfig.author.name;
 
   return (
-    <div className="mx-auto max-w-[600px] px-6 py-10">
+    <div className="mx-auto max-w-[600px] px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-8">
         <div className="mb-2 font-mono text-[11.5px] text-[var(--color-ink-3)]">
           ~/ngedumel · {dumels.length} posts
