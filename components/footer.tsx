@@ -1,6 +1,12 @@
 import { siteConfig } from '@/lib/site-config';
+import { getBuildInfo } from '@/lib/build-info';
+import { relativeTimeId, formatDate } from '@/lib/utils';
 
 export function Footer() {
+  const build = getBuildInfo();
+  const lastUpdated = relativeTimeId(build.builtAt);
+  const exactTime = formatDate(build.builtAt, true);
+
   return (
     <footer className="mt-32 border-t border-[var(--color-line)] py-10 pb-14">
       <div className="mx-auto flex max-w-[920px] flex-wrap items-center justify-between gap-6 px-6">
@@ -8,9 +14,33 @@ export function Footer() {
           {siteConfig.name}.com ·{' '}
           <span className="font-mono">{siteConfig.shortName}</span> · last
           updated{' '}
-          <span className="font-mono text-[var(--color-ink-3)]">
-            3 days ago
-          </span>
+          <time
+            dateTime={build.builtAt}
+            title={exactTime}
+            className="font-mono text-[var(--color-ink-3)]"
+          >
+            {lastUpdated}
+          </time>
+          {build.shortSha && (
+            <>
+              {' · '}
+              {build.commitUrl ? (
+                <a
+                  href={build.commitUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`View commit ${build.shortSha}${build.branch ? ` on ${build.branch}` : ''} on GitHub`}
+                  className="font-mono text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
+                >
+                  {build.shortSha}
+                </a>
+              ) : (
+                <span className="font-mono text-[var(--color-ink-3)]">
+                  {build.shortSha}
+                </span>
+              )}
+            </>
+          )}
         </p>
         <div className="flex gap-[18px]">
           <a
