@@ -28,8 +28,13 @@ type Dumel = {
   images: DumelImage[];
 };
 
-async function getDumels(): Promise<Dumel[]> {
+async function getDumels(): Promise<{
+  dumels: Dumel[];
+  hasMore: boolean;
+}> {
   const supabase = createSupabaseAdmin();
+  // Fetch +1 to detect if more remain after the initial batch
+  const PAGE_SIZE = 20;
   const { data, error } = await supabase
     .from('dumel')
     .select(
@@ -37,13 +42,17 @@ async function getDumels(): Promise<Dumel[]> {
        dumel_images (id, url, width, height, position)`
     )
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(PAGE_SIZE + 1);
   if (error) {
     console.error('[ngedumel.list]', error);
-    return [];
+    return { dumels: [], hasMore: false };
   }
+  const rows = data ?? [];
+  const hasMore = rows.length > PAGE_SIZE;
+  const trimmed = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
+
   // Normalize: sort each dumel's images by position
-  return (data ?? []).map((d: any) => ({
+  const dumels = trimmed.map((d: any) => ({
     id: d.id,
     content: d.content,
     created_at: d.created_at,
@@ -51,11 +60,24 @@ async function getDumels(): Promise<Dumel[]> {
       (a: DumelImage, b: DumelImage) => a.position - b.position
     ),
   }));
+
+  return { dumels, hasMore };
+}
+
+async function getTotalCount(): Promise<number> {
+  const supabase = createSupabaseAdmin();
+  const { count } = await supabase
+    .from('dumel')
+    .select('*', { count: 'exact', head: true });
+  return count ?? 0;
 }
 
 export default async function NgedumelPage() {
   const session = await auth();
-  const dumels = await getDumels();
+  const [{ dumels, hasMore }, totalCount] = await Promise.all([
+    getDumels(),
+    getTotalCount(),
+  ]);
 
   const userLogin = session?.user?.login || siteConfig.author.github;
   const avatarUrl = session?.user?.avatar_url;
@@ -65,7 +87,7 @@ export default async function NgedumelPage() {
     <div className="mx-auto max-w-[600px] px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-8">
         <div className="mb-2 font-mono text-[11.5px] text-[var(--color-ink-3)]">
-          ~/ngedumel · {dumels.length} posts
+          ~/ngedumel · {totalCount} posts
         </div>
         <h1 className="mb-2 text-[28px] font-medium tracking-[-0.025em] text-[var(--color-ink)]">
           Ngedumel
@@ -83,6 +105,7 @@ export default async function NgedumelPage() {
 
       <DumelFeed
         initialDumels={dumels}
+        initialHasMore={hasMore}
         avatarUrl={avatarUrl}
         displayName={displayName}
         login={userLogin}

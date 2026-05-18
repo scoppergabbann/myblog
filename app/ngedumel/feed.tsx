@@ -1,9 +1,9 @@
 'use client';
 
-import { useOptimistic, useTransition, useState } from 'react';
+import { useOptimistic, useTransition, useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from './avatar';
-import { deleteDumel } from './actions';
+import { deleteDumel, loadMoreDumels } from './actions';
 import { Lightbox } from './lightbox';
 import { relativeTimeId, formatDate } from '@/lib/utils';
 
@@ -29,22 +29,84 @@ type LightboxState = {
 
 export function DumelFeed({
   initialDumels,
+  initialHasMore,
   avatarUrl,
   displayName,
   login,
 }: {
   initialDumels: Dumel[];
+  initialHasMore: boolean;
   avatarUrl?: string;
   displayName: string;
   login: string;
 }) {
-  const [optimistic, applyOptimistic] = useOptimistic<Dumel[], { type: 'delete'; id: number }>(
-    initialDumels,
-    (state, action) => state.filter((d) => d.id !== action.id)
-  );
+  // Track loaded dumels — grows as user scrolls. Initial = server-fetched first page.
+  const [allDumels, setAllDumels] = useState<Dumel[]>(initialDumels);
+  // When useOptimistic is applied, it returns a new array with the deletion applied.
+  // We feed it `allDumels` (which includes infinite-scroll-loaded posts).
+  const [optimistic, applyOptimistic] = useOptimistic<
+    Dumel[],
+    { type: 'delete'; id: number }
+  >(allDumels, (state, action) => state.filter((d) => d.id !== action.id));
   const [, startTransition] = useTransition();
   const router = useRouter();
   const [lightbox, setLightbox] = useState<LightboxState>(null);
+
+  // Infinite scroll state
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Keep allDumels in sync if initial data refetches (e.g. after delete → router.refresh)
+  useEffect(() => {
+    setAllDumels(initialDumels);
+    setHasMore(initialHasMore);
+  }, [initialDumels, initialHasMore]);
+
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore || allDumels.length === 0) return;
+    setLoading(true);
+    setLoadError(null);
+
+    const lastCursor = allDumels[allDumels.length - 1].created_at;
+    const result = await loadMoreDumels(lastCursor);
+
+    if (result.ok) {
+      // Dedupe in case of race (delete + load overlapping)
+      setAllDumels((prev) => {
+        const existing = new Set(prev.map((d) => d.id));
+        const fresh = result.dumels.filter((d) => !existing.has(d.id));
+        return [...prev, ...fresh];
+      });
+      setHasMore(result.hasMore);
+    } else {
+      setLoadError(result.error);
+    }
+    setLoading(false);
+  }, [loading, hasMore, allDumels]);
+
+  // IntersectionObserver: trigger loadMore when sentinel enters viewport
+  useEffect(() => {
+    if (!hasMore || loading) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMore();
+        }
+      },
+      {
+        // Trigger 300px before sentinel enters viewport — feels seamless
+        rootMargin: '300px',
+        threshold: 0,
+      }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadMore]);
 
   if (optimistic.length === 0) {
     return (
@@ -76,6 +138,8 @@ export function DumelFeed({
               if (!confirm('Hapus dumel ini?')) return;
               startTransition(async () => {
                 applyOptimistic({ type: 'delete', id: d.id });
+                // Also remove from allDumels source so it doesn't reappear
+                setAllDumels((prev) => prev.filter((x) => x.id !== d.id));
                 const result = await deleteDumel(d.id);
                 if (result.ok) {
                   router.refresh();
@@ -84,6 +148,26 @@ export function DumelFeed({
             }}
           />
         ))}
+      </div>
+
+      {/* Infinite scroll sentinel + status indicators */}
+      <div ref={sentinelRef} className="mt-3">
+        {loading && <LoadingIndicator />}
+        {loadError && (
+          <div className="rounded-[12px] border border-red-500/30 bg-red-500/5 px-4 py-3 text-center">
+            <p className="font-mono text-[11.5px] text-red-600 dark:text-red-400">
+              gagal load: {loadError}
+            </p>
+            <button
+              type="button"
+              onClick={loadMore}
+              className="mt-2 font-mono text-[11.5px] text-[var(--color-accent)] underline-offset-2 hover:underline"
+            >
+              coba lagi
+            </button>
+          </div>
+        )}
+        {!hasMore && !loading && optimistic.length >= 5 && <EndOfFeed />}
       </div>
 
       {lightbox && (
@@ -246,6 +330,30 @@ function ImageCarousel({
           {images.length} foto · swipe
         </span>
       </div>
+    </div>
+  );
+}
+
+function LoadingIndicator() {
+  return (
+    <div className="flex items-center justify-center gap-2 py-6">
+      <div className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-line-2)] border-t-[var(--color-accent)]" />
+      <span className="font-mono text-[11px] text-[var(--color-ink-4)]">
+        memuat dumel lama...
+      </span>
+    </div>
+  );
+}
+
+function EndOfFeed() {
+  return (
+    <div className="mt-2 rounded-[10px] border border-dashed border-[var(--color-line)] bg-[var(--color-paper)] px-6 py-7 text-center">
+      <div className="mb-1 font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-4)]">
+        // end of dumel
+      </div>
+      <p className="text-[12.5px] text-[var(--color-ink-3)]">
+        Sudah sampai bawah — no more dumel.
+      </p>
     </div>
   );
 }

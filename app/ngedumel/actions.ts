@@ -175,3 +175,74 @@ export async function deleteDumel(id: number): Promise<DumelResult> {
   revalidatePath('/ngedumel');
   return { ok: true };
 }
+
+// =============================================================================
+// Cursor-based pagination for infinite scroll
+// =============================================================================
+
+export const DUMEL_PAGE_SIZE = 20;
+
+export type DumelWithImages = {
+  id: number;
+  content: string;
+  created_at: string;
+  images: Array<{
+    id: number;
+    url: string;
+    width: number | null;
+    height: number | null;
+    position: number;
+  }>;
+};
+
+export type LoadMoreResult =
+  | { ok: true; dumels: DumelWithImages[]; hasMore: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Load older dumels using cursor-based pagination.
+ * Cursor = ISO timestamp of the last dumel in the current view.
+ * Fetches dumels with `created_at < cursor`, ordered desc by created_at.
+ */
+export async function loadMoreDumels(cursor: string): Promise<LoadMoreResult> {
+  await requireAdmin();
+
+  if (!cursor || Number.isNaN(new Date(cursor).getTime())) {
+    return { ok: false, error: 'Invalid cursor' };
+  }
+
+  const supabase = createSupabaseAdmin();
+  const { data, error } = await supabase
+    .from('dumel')
+    .select(
+      `id, content, created_at,
+       dumel_images (id, url, width, height, position)`
+    )
+    .lt('created_at', cursor)
+    .order('created_at', { ascending: false })
+    // Fetch +1 to detect if more remains
+    .limit(DUMEL_PAGE_SIZE + 1);
+
+  if (error) {
+    console.error('[dumel.loadMore]', error);
+    return { ok: false, error: error.message };
+  }
+
+  const rows = (data ?? []) as Array<{
+    id: number;
+    content: string;
+    created_at: string;
+    dumel_images: DumelWithImages['images'];
+  }>;
+  const hasMore = rows.length > DUMEL_PAGE_SIZE;
+  const trimmed = hasMore ? rows.slice(0, DUMEL_PAGE_SIZE) : rows;
+
+  const dumels: DumelWithImages[] = trimmed.map((d) => ({
+    id: d.id,
+    content: d.content,
+    created_at: d.created_at,
+    images: (d.dumel_images ?? []).sort((a, b) => a.position - b.position),
+  }));
+
+  return { ok: true, dumels, hasMore };
+}
