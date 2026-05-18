@@ -16,7 +16,7 @@ type PendingImage = {
   /** Local preview URL (object URL) */
   previewUrl: string;
   /** Uploaded result, populated after upload finishes */
-  uploaded?: { url: string; storagePath: string; width: number; height: number };
+  uploaded?: { url: string; publicId: string; width: number; height: number };
   /** Set while upload in flight */
   uploading: boolean;
   /** Error message if upload failed */
@@ -26,7 +26,7 @@ type PendingImage = {
 type PendingFile = {
   name: string;
   size: number;
-  uploaded?: { url: string; storagePath: string; mime: string };
+  uploaded?: { url: string; publicId: string; mime: string };
   uploading: boolean;
   error?: string;
 };
@@ -88,7 +88,7 @@ export function DumelComposer({
       .filter((img) => img.uploaded)
       .map((img) => ({
         url: img.uploaded!.url,
-        storagePath: img.uploaded!.storagePath,
+        publicId: img.uploaded!.publicId,
         width: img.uploaded!.width,
         height: img.uploaded!.height,
       }));
@@ -97,7 +97,7 @@ export function DumelComposer({
       attachedFile?.uploaded
         ? {
             url: attachedFile.uploaded.url,
-            storagePath: attachedFile.uploaded.storagePath,
+            publicId: attachedFile.uploaded.publicId,
             name: attachedFile.name,
             size: attachedFile.size,
             mime: attachedFile.uploaded.mime,
@@ -166,7 +166,7 @@ export function DumelComposer({
                 uploading: false,
                 uploaded: {
                   url: result.url,
-                  storagePath: result.storagePath,
+                  publicId: result.publicId,
                   width,
                   height,
                 },
@@ -237,7 +237,7 @@ export function DumelComposer({
           uploading: false,
           uploaded: {
             url: result.url,
-            storagePath: result.storagePath,
+            publicId: result.publicId,
             mime: result.mime,
           },
         });
