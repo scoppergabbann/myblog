@@ -21,26 +21,6 @@ export function Footer() {
           >
             {lastUpdated}
           </time>
-          {build.shortSha && (
-            <>
-              {' · '}
-              {build.commitUrl ? (
-                <a
-                  href={build.commitUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={`View commit ${build.shortSha}${build.branch ? ` on ${build.branch}` : ''} on GitHub`}
-                  className="font-mono text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
-                >
-                  {build.shortSha}
-                </a>
-              ) : (
-                <span className="font-mono text-[var(--color-ink-3)]">
-                  {build.shortSha}
-                </span>
-              )}
-            </>
-          )}
         </p>
         <div className="flex gap-[18px]">
           <a
