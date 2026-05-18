@@ -3,10 +3,19 @@
 import { revalidatePath } from 'next/cache';
 import { auth, isAdmin } from '@/auth';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
-import {
-  cloudinaryUpload,
-  cloudinaryDelete,
-} from '@/lib/cloudinary';
+import { cloudinaryUpload, cloudinaryDelete } from '@/lib/cloudinary';
+import type {
+  DumelResult,
+  DumelImageInput,
+  DumelFileInput,
+  UploadDumelImageResult,
+  UploadDumelFileResult,
+  DumelWithImages,
+  LoadMoreResult,
+} from './types';
+
+// Re-export constant so feed.tsx etc. can still import it from here
+export { DUMEL_PAGE_SIZE } from './types';
 
 // =============================================================================
 // Constants
@@ -46,35 +55,8 @@ async function requireAdmin() {
 }
 
 // =============================================================================
-// Types
-// =============================================================================
-
-export type DumelResult =
-  | { ok: true; id?: number }
-  | { ok: false; error: string };
-
-export type DumelImageInput = {
-  url: string;
-  publicId: string;
-  width?: number;
-  height?: number;
-};
-
-export type DumelFileInput = {
-  url: string;
-  publicId: string;
-  name: string;
-  size: number;
-  mime: string;
-};
-
-// =============================================================================
 // Upload: photo → Cloudinary image
 // =============================================================================
-
-export type UploadDumelImageResult =
-  | { ok: true; url: string; publicId: string }
-  | { ok: false; error: string };
 
 export async function uploadDumelImage(
   formData: FormData
@@ -85,7 +67,7 @@ export async function uploadDumelImage(
   if (!file || !(file instanceof File)) {
     return { ok: false, error: 'No file provided' };
   }
-  if (file.size === 0)  return { ok: false, error: 'File is empty' };
+  if (file.size === 0) return { ok: false, error: 'File is empty' };
   if (file.size > MAX_IMAGE_SIZE) {
     return { ok: false, error: 'Foto terlalu besar (max 5MB)' };
   }
@@ -97,17 +79,12 @@ export async function uploadDumelImage(
   const result = await cloudinaryUpload(buffer, file.type, 'ngedumel/images', 'image');
 
   if (!result.ok) return { ok: false, error: result.error };
-
   return { ok: true, url: result.url, publicId: result.publicId };
 }
 
 // =============================================================================
 // Upload: file → Cloudinary raw
 // =============================================================================
-
-export type UploadDumelFileResult =
-  | { ok: true; url: string; publicId: string; name: string; size: number; mime: string }
-  | { ok: false; error: string };
 
 export async function uploadDumelFile(
   formData: FormData
@@ -136,13 +113,11 @@ export async function uploadDumelFile(
     };
   }
 
-  const buffer  = Buffer.from(await file.arrayBuffer());
-  const mime    = mimeOk ? file.type : guessMimeFromExt(ext);
-
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const mime   = mimeOk ? file.type : guessMimeFromExt(ext);
   const result = await cloudinaryUpload(buffer, mime, 'ngedumel/files', 'raw');
 
   if (!result.ok) return { ok: false, error: result.error };
-
   return {
     ok: true,
     url: result.url,
@@ -181,7 +156,6 @@ export async function createDumel(
   await requireAdmin();
 
   const trimmed = content.trim();
-
   if (!trimmed && images.length === 0 && !file) {
     return { ok: false, error: 'Tulis sesuatu, upload foto, atau attach file.' };
   }
@@ -194,16 +168,14 @@ export async function createDumel(
 
   const supabase = createSupabaseAdmin();
 
-  // Build insert row
   const insertRow: Record<string, unknown> = { content: trimmed || '' };
   if (file) {
-    insertRow.file_url                     = file.url;
-    insertRow.file_cloudinary_public_id    = file.publicId;
+    insertRow.file_url                      = file.url;
+    insertRow.file_cloudinary_public_id     = file.publicId;
     insertRow.file_cloudinary_resource_type = 'raw';
-    insertRow.file_name                    = file.name;
-    insertRow.file_size                    = file.size;
-    insertRow.file_mime                    = file.mime;
-    // Keep file_storage_path null (Cloudinary-stored, no Supabase path)
+    insertRow.file_name                     = file.name;
+    insertRow.file_size                     = file.size;
+    insertRow.file_mime                     = file.mime;
   }
 
   const { data, error } = await supabase
@@ -214,38 +186,31 @@ export async function createDumel(
 
   if (error || !data) {
     console.error('[dumel.create]', error);
-    // Rollback Cloudinary uploads on DB failure
     if (file) {
       await cloudinaryDelete(file.publicId, 'raw').catch(console.error);
     }
     return { ok: false, error: error?.message || 'Gagal post.' };
   }
 
-  // Insert image rows
   if (images.length > 0) {
     const rows = images.map((img, i) => ({
       dumel_id: data.id,
       url: img.url,
       cloudinary_public_id: img.publicId,
       cloudinary_resource_type: 'image',
-      // storage_path null — Cloudinary-stored
       storage_path: null,
       width: img.width || null,
       height: img.height || null,
       position: i,
     }));
-    const { error: imgError } = await supabase
-      .from('dumel_images')
-      .insert(rows);
-
+    const { error: imgError } = await supabase.from('dumel_images').insert(rows);
     if (imgError) {
       console.error('[dumel.images.insert]', imgError);
-      // Rollback everything
       await supabase.from('dumel').delete().eq('id', data.id);
-      await Promise.all([
+      await Promise.allSettled([
         ...images.map((img) => cloudinaryDelete(img.publicId, 'image')),
         file ? cloudinaryDelete(file.publicId, 'raw') : Promise.resolve(),
-      ]).catch(console.error);
+      ]);
       return { ok: false, error: imgError.message };
     }
   }
@@ -262,34 +227,29 @@ export async function deleteDumel(id: number): Promise<DumelResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
 
-  // Fetch Cloudinary IDs before delete
   const [imagesResult, dumelResult] = await Promise.all([
     supabase
       .from('dumel_images')
-      .select('cloudinary_public_id, cloudinary_resource_type, storage_path')
+      .select('cloudinary_public_id, cloudinary_resource_type')
       .eq('dumel_id', id),
     supabase
       .from('dumel')
-      .select(
-        'file_cloudinary_public_id, file_cloudinary_resource_type, file_storage_path'
-      )
+      .select('file_cloudinary_public_id, file_cloudinary_resource_type')
       .eq('id', id)
       .maybeSingle(),
   ]);
 
-  // Delete DB row (CASCADE removes dumel_images)
   const { error } = await supabase.from('dumel').delete().eq('id', id);
   if (error) {
     console.error('[dumel.delete]', error);
     return { ok: false, error: error.message };
   }
 
-  // Cleanup Cloudinary (best effort — non-fatal)
-  const cleanupPromises: Promise<unknown>[] = [];
-
+  // Cleanup Cloudinary (best effort)
+  const cleanups: Promise<unknown>[] = [];
   for (const img of imagesResult.data ?? []) {
     if (img.cloudinary_public_id) {
-      cleanupPromises.push(
+      cleanups.push(
         cloudinaryDelete(
           img.cloudinary_public_id,
           (img.cloudinary_resource_type as 'image' | 'raw') || 'image'
@@ -297,20 +257,16 @@ export async function deleteDumel(id: number): Promise<DumelResult> {
       );
     }
   }
-
   const fd = dumelResult.data;
   if (fd?.file_cloudinary_public_id) {
-    cleanupPromises.push(
+    cleanups.push(
       cloudinaryDelete(
         fd.file_cloudinary_public_id,
         (fd.file_cloudinary_resource_type as 'image' | 'raw') || 'raw'
       )
     );
   }
-
-  if (cleanupPromises.length > 0) {
-    await Promise.allSettled(cleanupPromises);
-  }
+  if (cleanups.length > 0) await Promise.allSettled(cleanups);
 
   revalidatePath('/ngedumel');
   return { ok: true };
@@ -320,32 +276,11 @@ export async function deleteDumel(id: number): Promise<DumelResult> {
 // Cursor-based pagination for infinite scroll
 // =============================================================================
 
-export const DUMEL_PAGE_SIZE = 20;
-
-export type DumelFile = {
-  url: string;
-  name: string;
-  size: number;
-  mime: string;
-};
-
-export type DumelWithImages = {
-  id: number;
-  content: string;
-  created_at: string;
-  images: Array<{
-    id: number;
-    url: string;
-    width: number | null;
-    height: number | null;
-    position: number;
-  }>;
-  file: DumelFile | null;
-};
-
-export type LoadMoreResult =
-  | { ok: true; dumels: DumelWithImages[]; hasMore: boolean }
-  | { ok: false; error: string };
+const DUMEL_SELECT = `
+  id, content, created_at,
+  file_url, file_name, file_size, file_mime,
+  dumel_images (id, url, width, height, position)
+`;
 
 function rowToDumel(d: {
   id: number;
@@ -380,12 +315,6 @@ function rowToDumel(d: {
   };
 }
 
-const DUMEL_SELECT = `
-  id, content, created_at,
-  file_url, file_name, file_size, file_mime,
-  dumel_images (id, url, width, height, position)
-`;
-
 export async function loadMoreDumels(cursor: string): Promise<LoadMoreResult> {
   await requireAdmin();
 
@@ -393,6 +322,7 @@ export async function loadMoreDumels(cursor: string): Promise<LoadMoreResult> {
     return { ok: false, error: 'Invalid cursor' };
   }
 
+  const { DUMEL_PAGE_SIZE } = await import('./types');
   const supabase = createSupabaseAdmin();
   const { data, error } = await supabase
     .from('dumel')
