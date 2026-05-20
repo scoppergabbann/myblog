@@ -22,6 +22,7 @@ const nav = [
   { href: '/admin/subscribers', label: 'subscribers' },
   { href: '/admin/views', label: 'views' },
   { href: '/admin/maintenance', label: 'maintenance' },
+  { href: '/admin/library', label: 'library' },
 ];
 
 export default async function AdminLayout({
