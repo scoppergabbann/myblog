@@ -439,6 +439,33 @@ function DetailModal({
   const [mounted, setMounted] = useState(false);
   const embedRef = useRef<HTMLDivElement>(null);
 
+  // Derive all variables FIRST — before any hooks that might use them
+  const title = 'title' in item ? item.title : item.name;
+  const photoUrl = 'cover_url' in item ? item.cover_url : item.photo_url;
+  const photoAspect = kind === 'book' ? '3/4' : '4/3';
+
+  const isBook = kind === 'book';
+  const isDrink = kind === 'drink';
+  const isCar = kind === 'car';
+  const isMoto = kind === 'motorcycle';
+
+  const bookItem = isBook ? (item as LibraryBook) : null;
+  const drinkItem = isDrink ? (item as LibraryDrink) : null;
+  const carItem = isCar ? (item as LibraryCar) : null;
+  const motoItem = isMoto ? (item as LibraryMotorcycle) : null;
+
+  const reelsUrl = drinkItem?.reels_url ?? carItem?.reels_url ?? motoItem?.reels_url ?? null;
+  const linkUrl = bookItem?.link_url ?? null;
+  const igCode = reelsUrl ? extractIgCode(reelsUrl) : null;
+  const hasEmbed = !!igCode;
+
+  let badge = '';
+  if (bookItem) badge = BOOK_STATUS_LABELS[bookItem.status];
+  if (drinkItem) badge = DRINK_CATEGORY_LABELS[drinkItem.category];
+  if (carItem) badge = CAR_STATUS_LABELS[carItem.status];
+  if (motoItem) badge = MOTO_STATUS_LABELS[motoItem.status];
+
+  // Hooks below — all variables they need are already declared above
   useEffect(() => {
     setMounted(true);
     const prev = document.body.style.overflow;
@@ -454,20 +481,14 @@ function DetailModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Load Instagram embed script once when modal opens with a reels URL
+  // Load Instagram embed script when modal opens (only if there's a valid IG code)
   useEffect(() => {
-    if (!reelsUrl) return;
-    const igCode = extractIgCode(reelsUrl);
     if (!igCode) return;
-
-    // If instagram embed.js already loaded, just re-process
     if ((window as any).instgrm) {
       (window as any).instgrm.Embeds.process();
       return;
     }
-    // Load the script
-    const existing = document.getElementById('ig-embed-script');
-    if (existing) return;
+    if (document.getElementById('ig-embed-script')) return;
     const script = document.createElement('script');
     script.id = 'ig-embed-script';
     script.src = 'https://www.instagram.com/embed.js';
@@ -479,37 +500,9 @@ function DetailModal({
       }
     };
     document.body.appendChild(script);
-  }, []);
+  }, [igCode]);
 
   if (!mounted) return null;
-
-  const title = 'title' in item ? item.title : item.name;
-  const photoUrl = 'cover_url' in item ? item.cover_url : item.photo_url;
-  const photoAspect = kind === 'book' ? '3/4' : '4/3';
-
-  const isBook = kind === 'book';
-  const isDrink = kind === 'drink';
-  const isCar = kind === 'car';
-  const isMoto = kind === 'motorcycle';
-
-  const bookItem = isBook ? (item as LibraryBook) : null;
-  const drinkItem = isDrink ? (item as LibraryDrink) : null;
-  const carItem = isCar ? (item as LibraryCar) : null;
-  const motoItem = isMoto ? (item as LibraryMotorcycle) : null;
-
-  const reelsUrl = drinkItem?.reels_url ?? carItem?.reels_url ?? motoItem?.reels_url;
-  const linkUrl = bookItem?.link_url;
-  const igCode = reelsUrl ? extractIgCode(reelsUrl) : null;
-
-  let badge = '';
-  if (bookItem) badge = BOOK_STATUS_LABELS[bookItem.status];
-  if (drinkItem) badge = DRINK_CATEGORY_LABELS[drinkItem.category];
-  if (carItem) badge = CAR_STATUS_LABELS[carItem.status];
-  if (motoItem) badge = MOTO_STATUS_LABELS[motoItem.status];
-
-  // If there's an IG embed, use full-column layout (embed needs more width)
-  // Otherwise use the side-by-side layout
-  const hasEmbed = !!igCode;
 
   return createPortal(
     <div
