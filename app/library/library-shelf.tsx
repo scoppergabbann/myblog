@@ -421,6 +421,12 @@ function VehicleCard({
 // Detail modal
 // =============================================================================
 
+/** Extract Instagram shortcode from reel/post URL */
+function extractIgCode(url: string): string | null {
+  const m = url.match(/instagram\.com\/(reel|p)\/([A-Za-z0-9_-]+)/);
+  return m ? m[2] : null;
+}
+
 function DetailModal({
   item,
   kind,
@@ -431,6 +437,7 @@ function DetailModal({
   onClose: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
+  const embedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -446,6 +453,33 @@ function DetailModal({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  // Load Instagram embed script once when modal opens with a reels URL
+  useEffect(() => {
+    if (!reelsUrl) return;
+    const igCode = extractIgCode(reelsUrl);
+    if (!igCode) return;
+
+    // If instagram embed.js already loaded, just re-process
+    if ((window as any).instgrm) {
+      (window as any).instgrm.Embeds.process();
+      return;
+    }
+    // Load the script
+    const existing = document.getElementById('ig-embed-script');
+    if (existing) return;
+    const script = document.createElement('script');
+    script.id = 'ig-embed-script';
+    script.src = 'https://www.instagram.com/embed.js';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if ((window as any).instgrm) {
+        (window as any).instgrm.Embeds.process();
+      }
+    };
+    document.body.appendChild(script);
+  }, []);
 
   if (!mounted) return null;
 
@@ -465,6 +499,7 @@ function DetailModal({
 
   const reelsUrl = drinkItem?.reels_url ?? carItem?.reels_url ?? motoItem?.reels_url;
   const linkUrl = bookItem?.link_url;
+  const igCode = reelsUrl ? extractIgCode(reelsUrl) : null;
 
   let badge = '';
   if (bookItem) badge = BOOK_STATUS_LABELS[bookItem.status];
@@ -472,13 +507,19 @@ function DetailModal({
   if (carItem) badge = CAR_STATUS_LABELS[carItem.status];
   if (motoItem) badge = MOTO_STATUS_LABELS[motoItem.status];
 
+  // If there's an IG embed, use full-column layout (embed needs more width)
+  // Otherwise use the side-by-side layout
+  const hasEmbed = !!igCode;
+
   return createPortal(
     <div
       className="lightbox-fade-in fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[90vh] w-full max-w-[640px] flex-col overflow-hidden rounded-[18px] bg-[var(--color-paper)] shadow-2xl sm:flex-row"
+        className={`relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-[18px] bg-[var(--color-paper)] shadow-2xl ${
+          hasEmbed ? 'max-w-[420px]' : 'max-w-[640px] sm:flex-row'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close */}
@@ -493,95 +534,167 @@ function DetailModal({
           </svg>
         </button>
 
-        {/* Photo */}
-        <div
-          className="w-full flex-shrink-0 overflow-hidden sm:w-[220px]"
-          style={{ aspectRatio: photoAspect }}
-        >
-          {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={photoUrl}
-              alt={title}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[var(--color-paper-2)] text-5xl opacity-30">
-              📷
+        {/* === LAYOUT A: Instagram embed (no side photo) === */}
+        {hasEmbed ? (
+          <div className="flex flex-col overflow-y-auto">
+            {/* Compact header */}
+            <div className="flex items-start gap-3 border-b border-[var(--color-line)] px-4 py-3 pr-12">
+              {photoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl}
+                  alt={title}
+                  className="h-12 w-12 flex-shrink-0 rounded-lg object-cover"
+                />
+              )}
+              <div className="min-w-0">
+                <Badge label={badge} />
+                <h2 className="mt-0.5 truncate text-[15px] font-medium text-[var(--color-ink)]">
+                  {title}
+                </h2>
+                {(bookItem?.author || drinkItem?.brand ||
+                  carItem?.model || motoItem?.model) && (
+                  <p className="truncate font-mono text-[11px] text-[var(--color-ink-4)]">
+                    {bookItem?.author || drinkItem?.brand ||
+                      [carItem?.model ?? motoItem?.model,
+                       carItem?.year ?? motoItem?.year]
+                         .filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Info */}
-        <div className="flex flex-1 flex-col overflow-y-auto p-5">
-          <div className="mb-1">
-            <Badge label={badge} />
-          </div>
-          <h2 className="mb-1 text-[20px] font-medium tracking-[-0.02em] text-[var(--color-ink)]">
-            {title}
-          </h2>
+            {/* Instagram embed */}
+            <div
+              ref={embedRef}
+              className="overflow-y-auto"
+              style={{ maxHeight: '70vh' }}
+            >
+              <blockquote
+                className="instagram-media"
+                data-instgrm-captioned
+                data-instgrm-permalink={`https://www.instagram.com/reel/${igCode}/?utm_source=ig_embed`}
+                data-instgrm-version="14"
+                style={{
+                  background: 'var(--color-paper)',
+                  border: 0,
+                  borderRadius: 0,
+                  boxShadow: 'none',
+                  margin: 0,
+                  maxWidth: '100%',
+                  minWidth: '326px',
+                  padding: 0,
+                  width: '100%',
+                }}
+              >
+                {/* Fallback content while embed loads */}
+                <div className="flex items-center justify-center py-12 font-mono text-[11.5px] text-[var(--color-ink-3)]">
+                  <span>memuat embed Instagram...</span>
+                </div>
+              </blockquote>
+            </div>
 
-          {/* Sub-info */}
-          <div className="mb-3 font-mono text-[11.5px] text-[var(--color-ink-3)]">
-            {bookItem && (
-              <>
-                {bookItem.author && <span>{bookItem.author}</span>}
-                {bookItem.year_read && (
-                  <span className="ml-2 text-[var(--color-ink-4)]">· {bookItem.year_read}</span>
-                )}
-              </>
-            )}
-            {drinkItem?.brand && <span>{drinkItem.brand}</span>}
-            {(carItem || motoItem) && (
-              <>
-                {(carItem?.model ?? motoItem?.model) && (
-                  <span>{carItem?.model ?? motoItem?.model}</span>
-                )}
-                {(carItem?.year ?? motoItem?.year) && (
-                  <span className="ml-2 text-[var(--color-ink-4)]">
-                    · {carItem?.year ?? motoItem?.year}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-
-          {item.description && (
-            <p className="mb-4 flex-1 text-[14px] leading-[1.65] text-[var(--color-ink-2)]">
-              {item.description}
-            </p>
-          )}
-
-          {/* Links */}
-          <div className="mt-auto flex flex-wrap gap-2 pt-3">
-            {reelsUrl && (
+            {/* Footer links */}
+            <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-line)] px-4 py-3">
+              {item.description && (
+                <p className="w-full text-[12.5px] leading-[1.55] text-[var(--color-ink-3)]">
+                  {item.description}
+                </p>
+              )}
               <a
-                href={reelsUrl}
+                href={reelsUrl!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
+                className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M5 3l14 9-14 9V3z" />
                 </svg>
-                Lihat Reels
+                Buka di Instagram
               </a>
-            )}
-            {linkUrl && (
-              <a
-                href={linkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-[12px] text-[var(--color-ink-2)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-              >
-                Lihat buku →
-              </a>
-            )}
+            </div>
           </div>
-          <p className="mt-3 font-mono text-[10.5px] text-[var(--color-ink-4)]">
-            esc untuk tutup
-          </p>
-        </div>
+        ) : (
+          /* === LAYOUT B: Normal side-by-side (no embed) === */
+          <>
+            {/* Photo */}
+            <div
+              className="w-full flex-shrink-0 overflow-hidden sm:w-[220px]"
+              style={{ aspectRatio: photoAspect }}
+            >
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl}
+                  alt={title}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[var(--color-paper-2)] text-5xl opacity-30">
+                  📷
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex flex-1 flex-col overflow-y-auto p-5">
+              <div className="mb-1">
+                <Badge label={badge} />
+              </div>
+              <h2 className="mb-1 text-[20px] font-medium tracking-[-0.02em] text-[var(--color-ink)]">
+                {title}
+              </h2>
+
+              {/* Sub-info */}
+              <div className="mb-3 font-mono text-[11.5px] text-[var(--color-ink-3)]">
+                {bookItem && (
+                  <>
+                    {bookItem.author && <span>{bookItem.author}</span>}
+                    {bookItem.year_read && (
+                      <span className="ml-2 text-[var(--color-ink-4)]">· {bookItem.year_read}</span>
+                    )}
+                  </>
+                )}
+                {drinkItem?.brand && <span>{drinkItem.brand}</span>}
+                {(carItem || motoItem) && (
+                  <>
+                    {(carItem?.model ?? motoItem?.model) && (
+                      <span>{carItem?.model ?? motoItem?.model}</span>
+                    )}
+                    {(carItem?.year ?? motoItem?.year) && (
+                      <span className="ml-2 text-[var(--color-ink-4)]">
+                        · {carItem?.year ?? motoItem?.year}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {item.description && (
+                <p className="mb-4 flex-1 text-[14px] leading-[1.65] text-[var(--color-ink-2)]">
+                  {item.description}
+                </p>
+              )}
+
+              {/* Links */}
+              <div className="mt-auto flex flex-wrap gap-2 pt-3">
+                {linkUrl && (
+                  <a
+                    href={linkUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-[12px] text-[var(--color-ink-2)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                  >
+                    Lihat buku →
+                  </a>
+                )}
+              </div>
+              <p className="mt-3 font-mono text-[10.5px] text-[var(--color-ink-4)]">
+                esc untuk tutup
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>,
     document.body
