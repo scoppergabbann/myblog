@@ -1,36 +1,21 @@
-# Cloudinary storage migration — install
+# Library page — install
 
-## Env vars (tambah ke Vercel + .env.local):
-  CLOUDINARY_CLOUD_NAME=your_cloud_name
-  CLOUDINARY_API_KEY=your_api_key
-  CLOUDINARY_API_SECRET=your_api_secret
-  CLOUDINARY_UPLOAD_PRESET=bbs-ngedumel
+## NOTE: admin/protected/ → app/admin/(protected)/
+Sama seperti sebelumnya, rename folder saat copy.
 
-## Migration WAJIB sebelum push code:
-Buka Supabase SQL Editor, paste isi
-`supabase/migrations/010_cloudinary.sql`, klik Run.
+## Migration WAJIB:
+Paste supabase/migrations/011_library.sql ke Supabase SQL Editor → Run
 
-## NEW file (1):
-  lib/cloudinary.ts           (upload/delete/URL helper, no SDK)
+## NEW files:
+  lib/library.ts
+  app/library/page.tsx
+  app/library/library-shelf.tsx
+  app/admin/(protected)/library/actions.ts
+  app/admin/(protected)/library/page.tsx
+  app/admin/(protected)/library/library-admin-editor.tsx
 
-## MODIFIED files (2):
-  app/ngedumel/actions.ts     (full rewrite — Supabase Storage → Cloudinary)
-  app/ngedumel/composer.tsx   (storagePath → publicId)
-
-## Cara apply:
-  cp lib/cloudinary.ts ../bbs-site/lib/
-  cp app/ngedumel/actions.ts ../bbs-site/app/ngedumel/
-  cp app/ngedumel/composer.tsx ../bbs-site/app/ngedumel/
-  cp supabase/migrations/010_cloudinary.sql ../bbs-site/supabase/migrations/
-  cd ../bbs-site && git add -A && git commit -m "feat: migrate ngedumel storage to Cloudinary" && git push
-
-## Cloudinary folder structure:
-  ngedumel/images/   ← semua foto dari /ngedumel
-  ngedumel/files/    ← semua dokumen dari /ngedumel
-
-## Test setelah deploy:
-1. /ngedumel → upload foto → cek URL yang muncul di feed
-   harus: https://res.cloudinary.com/your-cloud/image/upload/...
-2. Upload PDF → viewer jalan normal (URL Cloudinary)
-3. Hapus dumel → cek di Cloudinary dashboard, file should be deleted
-4. Admin post images TETAP ke Supabase Storage (tidak berubah)
+## MODIFIED files:
+  lib/site-config.ts               (add /library to nav)
+  app/admin/(protected)/layout.tsx (add library to sidebar)
+  app/globals.css                  (add .input-base + .scrollbar-none)
+  app/sitemap.ts                   (add /library)
