@@ -60,17 +60,40 @@ export async function cloudinaryUpload(
   buffer: Buffer,
   mimeType: string,
   folder: string,
-  resourceType: 'image' | 'raw' = 'image'
+  resourceType: 'image' | 'raw' = 'image',
+  originalFilename?: string  // preserve extension for raw files
 ): Promise<CloudinaryUploadResult> {
   const { cloudName, apiKey, apiSecret, uploadPreset } = getConfig();
 
   const timestamp = Math.floor(Date.now() / 1000).toString();
+
+  // For raw files (documents), build a public_id that preserves the extension.
+  // This is critical: Cloudinary serves the file with the correct Content-Type
+  // based on the extension in public_id.
+  // e.g. public_id "ngedumel/files/abc123.pdf" → Content-Type: application/pdf
+  let publicIdOverride: string | undefined;
+  if (resourceType === 'raw' && originalFilename) {
+    const ext = originalFilename.includes('.')
+      ? originalFilename.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '')
+      : '';
+    // Random 12-char hex prefix to avoid collisions
+    const { randomBytes } = await import('crypto');
+    const rand = randomBytes(6).toString('hex');
+    publicIdOverride = ext
+      ? `${folder}/${rand}.${ext}`
+      : `${folder}/${rand}`;
+  }
 
   // Build params to sign (alphabetical order, no api_key / file / resource_type)
   const paramsToSign: Record<string, string> = {
     folder,
     timestamp,
   };
+  if (publicIdOverride) {
+    paramsToSign.public_id = publicIdOverride;
+    // When public_id is set, folder is implicit — remove to avoid conflict
+    delete paramsToSign.folder;
+  }
   if (uploadPreset) {
     paramsToSign.upload_preset = uploadPreset;
   }
@@ -91,7 +114,11 @@ export async function cloudinaryUpload(
   form.append('api_key', apiKey);
   form.append('timestamp', timestamp);
   form.append('signature', sig);
-  form.append('folder', folder);
+  if (publicIdOverride) {
+    form.append('public_id', publicIdOverride);
+  } else {
+    form.append('folder', folder);
+  }
   if (uploadPreset) form.append('upload_preset', uploadPreset);
 
   const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;

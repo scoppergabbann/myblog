@@ -118,7 +118,7 @@ export async function uploadDumelFile(
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const mime   = mimeOk ? file.type : guessMimeFromExt(ext);
-  const result = await cloudinaryUpload(buffer, mime, 'ngedumel/files', 'raw');
+    const result = await cloudinaryUpload(buffer, mime, 'ngedumel/files', 'raw', file.name);
 
   if (!result.ok) return { ok: false, error: result.error };
   return {
