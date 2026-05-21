@@ -254,7 +254,11 @@ function ItemFormModal({
     item ? String(item.display_order) : '0'
   );
 
-  // Photo upload
+  // Gallery pending photos (urls collected, not saved to DB yet)
+  const [pendingPhotoUrls, setPendingPhotoUrls] = useState<string[]>([]);
+  const itemType = kind === 'books' ? 'book' : kind === 'drinks' ? 'drink' : kind === 'cars' ? 'car' : 'motorcycle';
+
+  // Photo upload (for legacy single cover_url field)
   const handleUpload = async (file: File) => {
     setUploading(true);
     const fd = new FormData();
@@ -327,6 +331,18 @@ function ItemFormModal({
 
     setSaving(false);
     if (result.ok) {
+      // Flush pending gallery photos to DB
+      if (pendingPhotoUrls.length > 0) {
+        const savedId = result.id ?? item?.id;
+        if (savedId) {
+          const existingCount = item?.photos?.length ?? 0;
+          await Promise.all(
+            pendingPhotoUrls.map((url, i) =>
+              addLibraryPhoto(itemType, savedId, url, existingCount + i)
+            )
+          );
+        }
+      }
       toast.success('Tersimpan');
       onSaved();
     } else {
@@ -478,13 +494,15 @@ function ItemFormModal({
             />
           </Field>
 
-          {/* Gallery photos — only shown when editing existing item */}
+          {/* Gallery photos */}
           {item && (
             <GalleryPhotoSection
-              itemType={kind === 'books' ? 'book' : kind === 'drinks' ? 'drink' : kind === 'cars' ? 'car' : 'motorcycle'}
+              itemType={itemType}
               itemId={item.id}
               existingPhotos={item.photos ?? []}
-              onChanged={onSaved}
+              pendingUrls={pendingPhotoUrls}
+              onPendingChange={setPendingPhotoUrls}
+              onDeleted={onSaved}
             />
           )}
           {!item && (
@@ -527,103 +545,87 @@ function ItemFormModal({
 }
 
 // =============================================================================
-// Gallery photo section (edit mode only)
+// Gallery photo section
+// - existingPhotos: already in DB — delete is immediate (deliberate action)
+// - pendingUrls: collected locally, saved to DB only when parent calls handleSave
 // =============================================================================
 
 function GalleryPhotoSection({
   itemType,
   itemId,
   existingPhotos,
-  onChanged,
+  pendingUrls,
+  onPendingChange,
+  onDeleted,
 }: {
   itemType: ItemType;
   itemId: number;
   existingPhotos: LibraryPhoto[];
-  onChanged: () => void;
+  pendingUrls: string[];
+  onPendingChange: (urls: string[]) => void;
+  onDeleted: () => void;
 }) {
   const toast = useToast();
-  // Use local state as source of truth — sync from prop on mount only.
-  // After each mutation we update local state directly so UI reflects
-  // changes immediately without waiting for parent router.refresh().
-  const [photos, setPhotos] = useState<LibraryPhoto[]>(existingPhotos);
+  const [existing, setExisting] = useState<LibraryPhoto[]>(existingPhotos);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [urlInput, setUrlInput] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const MAX_PHOTOS = 6;
 
-  const remaining = MAX_PHOTOS - photos.length;
+  const totalCount = existing.length + pendingUrls.length;
+  const remaining = MAX_PHOTOS - totalCount;
   const isUploading = uploadingCount > 0;
 
-  // Upload one file, return the Cloudinary URL or null on failure
-  const uploadFile = async (file: File): Promise<string | null> => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const res = await uploadLibraryImage(fd);
-    if (res.ok) return res.url;
-    toast.error(`${file.name}: ${res.error}`);
-    return null;
-  };
-
-  // Insert URL into DB and update local state
-  const persistPhoto = async (url: string): Promise<boolean> => {
-    const position = photos.length + (uploadingCount > 0 ? uploadingCount - 1 : 0);
-    const res = await addLibraryPhoto(itemType, itemId, url, position);
-    if (res.ok) {
-      const newPhoto: LibraryPhoto = { id: Date.now() + Math.random(), url, position };
-      setPhotos((prev) => [...prev, newPhoto]);
-      return true;
-    }
-    toast.error(res.error);
-    return false;
-  };
-
-  // Handle multiple files from picker — upload sequentially
+  // Upload file to Cloudinary → add URL to pending (not DB yet)
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-
-    const fileArr = Array.from(files).slice(0, remaining);
+    const toUpload = Array.from(files).slice(0, remaining);
     if (files.length > remaining) {
-      toast.error(`Hanya ${remaining} foto lagi yang bisa ditambahkan (max ${MAX_PHOTOS})`);
+      toast.error(`Hanya ${remaining} slot tersisa (max ${MAX_PHOTOS})`);
     }
-
-    setUploadingCount(fileArr.length);
-    let successCount = 0;
-
-    for (const file of fileArr) {
-      const url = await uploadFile(file);
-      if (url) {
-        const ok = await persistPhoto(url);
-        if (ok) successCount++;
+    setUploadingCount(toUpload.length);
+    const newUrls: string[] = [];
+    for (const file of toUpload) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await uploadLibraryImage(fd);
+      if (res.ok) {
+        newUrls.push(res.url);
+      } else {
+        toast.error(`${file.name}: ${res.error}`);
       }
       setUploadingCount((c) => Math.max(0, c - 1));
     }
-
-    if (successCount > 0) {
-      toast.success(`${successCount} foto ditambahkan`);
-      onChanged(); // tell parent to refresh for next time modal opens
+    if (newUrls.length > 0) {
+      onPendingChange([...pendingUrls, ...newUrls]);
+      toast.success(
+        newUrls.length === 1
+          ? 'Foto siap — klik Simpan untuk menyimpan'
+          : `${newUrls.length} foto siap — klik Simpan untuk menyimpan`
+      );
     }
   };
 
-  const addFromUrl = async () => {
+  // Add URL from input → pending (not DB yet)
+  const addFromUrl = () => {
     const url = urlInput.trim();
-    if (!url || photos.length >= MAX_PHOTOS) return;
-    const ok = await persistPhoto(url);
-    if (ok) {
-      setUrlInput('');
-      toast.success('Foto ditambahkan');
-      onChanged();
-    }
+    if (!url || totalCount >= MAX_PHOTOS) return;
+    onPendingChange([...pendingUrls, url]);
+    setUrlInput('');
+    toast.success('URL ditambahkan — klik Simpan untuk menyimpan');
   };
 
-  const removePhoto = async (photoId: number) => {
+  // Remove pending (just update local array, nothing to undo from DB)
+  const removePending = (idx: number) => {
+    onPendingChange(pendingUrls.filter((_, i) => i !== idx));
+  };
+
+  // Delete existing from DB immediately (deliberate X button action)
+  const removeExisting = async (photoId: number) => {
     const res = await deleteLibraryPhoto(photoId);
     if (res.ok) {
-      setPhotos((prev) => {
-        const next = prev.filter((p) => p.id !== photoId);
-        // Re-normalize positions in local state
-        return next.map((p, i) => ({ ...p, position: i }));
-      });
-      onChanged();
+      setExisting((prev) => prev.filter((p) => p.id !== photoId));
+      onDeleted();
       toast.success('Foto dihapus');
     } else {
       toast.error(res.error);
@@ -634,11 +636,15 @@ function GalleryPhotoSection({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <label className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">
-          Galeri foto ({photos.length}/{MAX_PHOTOS})
+          Galeri foto ({totalCount}/{MAX_PHOTOS})
+          {pendingUrls.length > 0 && (
+            <span className="ml-2 text-[var(--color-accent)]">
+              · {pendingUrls.length} belum disimpan
+            </span>
+          )}
         </label>
         {remaining > 0 && (
           <div className="flex items-center gap-1.5">
-            {/* Hidden file input — multiple enabled */}
             <input
               ref={fileRef}
               type="file"
@@ -657,56 +663,80 @@ function GalleryPhotoSection({
               className="rounded-md border border-[var(--color-line)] px-2 py-1 text-[11.5px] text-[var(--color-ink-2)] hover:border-[var(--color-accent)] disabled:opacity-50"
             >
               {isUploading
-                ? `Upload... (${uploadingCount} tersisa)`
+                ? `Upload... (${uploadingCount})`
                 : `+ Upload${remaining > 1 ? ` (max ${remaining})` : ''}`}
             </button>
           </div>
         )}
       </div>
 
-      {/* Thumbnail grid */}
-      {photos.length > 0 ? (
+      {/* Grid: existing (saved) + pending (unsaved) + uploading placeholders */}
+      {(totalCount > 0 || isUploading) && (
         <div className="mb-2 grid grid-cols-3 gap-2">
-          {photos.map((photo, idx) => (
+          {/* Saved photos */}
+          {existing.map((photo, idx) => (
             <div
               key={photo.id}
               className="group relative aspect-square overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-[var(--color-paper-2)]"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={photo.url} alt="" className="h-full w-full object-cover" loading="lazy" />
-              {idx === 0 && (
-                <div className="absolute left-1 top-1 rounded bg-black/60 px-1 font-mono text-[9px] text-white">
-                  cover
-                </div>
+              {idx === 0 && pendingUrls.length === 0 && (
+                <div className="absolute left-1 top-1 rounded bg-black/60 px-1 font-mono text-[9px] text-white">cover</div>
               )}
               <button
                 type="button"
-                onClick={() => removePhoto(photo.id)}
+                onClick={() => removeExisting(photo.id)}
                 aria-label="Hapus foto"
                 className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
           ))}
 
-          {/* Upload progress placeholders */}
+          {/* Pending photos (unsaved) */}
+          {pendingUrls.map((url, idx) => (
+            <div
+              key={`pending-${idx}`}
+              className="group relative aspect-square overflow-hidden rounded-[8px] border-2 border-dashed border-[var(--color-accent)] bg-[var(--color-accent-soft)]"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" className="h-full w-full object-cover opacity-80" loading="lazy" />
+              <div className="absolute left-1 top-1 rounded bg-[var(--color-accent)]/80 px-1 font-mono text-[9px] text-white">
+                belum disimpan
+              </div>
+              <button
+                type="button"
+                onClick={() => removePending(idx)}
+                aria-label="Batalkan foto ini"
+                className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ))}
+
+          {/* Uploading placeholders */}
           {uploadingCount > 0 &&
             Array.from({ length: uploadingCount }).map((_, i) => (
               <div
                 key={`uploading-${i}`}
-                className="flex aspect-square items-center justify-center rounded-[8px] border border-dashed border-[var(--color-accent)] bg-[var(--color-accent-soft)]"
+                className="flex aspect-square items-center justify-center rounded-[8px] border border-dashed border-[var(--color-line)] bg-[var(--color-paper-2)]"
               >
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-line-2)] border-t-[var(--color-accent)]" />
               </div>
             ))}
         </div>
-      ) : (
+      )}
+
+      {totalCount === 0 && !isUploading && (
         <p className="mb-2 text-[12px] text-[var(--color-ink-4)]">
-          Belum ada foto galeri. Foto pertama yang diupload akan jadi cover card.
+          Belum ada foto. Foto pertama = cover card di halaman library.
         </p>
       )}
 
@@ -719,9 +749,7 @@ function GalleryPhotoSection({
             onChange={(e) => setUrlInput(e.target.value)}
             placeholder="atau paste URL foto (imgur, google photos, dll)"
             className="input-base flex-1 text-[12px]"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); addFromUrl(); }
-            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addFromUrl(); } }}
           />
           <button
             type="button"
@@ -733,8 +761,9 @@ function GalleryPhotoSection({
           </button>
         </div>
       )}
-      <p className="mt-1 font-mono text-[10.5px] text-[var(--color-ink-4)]">
-        Foto pertama = cover di grid. Max 6. Bisa pilih banyak foto sekaligus.
+
+      <p className="mt-1.5 font-mono text-[10.5px] text-[var(--color-ink-4)]">
+        Foto dengan border oranye belum tersimpan — klik <strong>Simpan</strong> untuk menyimpan ke database.
       </p>
     </div>
   );

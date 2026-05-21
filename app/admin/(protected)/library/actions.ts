@@ -11,7 +11,7 @@ async function requireAdmin() {
 }
 
 export type LibraryActionResult =
-  | { ok: true }
+  | { ok: true; id?: number }
   | { ok: false; error: string };
 
 // =============================================================================
@@ -54,13 +54,19 @@ export async function upsertBook(
 ): Promise<LibraryActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
-  const { error } = id
-    ? await supabase.from('library_books').update(data).eq('id', id)
-    : await supabase.from('library_books').insert(data);
-  if (error) return { ok: false, error: error.message };
+  let savedId: number | undefined;
+  if (id) {
+    const { error } = await supabase.from('library_books').update(data).eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    savedId = id;
+  } else {
+    const { data: inserted, error } = await supabase.from('library_books').insert(data).select('id').single();
+    if (error || !inserted) return { ok: false, error: error?.message ?? 'Insert failed' };
+    savedId = inserted.id;
+  }
   revalidatePath('/library');
   revalidatePath('/admin/library');
-  return { ok: true };
+  return { ok: true, id: savedId };
 }
 
 export async function deleteBook(id: number): Promise<LibraryActionResult> {
@@ -91,13 +97,19 @@ export async function upsertDrink(
 ): Promise<LibraryActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
-  const { error } = id
-    ? await supabase.from('library_drinks').update(data).eq('id', id)
-    : await supabase.from('library_drinks').insert(data);
-  if (error) return { ok: false, error: error.message };
+  let savedId: number | undefined;
+  if (id) {
+    const { error } = await supabase.from('library_drinks').update(data).eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    savedId = id;
+  } else {
+    const { data: inserted, error } = await supabase.from('library_drinks').insert(data).select('id').single();
+    if (error || !inserted) return { ok: false, error: error?.message ?? 'Insert failed' };
+    savedId = inserted.id;
+  }
   revalidatePath('/library');
   revalidatePath('/admin/library');
-  return { ok: true };
+  return { ok: true, id: savedId };
 }
 
 export async function deleteDrink(id: number): Promise<LibraryActionResult> {
@@ -129,13 +141,19 @@ export async function upsertCar(
 ): Promise<LibraryActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
-  const { error } = id
-    ? await supabase.from('library_cars').update(data).eq('id', id)
-    : await supabase.from('library_cars').insert(data);
-  if (error) return { ok: false, error: error.message };
+  let savedId: number | undefined;
+  if (id) {
+    const { error } = await supabase.from('library_cars').update(data).eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    savedId = id;
+  } else {
+    const { data: inserted, error } = await supabase.from('library_cars').insert(data).select('id').single();
+    if (error || !inserted) return { ok: false, error: error?.message ?? 'Insert failed' };
+    savedId = inserted.id;
+  }
   revalidatePath('/library');
   revalidatePath('/admin/library');
-  return { ok: true };
+  return { ok: true, id: savedId };
 }
 
 export async function deleteCar(id: number): Promise<LibraryActionResult> {
@@ -167,13 +185,19 @@ export async function upsertMotorcycle(
 ): Promise<LibraryActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
-  const { error } = id
-    ? await supabase.from('library_motorcycles').update(data).eq('id', id)
-    : await supabase.from('library_motorcycles').insert(data);
-  if (error) return { ok: false, error: error.message };
+  let savedId: number | undefined;
+  if (id) {
+    const { error } = await supabase.from('library_motorcycles').update(data).eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    savedId = id;
+  } else {
+    const { data: inserted, error } = await supabase.from('library_motorcycles').insert(data).select('id').single();
+    if (error || !inserted) return { ok: false, error: error?.message ?? 'Insert failed' };
+    savedId = inserted.id;
+  }
   revalidatePath('/library');
   revalidatePath('/admin/library');
-  return { ok: true };
+  return { ok: true, id: savedId };
 }
 
 export async function deleteMotorcycle(id: number): Promise<LibraryActionResult> {
