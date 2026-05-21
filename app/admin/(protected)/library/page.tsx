@@ -5,6 +5,7 @@ import type {
   LibraryDrink,
   LibraryCar,
   LibraryMotorcycle,
+  LibraryPhoto,
 } from '@/lib/library';
 
 export const dynamic = 'force-dynamic';
@@ -12,12 +13,29 @@ export const dynamic = 'force-dynamic';
 export default async function LibraryAdminPage() {
   const supabase = createSupabaseAdmin();
 
-  const [books, drinks, cars, motorcycles] = await Promise.all([
+  const [books, drinks, cars, motorcycles, photos] = await Promise.all([
     supabase.from('library_books').select('*').order('display_order').order('created_at', { ascending: false }),
     supabase.from('library_drinks').select('*').order('display_order').order('created_at', { ascending: false }),
     supabase.from('library_cars').select('*').order('display_order').order('created_at', { ascending: false }),
     supabase.from('library_motorcycles').select('*').order('display_order').order('created_at', { ascending: false }),
+    supabase.from('library_photos').select('id, item_type, item_id, url, position').order('position'),
   ]);
+
+  // Group photos by "type:id" key
+  const photoMap: Record<string, LibraryPhoto[]> = {};
+  for (const p of photos.data ?? []) {
+    const key = `${p.item_type}:${p.item_id}`;
+    if (!photoMap[key]) photoMap[key] = [];
+    photoMap[key].push({ id: p.id, url: p.url, position: p.position });
+  }
+
+  const attach = <T extends { id: number }>(items: T[], type: string) =>
+    items.map((item) => ({
+      ...item,
+      photos: (photoMap[`${type}:${item.id}`] ?? []).sort(
+        (a, b) => a.position - b.position
+      ),
+    }));
 
   return (
     <div className="page-fade">
@@ -40,10 +58,10 @@ export default async function LibraryAdminPage() {
       </div>
 
       <LibraryAdminEditor
-        books={(books.data ?? []) as LibraryBook[]}
-        drinks={(drinks.data ?? []) as LibraryDrink[]}
-        cars={(cars.data ?? []) as LibraryCar[]}
-        motorcycles={(motorcycles.data ?? []) as LibraryMotorcycle[]}
+        books={attach(books.data ?? [], 'book') as LibraryBook[]}
+        drinks={attach(drinks.data ?? [], 'drink') as LibraryDrink[]}
+        cars={attach(cars.data ?? [], 'car') as LibraryCar[]}
+        motorcycles={attach(motorcycles.data ?? [], 'motorcycle') as LibraryMotorcycle[]}
       />
     </div>
   );

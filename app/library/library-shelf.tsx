@@ -470,7 +470,7 @@ function DetailModal({
             )}
           </div>
           <p className="mt-3 font-mono text-[10.5px] text-[var(--color-ink-4)]">
-            esc · ← → untuk navigasi foto
+            {hasMultiple ? 'esc · ← → untuk navigasi foto' : 'esc untuk tutup'}
           </p>
         </div>
       </div>
