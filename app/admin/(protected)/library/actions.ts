@@ -142,3 +142,17 @@ export async function deleteItemPhoto(photoId: number): Promise<ActionResult> {
   revalidate();
   return { ok: true };
 }
+
+export async function reorderItemPhotos(
+  updates: { id: number; position: number }[]
+): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = createSupabaseAdmin();
+  await Promise.all(
+    updates.map(({ id, position }) =>
+      supabase.from('library_photos').update({ position }).eq('id', id)
+    )
+  );
+  revalidate();
+  return { ok: true };
+}
