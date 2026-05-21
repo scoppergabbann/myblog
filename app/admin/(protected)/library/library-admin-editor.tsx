@@ -542,58 +542,87 @@ function GalleryPhotoSection({
   onChanged: () => void;
 }) {
   const toast = useToast();
+  // Use local state as source of truth — sync from prop on mount only.
+  // After each mutation we update local state directly so UI reflects
+  // changes immediately without waiting for parent router.refresh().
   const [photos, setPhotos] = useState<LibraryPhoto[]>(existingPhotos);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [urlInput, setUrlInput] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const MAX_PHOTOS = 6;
 
-  const uploadAndAdd = async (file: File) => {
-    if (photos.length >= MAX_PHOTOS) {
-      toast.error(`Max ${MAX_PHOTOS} foto`);
-      return;
-    }
-    setUploading(true);
+  const remaining = MAX_PHOTOS - photos.length;
+  const isUploading = uploadingCount > 0;
+
+  // Upload one file, return the Cloudinary URL or null on failure
+  const uploadFile = async (file: File): Promise<string | null> => {
     const fd = new FormData();
     fd.append('file', file);
     const res = await uploadLibraryImage(fd);
+    if (res.ok) return res.url;
+    toast.error(`${file.name}: ${res.error}`);
+    return null;
+  };
+
+  // Insert URL into DB and update local state
+  const persistPhoto = async (url: string): Promise<boolean> => {
+    const position = photos.length + (uploadingCount > 0 ? uploadingCount - 1 : 0);
+    const res = await addLibraryPhoto(itemType, itemId, url, position);
     if (res.ok) {
-      await addPhoto(res.url);
-    } else {
-      toast.error(res.error);
+      const newPhoto: LibraryPhoto = { id: Date.now() + Math.random(), url, position };
+      setPhotos((prev) => [...prev, newPhoto]);
+      return true;
     }
-    setUploading(false);
+    toast.error(res.error);
+    return false;
+  };
+
+  // Handle multiple files from picker — upload sequentially
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const fileArr = Array.from(files).slice(0, remaining);
+    if (files.length > remaining) {
+      toast.error(`Hanya ${remaining} foto lagi yang bisa ditambahkan (max ${MAX_PHOTOS})`);
+    }
+
+    setUploadingCount(fileArr.length);
+    let successCount = 0;
+
+    for (const file of fileArr) {
+      const url = await uploadFile(file);
+      if (url) {
+        const ok = await persistPhoto(url);
+        if (ok) successCount++;
+      }
+      setUploadingCount((c) => Math.max(0, c - 1));
+    }
+
+    if (successCount > 0) {
+      toast.success(`${successCount} foto ditambahkan`);
+      onChanged(); // tell parent to refresh for next time modal opens
+    }
   };
 
   const addFromUrl = async () => {
     const url = urlInput.trim();
-    if (!url) return;
-    if (photos.length >= MAX_PHOTOS) {
-      toast.error(`Max ${MAX_PHOTOS} foto`);
-      return;
-    }
-    await addPhoto(url);
-    setUrlInput('');
-  };
-
-  const addPhoto = async (url: string) => {
-    const position = photos.length;
-    const res = await addLibraryPhoto(itemType, itemId, url, position);
-    if (res.ok) {
-      // Optimistic update — router.refresh will sync from server
-      const fake: LibraryPhoto = { id: Date.now(), url, position };
-      setPhotos((prev) => [...prev, fake]);
-      onChanged();
+    if (!url || photos.length >= MAX_PHOTOS) return;
+    const ok = await persistPhoto(url);
+    if (ok) {
+      setUrlInput('');
       toast.success('Foto ditambahkan');
-    } else {
-      toast.error(res.error);
+      onChanged();
     }
   };
 
   const removePhoto = async (photoId: number) => {
     const res = await deleteLibraryPhoto(photoId);
     if (res.ok) {
-      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+      setPhotos((prev) => {
+        const next = prev.filter((p) => p.id !== photoId);
+        // Re-normalize positions in local state
+        return next.map((p, i) => ({ ...p, position: i }));
+      });
       onChanged();
       toast.success('Foto dihapus');
     } else {
@@ -607,26 +636,29 @@ function GalleryPhotoSection({
         <label className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">
           Galeri foto ({photos.length}/{MAX_PHOTOS})
         </label>
-        {photos.length < MAX_PHOTOS && (
+        {remaining > 0 && (
           <div className="flex items-center gap-1.5">
+            {/* Hidden file input — multiple enabled */}
             <input
               ref={fileRef}
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) uploadAndAdd(f);
+                handleFiles(e.target.files);
                 e.target.value = '';
               }}
             />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              disabled={uploading}
+              disabled={isUploading}
               className="rounded-md border border-[var(--color-line)] px-2 py-1 text-[11.5px] text-[var(--color-ink-2)] hover:border-[var(--color-accent)] disabled:opacity-50"
             >
-              {uploading ? 'Upload...' : '+ Upload'}
+              {isUploading
+                ? `Upload... (${uploadingCount} tersisa)`
+                : `+ Upload${remaining > 1 ? ` (max ${remaining})` : ''}`}
             </button>
           </div>
         )}
@@ -636,9 +668,12 @@ function GalleryPhotoSection({
       {photos.length > 0 ? (
         <div className="mb-2 grid grid-cols-3 gap-2">
           {photos.map((photo, idx) => (
-            <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-[var(--color-paper-2)]">
+            <div
+              key={photo.id}
+              className="group relative aspect-square overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-[var(--color-paper-2)]"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo.url} alt="" className="h-full w-full object-cover" />
+              <img src={photo.url} alt="" className="h-full w-full object-cover" loading="lazy" />
               {idx === 0 && (
                 <div className="absolute left-1 top-1 rounded bg-black/60 px-1 font-mono text-[9px] text-white">
                   cover
@@ -651,11 +686,23 @@ function GalleryPhotoSection({
                 className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
           ))}
+
+          {/* Upload progress placeholders */}
+          {uploadingCount > 0 &&
+            Array.from({ length: uploadingCount }).map((_, i) => (
+              <div
+                key={`uploading-${i}`}
+                className="flex aspect-square items-center justify-center rounded-[8px] border border-dashed border-[var(--color-accent)] bg-[var(--color-accent-soft)]"
+              >
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-line-2)] border-t-[var(--color-accent)]" />
+              </div>
+            ))}
         </div>
       ) : (
         <p className="mb-2 text-[12px] text-[var(--color-ink-4)]">
@@ -664,7 +711,7 @@ function GalleryPhotoSection({
       )}
 
       {/* URL input */}
-      {photos.length < MAX_PHOTOS && (
+      {remaining > 0 && (
         <div className="flex gap-2">
           <input
             type="url"
@@ -672,7 +719,9 @@ function GalleryPhotoSection({
             onChange={(e) => setUrlInput(e.target.value)}
             placeholder="atau paste URL foto (imgur, google photos, dll)"
             className="input-base flex-1 text-[12px]"
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addFromUrl(); } }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); addFromUrl(); }
+            }}
           />
           <button
             type="button"
@@ -685,7 +734,7 @@ function GalleryPhotoSection({
         </div>
       )}
       <p className="mt-1 font-mono text-[10.5px] text-[var(--color-ink-4)]">
-        Foto pertama = cover di grid. Max 6. Hapus dengan hover → klik ×.
+        Foto pertama = cover di grid. Max 6. Bisa pilih banyak foto sekaligus.
       </p>
     </div>
   );
