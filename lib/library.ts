@@ -86,8 +86,6 @@ export async function getLibraryData(): Promise<LibraryData> {
     photoMap[id].sort((a, b) => a.position - b.position);
   }
 
-  // add new line
-
   // Attach photos to items + group by category
   const itemsByCategory: Record<number, LibraryItem[]> = {};
   for (const item of rawItems) {
