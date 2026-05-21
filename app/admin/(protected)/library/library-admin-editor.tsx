@@ -8,6 +8,7 @@ import type {
   LibraryDrink,
   LibraryCar,
   LibraryMotorcycle,
+  LibraryPhoto,
 } from '@/lib/library';
 import {
   BOOK_STATUS_LABELS,
@@ -17,6 +18,9 @@ import {
 } from '@/lib/library';
 import {
   uploadLibraryImage,
+  addLibraryPhoto,
+  deleteLibraryPhoto,
+  type ItemType,
   upsertBook,
   deleteBook,
   upsertDrink,
@@ -474,6 +478,23 @@ function ItemFormModal({
             />
           </Field>
 
+          {/* Gallery photos — only shown when editing existing item */}
+          {item && (
+            <GalleryPhotoSection
+              itemType={kind === 'books' ? 'book' : kind === 'drinks' ? 'drink' : kind === 'cars' ? 'car' : 'motorcycle'}
+              itemId={item.id}
+              existingPhotos={item.photos ?? []}
+              onChanged={onSaved}
+            />
+          )}
+          {!item && (
+            <div className="rounded-[8px] border border-dashed border-[var(--color-line)] p-3 text-center">
+              <p className="text-[12px] text-[var(--color-ink-3)]">
+                💡 Galeri foto bisa ditambahkan setelah item disimpan pertama kali.
+              </p>
+            </div>
+          )}
+
           {/* Display order */}
           <Field label="Urutan tampil (angka kecil = lebih atas)">
             <input
@@ -501,6 +522,171 @@ function ItemFormModal({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Gallery photo section (edit mode only)
+// =============================================================================
+
+function GalleryPhotoSection({
+  itemType,
+  itemId,
+  existingPhotos,
+  onChanged,
+}: {
+  itemType: ItemType;
+  itemId: number;
+  existingPhotos: LibraryPhoto[];
+  onChanged: () => void;
+}) {
+  const toast = useToast();
+  const [photos, setPhotos] = useState<LibraryPhoto[]>(existingPhotos);
+  const [uploading, setUploading] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  const MAX_PHOTOS = 6;
+
+  const uploadAndAdd = async (file: File) => {
+    if (photos.length >= MAX_PHOTOS) {
+      toast.error(`Max ${MAX_PHOTOS} foto`);
+      return;
+    }
+    setUploading(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await uploadLibraryImage(fd);
+    if (res.ok) {
+      await addPhoto(res.url);
+    } else {
+      toast.error(res.error);
+    }
+    setUploading(false);
+  };
+
+  const addFromUrl = async () => {
+    const url = urlInput.trim();
+    if (!url) return;
+    if (photos.length >= MAX_PHOTOS) {
+      toast.error(`Max ${MAX_PHOTOS} foto`);
+      return;
+    }
+    await addPhoto(url);
+    setUrlInput('');
+  };
+
+  const addPhoto = async (url: string) => {
+    const position = photos.length;
+    const res = await addLibraryPhoto(itemType, itemId, url, position);
+    if (res.ok) {
+      // Optimistic update — router.refresh will sync from server
+      const fake: LibraryPhoto = { id: Date.now(), url, position };
+      setPhotos((prev) => [...prev, fake]);
+      onChanged();
+      toast.success('Foto ditambahkan');
+    } else {
+      toast.error(res.error);
+    }
+  };
+
+  const removePhoto = async (photoId: number) => {
+    const res = await deleteLibraryPhoto(photoId);
+    if (res.ok) {
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+      onChanged();
+      toast.success('Foto dihapus');
+    } else {
+      toast.error(res.error);
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <label className="font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">
+          Galeri foto ({photos.length}/{MAX_PHOTOS})
+        </label>
+        {photos.length < MAX_PHOTOS && (
+          <div className="flex items-center gap-1.5">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) uploadAndAdd(f);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="rounded-md border border-[var(--color-line)] px-2 py-1 text-[11.5px] text-[var(--color-ink-2)] hover:border-[var(--color-accent)] disabled:opacity-50"
+            >
+              {uploading ? 'Upload...' : '+ Upload'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Thumbnail grid */}
+      {photos.length > 0 ? (
+        <div className="mb-2 grid grid-cols-3 gap-2">
+          {photos.map((photo, idx) => (
+            <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-[8px] border border-[var(--color-line)] bg-[var(--color-paper-2)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo.url} alt="" className="h-full w-full object-cover" />
+              {idx === 0 && (
+                <div className="absolute left-1 top-1 rounded bg-black/60 px-1 font-mono text-[9px] text-white">
+                  cover
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => removePhoto(photo.id)}
+                aria-label="Hapus foto"
+                className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mb-2 text-[12px] text-[var(--color-ink-4)]">
+          Belum ada foto galeri. Foto pertama yang diupload akan jadi cover card.
+        </p>
+      )}
+
+      {/* URL input */}
+      {photos.length < MAX_PHOTOS && (
+        <div className="flex gap-2">
+          <input
+            type="url"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            placeholder="atau paste URL foto (imgur, google photos, dll)"
+            className="input-base flex-1 text-[12px]"
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addFromUrl(); } }}
+          />
+          <button
+            type="button"
+            onClick={addFromUrl}
+            disabled={!urlInput.trim()}
+            className="rounded-md border border-[var(--color-line)] px-2.5 py-1 text-[12px] text-[var(--color-ink-2)] hover:border-[var(--color-accent)] disabled:opacity-40"
+          >
+            Tambah
+          </button>
+        </div>
+      )}
+      <p className="mt-1 font-mono text-[10.5px] text-[var(--color-ink-4)]">
+        Foto pertama = cover di grid. Max 6. Hapus dengan hover → klik ×.
+      </p>
     </div>
   );
 }
