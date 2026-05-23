@@ -10,16 +10,18 @@ async function requireAdmin() {
   if (!isAdmin(session)) throw new Error('Unauthorized');
 }
 
-export type LibraryActionResult =
-  | { ok: true }
+export type ActionResult =
+  | { ok: true; id?: number }
   | { ok: false; error: string };
 
-// =============================================================================
-// Image upload helper (Cloudinary)
-// =============================================================================
+const revalidate = () => {
+  revalidatePath('/library');
+  revalidatePath('/admin/library');
+};
 
-const ALLOWED_IMG = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
-const MAX_IMG_SIZE = 8 * 1024 * 1024; // 8 MB
+// =============================================================================
+// Image upload → Cloudinary
+// =============================================================================
 
 export async function uploadLibraryImage(
   formData: FormData
@@ -27,8 +29,9 @@ export async function uploadLibraryImage(
   await requireAdmin();
   const file = formData.get('file');
   if (!file || !(file instanceof File)) return { ok: false, error: 'No file' };
-  if (file.size > MAX_IMG_SIZE) return { ok: false, error: 'Max 8MB' };
-  if (!ALLOWED_IMG.has(file.type)) return { ok: false, error: 'Format tidak didukung' };
+  if (file.size > 8 * 1024 * 1024) return { ok: false, error: 'Max 8MB' };
+  const allowed = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+  if (!allowed.has(file.type)) return { ok: false, error: 'Format tidak didukung' };
   const buffer = Buffer.from(await file.arrayBuffer());
   const result = await cloudinaryUpload(buffer, file.type, 'library', 'image');
   if (!result.ok) return { ok: false, error: result.error };
@@ -36,192 +39,113 @@ export async function uploadLibraryImage(
 }
 
 // =============================================================================
-// Books
+// Categories CRUD
 // =============================================================================
 
-export async function upsertBook(
+export async function upsertCategory(
+  id: number | null,
+  data: { name: string; emoji: string; description: string | null; display_order: number }
+): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = createSupabaseAdmin();
+  if (id) {
+    const { error } = await supabase.from('library_categories').update(data).eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    revalidate();
+    return { ok: true, id };
+  } else {
+    const { data: inserted, error } = await supabase
+      .from('library_categories').insert(data).select('id').single();
+    if (error || !inserted) return { ok: false, error: error?.message ?? 'Insert failed' };
+    revalidate();
+    return { ok: true, id: inserted.id };
+  }
+}
+
+export async function deleteCategory(id: number): Promise<ActionResult> {
+  await requireAdmin();
+  const supabase = createSupabaseAdmin();
+  // Items are cascade-deleted by DB FK
+  const { error } = await supabase.from('library_categories').delete().eq('id', id);
+  if (error) return { ok: false, error: error.message };
+  revalidate();
+  return { ok: true };
+}
+
+// =============================================================================
+// Items CRUD
+// =============================================================================
+
+export async function upsertItem(
   id: number | null,
   data: {
-    title: string;
-    author: string;
-    cover_url: string | null;
-    year_read: number | null;
+    category_id: number;
+    name: string;
+    subtitle: string | null;
     description: string | null;
-    status: string;
+    badge: string | null;
+    reels_url: string | null;
     link_url: string | null;
     display_order: number;
   }
-): Promise<LibraryActionResult> {
+): Promise<ActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
-  const { error } = id
-    ? await supabase.from('library_books').update(data).eq('id', id)
-    : await supabase.from('library_books').insert(data);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
-  return { ok: true };
-}
-
-export async function deleteBook(id: number): Promise<LibraryActionResult> {
-  await requireAdmin();
-  const supabase = createSupabaseAdmin();
-  const { error } = await supabase.from('library_books').delete().eq('id', id);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
-  return { ok: true };
-}
-
-// =============================================================================
-// Drinks
-// =============================================================================
-
-export async function upsertDrink(
-  id: number | null,
-  data: {
-    name: string;
-    brand: string | null;
-    photo_url: string | null;
-    description: string | null;
-    category: string;
-    reels_url: string | null;
-    display_order: number;
+  if (id) {
+    const { error } = await supabase.from('library_items').update(data).eq('id', id);
+    if (error) return { ok: false, error: error.message };
+    revalidate();
+    return { ok: true, id };
+  } else {
+    const { data: inserted, error } = await supabase
+      .from('library_items').insert(data).select('id').single();
+    if (error || !inserted) return { ok: false, error: error?.message ?? 'Insert failed' };
+    revalidate();
+    return { ok: true, id: inserted.id };
   }
-): Promise<LibraryActionResult> {
-  await requireAdmin();
-  const supabase = createSupabaseAdmin();
-  const { error } = id
-    ? await supabase.from('library_drinks').update(data).eq('id', id)
-    : await supabase.from('library_drinks').insert(data);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
-  return { ok: true };
 }
 
-export async function deleteDrink(id: number): Promise<LibraryActionResult> {
+export async function deleteItem(id: number): Promise<ActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
-  const { error } = await supabase.from('library_drinks').delete().eq('id', id);
+  const { error } = await supabase.from('library_items').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
+  revalidate();
   return { ok: true };
 }
 
 // =============================================================================
-// Cars
+// Photos CRUD (tied to new_item_id)
 // =============================================================================
 
-export async function upsertCar(
-  id: number | null,
-  data: {
-    name: string;
-    model: string | null;
-    year: number | null;
-    photo_url: string | null;
-    description: string | null;
-    status: string;
-    reels_url: string | null;
-    display_order: number;
-  }
-): Promise<LibraryActionResult> {
-  await requireAdmin();
-  const supabase = createSupabaseAdmin();
-  const { error } = id
-    ? await supabase.from('library_cars').update(data).eq('id', id)
-    : await supabase.from('library_cars').insert(data);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
-  return { ok: true };
-}
-
-export async function deleteCar(id: number): Promise<LibraryActionResult> {
-  await requireAdmin();
-  const supabase = createSupabaseAdmin();
-  const { error } = await supabase.from('library_cars').delete().eq('id', id);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
-  return { ok: true };
-}
-
-// =============================================================================
-// Motorcycles
-// =============================================================================
-
-export async function upsertMotorcycle(
-  id: number | null,
-  data: {
-    name: string;
-    model: string | null;
-    year: number | null;
-    photo_url: string | null;
-    description: string | null;
-    status: string;
-    reels_url: string | null;
-    display_order: number;
-  }
-): Promise<LibraryActionResult> {
-  await requireAdmin();
-  const supabase = createSupabaseAdmin();
-  const { error } = id
-    ? await supabase.from('library_motorcycles').update(data).eq('id', id)
-    : await supabase.from('library_motorcycles').insert(data);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
-  return { ok: true };
-}
-
-export async function deleteMotorcycle(id: number): Promise<LibraryActionResult> {
-  await requireAdmin();
-  const supabase = createSupabaseAdmin();
-  const { error } = await supabase.from('library_motorcycles').delete().eq('id', id);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
-  return { ok: true };
-}
-
-// =============================================================================
-// Library Photos CRUD
-// =============================================================================
-
-export type ItemType = 'book' | 'drink' | 'car' | 'motorcycle';
-
-export async function addLibraryPhoto(
-  itemType: ItemType,
+export async function addItemPhoto(
   itemId: number,
   url: string,
   position: number
-): Promise<LibraryActionResult> {
+): Promise<ActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
-  const { error } = await supabase
+  const { data: inserted, error } = await supabase
     .from('library_photos')
-    .insert({ item_type: itemType, item_id: itemId, url, position });
-  if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
-  return { ok: true };
+    .insert({ new_item_id: itemId, url, position, item_type: 'book', item_id: 0 })
+    .select('id').single();
+  if (error || !inserted) return { ok: false, error: error?.message ?? 'Insert failed' };
+  revalidate();
+  return { ok: true, id: inserted.id };
 }
 
-export async function deleteLibraryPhoto(photoId: number): Promise<LibraryActionResult> {
+export async function deleteItemPhoto(photoId: number): Promise<ActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
   const { error } = await supabase.from('library_photos').delete().eq('id', photoId);
   if (error) return { ok: false, error: error.message };
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
+  revalidate();
   return { ok: true };
 }
 
-export async function reorderLibraryPhotos(
+export async function reorderItemPhotos(
   updates: { id: number; position: number }[]
-): Promise<LibraryActionResult> {
+): Promise<ActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();
   await Promise.all(
@@ -229,7 +153,6 @@ export async function reorderLibraryPhotos(
       supabase.from('library_photos').update({ position }).eq('id', id)
     )
   );
-  revalidatePath('/library');
-  revalidatePath('/admin/library');
+  revalidate();
   return { ok: true };
 }
