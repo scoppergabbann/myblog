@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/admin/toast';
 import type { LibraryCategory, LibraryItem, LibraryPhoto } from '@/lib/library';
@@ -127,7 +127,7 @@ export function LibraryAdminEditor({
                   <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md bg-[var(--color-paper-2)]">
                     {item.photos[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.photos[0].url} alt="" className="h-full w-full object-cover" />
+                      <img src={item.photos[0].url} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-lg opacity-30">📷</div>
                     )}
@@ -291,16 +291,28 @@ function ItemModal({
       if (savedId) {
         // Flush reorders for existing photos
         if (pendingReorders.length > 0) {
-          await reorderItemPhotos(pendingReorders);
+          const reorderRes = await reorderItemPhotos(pendingReorders);
+          if (!reorderRes.ok) {
+            toast.error(reorderRes.error);
+            setSaving(false);
+            return;
+          }
         }
-        // Insert pending new photos at correct positions
+
+        // Insert pending new photos.
+        // Posisi dimulai setelah jumlah foto existing agar cover lama tidak ketimpa secara acak.
         if (pendingPhotoUrls.length > 0) {
-          const reorderedExistingCount = item?.photos?.length ?? 0;
-          await Promise.all(
-            pendingPhotoUrls.map((url, i) =>
-              addItemPhoto(savedId, url, reorderedExistingCount + i)
-            )
+          const existingCount = item?.photos?.length ?? 0;
+          const photoResults = await Promise.all(
+            pendingPhotoUrls.map((url, i) => addItemPhoto(savedId, url, existingCount + i))
           );
+
+          const failedPhoto = photoResults.find((r) => !r.ok);
+          if (failedPhoto && !failedPhoto.ok) {
+            toast.error(failedPhoto.error);
+            setSaving(false);
+            return;
+          }
         }
       }
       toast.success('Tersimpan');
@@ -394,6 +406,15 @@ function GallerySection({
     ...existingPhotos.map((p) => ({ kind: 'existing' as const, photo: p })),
     ...pendingUrls.map((url, i) => ({ kind: 'pending' as const, url, tempId: `init-${i}` })),
   ]);
+
+  // Penting: ketika router.refresh() selesai, props item.photos berubah.
+  // Tanpa sync ini, modal/list bisa tetap menampilkan state lama.
+  useEffect(() => {
+    setEntries([
+      ...existingPhotos.map((p) => ({ kind: 'existing' as const, photo: p })),
+      ...pendingUrls.map((url, i) => ({ kind: 'pending' as const, url, tempId: `pending-${i}-${url}` })),
+    ]);
+  }, [itemId, existingPhotos, pendingUrls]);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [urlInput, setUrlInput] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -520,7 +541,7 @@ function GallerySection({
                 className={`group relative aspect-square cursor-grab overflow-hidden rounded-[8px] active:cursor-grabbing ${isPending ? 'border-2 border-dashed border-[var(--color-accent)]' : 'border border-[var(--color-line)]'} bg-[var(--color-paper-2)]`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                 {isCover && (
                   <div className="absolute left-1 top-1 rounded bg-[var(--color-accent)] px-1.5 py-0.5 font-mono text-[9px] font-bold text-white">cover</div>
                 )}
