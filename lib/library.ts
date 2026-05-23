@@ -73,29 +73,18 @@ export async function getLibraryData(): Promise<LibraryData> {
   const categories = (categoriesResult.data ?? []) as LibraryCategory[];
   const rawItems = (itemsResult.data ?? []) as LibraryItem[];
 
-<<<<<<< HEAD
   // Group photos by new_item_id — use Number() to ensure numeric keys
   const photoMap: Record<number, LibraryPhoto[]> = {};
   for (const p of photosResult.data ?? []) {
     const id = Number((p as any).new_item_id);
     if (!id) continue;
-=======
-  // Group photos by new_item_id
-  const photoMap: Record<number, LibraryPhoto[]> = {};
-  for (const p of photosResult.data ?? []) {
-    const id = (p as any).new_item_id as number;
->>>>>>> a6b1812e420699f98f619cdeb032d64bde78b950
     if (!photoMap[id]) photoMap[id] = [];
     photoMap[id].push({ id: p.id, url: p.url, position: p.position });
   }
 
   // Sort photos within each item
   for (const id in photoMap) {
-<<<<<<< HEAD
     photoMap[Number(id)].sort((a, b) => a.position - b.position);
-=======
-    photoMap[id].sort((a, b) => a.position - b.position);
->>>>>>> a6b1812e420699f98f619cdeb032d64bde78b950
   }
 
   // Attach photos to items + group by category

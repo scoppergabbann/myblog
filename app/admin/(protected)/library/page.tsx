@@ -17,18 +17,11 @@ export default async function LibraryAdminPage() {
   const categories = (categoriesResult.data ?? []) as LibraryCategory[];
   const rawItems = (itemsResult.data ?? []) as LibraryItem[];
 
-<<<<<<< HEAD
   // Attach photos to items — Number() ensures consistent numeric keys
   const photoMap: Record<number, LibraryPhoto[]> = {};
   for (const p of photosResult.data ?? []) {
     const id = Number((p as any).new_item_id);
     if (!id) continue;
-=======
-  // Attach photos to items
-  const photoMap: Record<number, LibraryPhoto[]> = {};
-  for (const p of photosResult.data ?? []) {
-    const id = (p as any).new_item_id as number;
->>>>>>> a6b1812e420699f98f619cdeb032d64bde78b950
     if (!photoMap[id]) photoMap[id] = [];
     photoMap[id].push({ id: p.id, url: p.url, position: p.position });
   }
