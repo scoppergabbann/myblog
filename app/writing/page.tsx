@@ -22,6 +22,11 @@ export default async function WritingPage({
   const allWritings = await getAllWritings();
   const tags = ['all', ...(await getAllTags())];
 
+const visibleWritingsCount = allWritings.filter((post) => {
+  const postTags = post.tags ?? [];
+  return !postTags.some((tag) => ['investasi', 'saham'].includes(tag));
+}).length;
+
   const totalPages = Math.max(1, Math.ceil(allWritings.length / PAGE_SIZE));
   const requested = Number(sp.page ?? 1);
   const page = Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : 1;
@@ -40,8 +45,7 @@ export default async function WritingPage({
             Tulisan
           </h1>
           <p className="text-[15.5px] text-[var(--color-ink-3)]">
-            Catatan tentang engineering, menulis, investasi pelan-pelan, dan
-            internet personal. {allWritings.length} artikel, ditulis ketika
+            Kebun kecil berisi catatan, cerita, pengalaman, dan hal-hal yang saya temui pelan-pelan. {allWritings.length} artikel, ditulis ketika
             senggang.
           </p>
         </div>
