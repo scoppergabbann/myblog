@@ -45,7 +45,7 @@ const visibleWritingsCount = allWritings.filter((post) => {
             Tulisan
           </h1>
           <p className="text-[15.5px] text-[var(--color-ink-3)]">
-            Kebun kecil berisi catatan, cerita, pengalaman, dan hal-hal yang saya temui pelan-pelan. {allWritings.length} artikel, ditulis ketika
+            Kebun kecil berisi catatan, cerita, pengalaman, dan hal-hal yang saya temui pelan-pelan. {visibleWritingsCount} artikel, ditulis ketika
             senggang.
           </p>
         </div>
