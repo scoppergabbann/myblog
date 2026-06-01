@@ -20,10 +20,123 @@ function validateSlug(slug: string): string | null {
   if (!slug || slug.length < 1 || slug.length > 80) {
     return 'Slug harus antara 1-80 karakter.';
   }
+
   if (!/^[a-z0-9-]+$/.test(slug)) {
     return 'Slug hanya boleh lowercase, angka, dan tanda strip.';
   }
+
   return null;
+}
+
+/**
+ * Input dari <input type="datetime-local" /> biasanya berbentuk:
+ * 2023-04-15T00:00
+ *
+ * Karena kamu ingin semua tanggal/jam dianggap sebagai WIB / GMT+7,
+ * kita JANGAN pakai new Date(value).toISOString().
+ *
+ * Kita simpan eksplisit sebagai:
+ * 2023-04-15T00:00:00+07:00
+ */
+function toJakartaTimestamptz(value: string): string | null {
+  const raw = value.trim();
+
+  if (!raw) return null;
+
+  // Format normal dari datetime-local: YYYY-MM-DDTHH:mm
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) {
+    return `${raw}:00+07:00`;
+  }
+
+  // Jika suatu saat ada detik: YYYY-MM-DDTHH:mm:ss
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(raw)) {
+    return `${raw}+07:00`;
+  }
+
+  throw new Error('Format published_at tidak valid.');
+}
+
+/**
+ * Untuk fallback jika suatu saat published_at otomatis dibutuhkan.
+ * Tetap memakai waktu Asia/Jakarta, bukan UTC polos.
+ */
+function getCurrentJakartaTimestamptz(): string {
+  const jakartaTime = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(new Date());
+
+  return `${jakartaTime.replace(' ', 'T')}+07:00`;
+}
+
+function parseTags(tagsRaw: string): string[] {
+  return tagsRaw
+    ? tagsRaw
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0)
+    : [];
+}
+
+function validatePostPayload({
+  slug,
+  title,
+  summary,
+  content,
+  status,
+}: {
+  slug: string;
+  title: string;
+  summary: string;
+  content: string;
+  status: string;
+}): string | null {
+  const slugErr = validateSlug(slug);
+  if (slugErr) return slugErr;
+
+  if (!title) return 'Title wajib diisi.';
+  if (title.length > 200) return 'Title terlalu panjang.';
+
+  if (!summary) return 'Summary wajib diisi.';
+  if (summary.length > 400) return 'Summary terlalu panjang.';
+
+  if (!content.trim()) return 'Content wajib diisi.';
+
+  if (!['draft', 'published', 'archived'].includes(status)) {
+    return 'Status tidak valid.';
+  }
+
+  return null;
+}
+
+/**
+ * Karena kebutuhanmu adalah relokasi konten lama,
+ * published_at dibuat wajib agar tanggal custom tidak kosong.
+ */
+function getRequiredPublishedAt(publishedAtRaw: string): string | PostFormState {
+  try {
+    const publishedAt = toJakartaTimestamptz(publishedAtRaw);
+
+    if (!publishedAt) {
+      return {
+        ok: false,
+        error: 'Published at wajib diisi.',
+      };
+    }
+
+    return publishedAt;
+  } catch {
+    return {
+      ok: false,
+      error: 'Format published at tidak valid.',
+    };
+  }
 }
 
 export async function createPost(
@@ -40,34 +153,29 @@ export async function createPost(
   const status = String(formData.get('status') ?? 'draft');
   const publishedAtRaw = String(formData.get('published_at') ?? '').trim();
 
-  const slugErr = validateSlug(slug);
-  if (slugErr) return { ok: false, error: slugErr };
-  if (!title) return { ok: false, error: 'Title wajib diisi.' };
-  if (title.length > 200) return { ok: false, error: 'Title terlalu panjang.' };
-  if (!summary) return { ok: false, error: 'Summary wajib diisi.' };
-  if (summary.length > 400) return { ok: false, error: 'Summary terlalu panjang.' };
-  if (!content.trim()) return { ok: false, error: 'Content wajib diisi.' };
-  if (!['draft', 'published', 'archived'].includes(status)) {
-    return { ok: false, error: 'Status tidak valid.' };
+  const validationError = validatePostPayload({
+    slug,
+    title,
+    summary,
+    content,
+    status,
+  });
+
+  if (validationError) {
+    return { ok: false, error: validationError };
   }
 
-  const tags = tagsRaw
-    ? tagsRaw
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0)
-    : [];
+  const publishedAtResult = getRequiredPublishedAt(publishedAtRaw);
 
-  let publishedAt: string | null = null;
-  if (status === 'published') {
-    publishedAt = publishedAtRaw
-      ? new Date(publishedAtRaw).toISOString()
-      : new Date().toISOString();
-  } else if (publishedAtRaw) {
-    publishedAt = new Date(publishedAtRaw).toISOString();
+  if (typeof publishedAtResult !== 'string') {
+    return publishedAtResult;
   }
+
+  const tags = parseTags(tagsRaw);
+  const publishedAt = publishedAtResult;
 
   const supabase = createSupabaseAdmin();
+
   const { data, error } = await supabase
     .from('posts')
     .insert({
@@ -86,6 +194,7 @@ export async function createPost(
     if (error.code === '23505') {
       return { ok: false, error: 'Slug sudah dipakai. Pilih slug lain.' };
     }
+
     console.error('[posts.create]', error);
     return { ok: false, error: error.message };
   }
@@ -93,6 +202,7 @@ export async function createPost(
   revalidatePath('/admin/posts');
   revalidatePath('/writing');
   revalidatePath('/');
+
   if (status === 'published') {
     revalidatePath(`/writing/${data.slug}`);
   }
@@ -115,28 +225,26 @@ export async function updatePost(
   const status = String(formData.get('status') ?? 'draft');
   const publishedAtRaw = String(formData.get('published_at') ?? '').trim();
 
-  const slugErr = validateSlug(slug);
-  if (slugErr) return { ok: false, error: slugErr };
-  if (!title) return { ok: false, error: 'Title wajib diisi.' };
-  if (title.length > 200) return { ok: false, error: 'Title terlalu panjang.' };
-  if (!summary) return { ok: false, error: 'Summary wajib diisi.' };
-  if (summary.length > 400) return { ok: false, error: 'Summary terlalu panjang.' };
-  if (!content.trim()) return { ok: false, error: 'Content wajib diisi.' };
-  if (!['draft', 'published', 'archived'].includes(status)) {
-    return { ok: false, error: 'Status tidak valid.' };
+  const validationError = validatePostPayload({
+    slug,
+    title,
+    summary,
+    content,
+    status,
+  });
+
+  if (validationError) {
+    return { ok: false, error: validationError };
   }
 
-  const tags = tagsRaw
-    ? tagsRaw
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0)
-    : [];
+  const publishedAtResult = getRequiredPublishedAt(publishedAtRaw);
 
-  let publishedAt: string | null = null;
-  if (publishedAtRaw) {
-    publishedAt = new Date(publishedAtRaw).toISOString();
+  if (typeof publishedAtResult !== 'string') {
+    return publishedAtResult;
   }
+
+  const tags = parseTags(tagsRaw);
+  const publishedAt = publishedAtResult;
 
   const supabase = createSupabaseAdmin();
 
@@ -164,6 +272,7 @@ export async function updatePost(
     if (error.code === '23505') {
       return { ok: false, error: 'Slug sudah dipakai. Pilih slug lain.' };
     }
+
     console.error('[posts.update]', error);
     return { ok: false, error: error.message };
   }
@@ -171,7 +280,11 @@ export async function updatePost(
   revalidatePath('/admin/posts');
   revalidatePath('/writing');
   revalidatePath('/');
-  if (old?.slug && old.slug !== slug) revalidatePath(`/writing/${old.slug}`);
+
+  if (old?.slug && old.slug !== slug) {
+    revalidatePath(`/writing/${old.slug}`);
+  }
+
   revalidatePath(`/writing/${slug}`);
 
   return { ok: true, id, slug };
@@ -179,6 +292,7 @@ export async function updatePost(
 
 export async function deletePost(id: number) {
   await requireAdmin();
+
   const supabase = createSupabaseAdmin();
 
   const { data: row } = await supabase
@@ -188,13 +302,19 @@ export async function deletePost(id: number) {
     .maybeSingle();
 
   const { error } = await supabase.from('posts').delete().eq('id', id);
+
   if (error) {
     return { ok: false as const, error: error.message };
   }
+
   revalidatePath('/admin/posts');
   revalidatePath('/writing');
   revalidatePath('/');
-  if (row?.slug) revalidatePath(`/writing/${row.slug}`);
+
+  if (row?.slug) {
+    revalidatePath(`/writing/${row.slug}`);
+  }
+
   return { ok: true as const };
 }
 
@@ -203,18 +323,22 @@ export async function setPostStatus(
   status: 'draft' | 'published' | 'archived'
 ) {
   await requireAdmin();
+
   const supabase = createSupabaseAdmin();
 
   const update: Record<string, unknown> = { status };
+
   if (status === 'published') {
-    // Set published_at only if it's not already set
+    // Set published_at only if it's not already set.
+    // Fallback ini tetap Asia/Jakarta, bukan UTC polos.
     const { data: row } = await supabase
       .from('posts')
       .select('slug, published_at')
       .eq('id', id)
       .maybeSingle();
+
     if (row && !row.published_at) {
-      update.published_at = new Date().toISOString();
+      update.published_at = getCurrentJakartaTimestamptz();
     }
   }
 
@@ -225,6 +349,7 @@ export async function setPostStatus(
     .maybeSingle();
 
   const { error } = await supabase.from('posts').update(update).eq('id', id);
+
   if (error) {
     return { ok: false as const, error: error.message };
   }
@@ -232,6 +357,10 @@ export async function setPostStatus(
   revalidatePath('/admin/posts');
   revalidatePath('/writing');
   revalidatePath('/');
-  if (row?.slug) revalidatePath(`/writing/${row.slug}`);
+
+  if (row?.slug) {
+    revalidatePath(`/writing/${row.slug}`);
+  }
+
   return { ok: true as const };
 }

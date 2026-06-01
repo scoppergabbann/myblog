@@ -158,6 +158,22 @@ export function PostEditor({
     });
   };
 
+  function toJakartaDateTimeLocal(value: string) {
+  const date = new Date(value);
+
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  return formatter.format(date).replace(' ', 'T');
+}
+
   return (
     <div>
       <div className="mb-6 flex items-baseline justify-between gap-4">
@@ -313,21 +329,22 @@ export function PostEditor({
             </select>
           </div>
           <div>
-            <Label>published at</Label>
-            <input
-              type="datetime-local"
-              name="published_at"
-              defaultValue={
-                post.published_at
-                  ? new Date(post.published_at).toISOString().slice(0, 16)
-                  : ''
-              }
-              className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[13px] text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
-            />
-            <p className="mt-1 font-mono text-[11px] text-[var(--color-ink-4)]">
-              kosongkan untuk auto-set saat publish
-            </p>
-          </div>
+          <Label>published at</Label>
+          <input
+            type="datetime-local"
+            name="published_at"
+            defaultValue={
+              post.published_at
+                ? toJakartaDateTimeLocal(post.published_at)
+                : ''
+            }
+            required
+            className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[13px] text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
+          />
+          <p className="mt-1 font-mono text-[11px] text-[var(--color-ink-4)]">
+            wajib diisi · gunakan waktu Asia/Jakarta GMT+7
+          </p>
+        </div>
         </div>
 
         {/* Action row */}
