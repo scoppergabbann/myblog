@@ -4,6 +4,7 @@ import { getAllProjects } from '@/lib/content-queries';
 import { getHomeData } from '@/lib/page-queries';
 import { WritingItem } from '@/components/writing-item';
 import { ProjectCard } from '@/components/project-card';
+import { HomeHero } from '@/components/home-hero';
 
 export const revalidate = 60;
 
@@ -19,20 +20,15 @@ export default async function HomePage() {
   return (
     <div className="page-fade mx-auto max-w-[680px] px-6">
       <section className="py-24 pb-16">
-        <div className="mb-7 flex items-center gap-2.5 font-mono text-xs tracking-wide text-[var(--color-ink-3)]">
-          {home.monoLabel}
-          <span className="h-px w-[60px] flex-1 max-w-[60px] bg-[var(--color-line)]" />
-        </div>
-        <h1 className="mb-5 text-[44px] font-medium leading-[1.1] tracking-[-0.04em] text-[var(--color-ink)] max-sm:text-[32px]">
-          {home.heroIntro}{' '}
-          <span className="text-[var(--color-accent)]">{home.heroAccent1}</span>,{' '}
-          <span className="text-[var(--color-accent)]">{home.heroAccent2}</span>, dan{' '}
-          <span className="text-[var(--color-accent)]">{home.heroAccent3}</span>
-          {home.heroOutro}
-        </h1>
-        <p className="mb-6 max-w-[540px] text-[17.5px] leading-[1.65] text-[var(--color-ink-2)]">
-          {home.lead}
-        </p>
+        <HomeHero
+          monoLabel={home.monoLabel}
+          heroIntro={home.heroIntro}
+          heroAccent1={home.heroAccent1}
+          heroAccent2={home.heroAccent2}
+          heroAccent3={home.heroAccent3}
+          heroOutro={home.heroOutro}
+          lead={home.lead}
+        />
         <div className="flex flex-wrap items-center gap-4 text-[13px] text-[var(--color-ink-3)]">
           <span className="inline-flex items-center gap-2">
             <span className="dot-live h-[5px] w-[5px] rounded-full" />
