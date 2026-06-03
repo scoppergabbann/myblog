@@ -203,6 +203,11 @@ body {
   animation: fadeIn 260ms cubic-bezier(0.2, 0, 0, 1);
 }
 
+.home-intro-label {
+  opacity: 0;
+  animation: homeSlideIn 520ms cubic-bezier(0.2, 0, 0, 1) 80ms forwards;
+}
+
 .home-typing {
   position: relative;
 }
@@ -235,8 +240,18 @@ body {
   transform-origin: left center;
   transition:
     color 220ms cubic-bezier(0.2, 0, 0, 1),
-    transform 260ms cubic-bezier(0.2, 0, 0, 1),
     text-shadow 260ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.home-lead-char {
+  display: inline-block;
+  transform-origin: center 75%;
+  will-change: transform;
+}
+
+.home-lead-enter {
+  opacity: 0;
+  animation: homeFadeUp 560ms cubic-bezier(0.2, 0, 0, 1) 520ms forwards;
 }
 
 .home-lead-wave:hover {
@@ -244,12 +259,105 @@ body {
   text-shadow:
     0 0 18px color-mix(in srgb, var(--color-accent) 16%, transparent),
     0 10px 28px color-mix(in srgb, var(--color-ink) 10%, transparent);
-  animation: leadWaveZoom 920ms cubic-bezier(0.2, 0, 0, 1) infinite;
+}
+
+.home-lead-wave:hover .home-lead-char {
+  animation: leadOceanWave 1.35s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+  animation-delay: var(--wave-delay, 0ms);
 }
 
 .home-lead-wave:active {
   color: var(--color-accent);
-  animation-duration: 520ms;
+}
+
+.home-lead-wave:active .home-lead-char {
+  animation-duration: 820ms;
+}
+
+.home-meta-stagger > * {
+  opacity: 0;
+  animation: homeFadeUp 460ms cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+.home-meta-stagger > :nth-child(1) {
+  animation-delay: 720ms;
+}
+
+.home-meta-stagger > :nth-child(2) {
+  animation-delay: 790ms;
+}
+
+.home-meta-stagger > :nth-child(3) {
+  animation-delay: 860ms;
+}
+
+.home-meta-stagger > :nth-child(4) {
+  animation-delay: 930ms;
+}
+
+.home-meta-stagger > :nth-child(5) {
+  animation-delay: 1000ms;
+}
+
+.home-section {
+  animation: homeSectionSettle 620ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.home-section-title {
+  opacity: 0;
+  animation: homeSlideIn 460ms cubic-bezier(0.2, 0, 0, 1) 80ms forwards;
+}
+
+.home-reveal,
+.home-stagger-list > *,
+.home-quick-pill {
+  opacity: 0;
+  animation: homeFadeUp 520ms cubic-bezier(0.2, 0, 0, 1) var(--enter-delay, 0ms) forwards;
+}
+
+.home-stagger-list > * {
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.home-stagger-list > *:hover {
+  transform: translateX(3px);
+}
+
+.home-quick-pill:hover {
+  transform: translateY(-1px) scale(1.025);
+}
+
+@keyframes homeFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes homeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes homeSectionSettle {
+  from {
+    opacity: 0.72;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes typingCursor {
@@ -261,21 +369,27 @@ body {
   }
 }
 
-@keyframes leadWaveZoom {
+@keyframes leadOceanWave {
   0% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) translateX(0) rotate(0deg) scale(1);
   }
-  28% {
-    transform: translateY(-3px) scale(1.028) skewX(-1.2deg);
+  18% {
+    transform: translateY(-5px) translateX(1px) rotate(-1.6deg) scale(1.045);
   }
-  55% {
-    transform: translateY(2px) scale(1.018) skewX(0.9deg);
+  36% {
+    transform: translateY(3px) translateX(-1px) rotate(1.2deg) scale(0.99);
   }
-  78% {
-    transform: translateY(-1px) scale(1.024) skewX(-0.45deg);
+  54% {
+    transform: translateY(-3px) translateX(0.5px) rotate(-0.9deg) scale(1.028);
+  }
+  72% {
+    transform: translateY(2px) translateX(-0.5px) rotate(0.7deg) scale(1.01);
+  }
+  88% {
+    transform: translateY(-1px) translateX(0) rotate(-0.3deg) scale(1.018);
   }
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) translateX(0) rotate(0deg) scale(1);
   }
 }
 
@@ -283,9 +397,18 @@ body {
   .page-fade {
     animation: none;
   }
+  .home-intro-label,
+  .home-lead-enter,
+  .home-meta-stagger > *,
+  .home-section,
+  .home-section-title,
+  .home-reveal,
+  .home-stagger-list > *,
+  .home-quick-pill,
   .home-typing-cursor,
   .home-lead-wave:hover {
     animation: none;
+    opacity: 1;
   }
   .reaction-wiggle,
   .reaction-floater {

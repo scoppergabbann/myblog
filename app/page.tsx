@@ -29,7 +29,7 @@ export default async function HomePage() {
           heroOutro={home.heroOutro}
           lead={home.lead}
         />
-        <div className="flex flex-wrap items-center gap-4 text-[13px] text-[var(--color-ink-3)]">
+        <div className="home-meta-stagger flex flex-wrap items-center gap-4 text-[13px] text-[var(--color-ink-3)]">
           <span className="inline-flex items-center gap-2">
             <span className="dot-live h-[5px] w-[5px] rounded-full" />
             {home.location}
@@ -45,7 +45,7 @@ export default async function HomePage() {
         title="// sedang fokus"
         link={{ href: '/now', label: 'selengkapnya →' }}
       >
-        <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-paper)] px-6 py-[22px] transition-colors duration-200 hover:border-[var(--color-line-2)]">
+        <div className="home-reveal rounded-[14px] border border-[var(--color-line)] bg-[var(--color-paper)] px-6 py-[22px] transition-colors duration-200 hover:border-[var(--color-line-2)]">
           <h3 className="mb-2 text-base font-medium text-[var(--color-ink)]">
             {home.focusTitle}
           </h3>
@@ -59,9 +59,14 @@ export default async function HomePage() {
         title="// tulisan terpilih"
         link={{ href: '/writing', label: 'semua tulisan →' }}
       >
-        <div className="flex flex-col">
-          {writings.map((w) => (
-            <WritingItem key={w.slug} writing={w} />
+        <div className="home-stagger-list flex flex-col">
+          {writings.map((w, index) => (
+            <div
+              key={w.slug}
+              style={{ '--enter-delay': `${index * 70}ms` } as React.CSSProperties}
+            >
+              <WritingItem writing={w} />
+            </div>
           ))}
         </div>
       </Section>
@@ -71,16 +76,22 @@ export default async function HomePage() {
         link={{ href: '/projects', label: 'semua proyek →' }}
       >
         <div className="grid grid-cols-2 gap-3.5 max-sm:grid-cols-1">
-          {featuredProjects.map((p) => (
-            <ProjectCard key={p.title} project={p} />
+          {featuredProjects.map((p, index) => (
+            <div
+              key={p.title}
+              className="home-reveal"
+              style={{ '--enter-delay': `${index * 75}ms` } as React.CSSProperties}
+            >
+              <ProjectCard project={p} />
+            </div>
           ))}
         </div>
       </Section>
 
       <Section title="// quick links">
         <div className="flex flex-wrap gap-2">
-          {home.quickLinks.map((q) => (
-            <QuickLinkPill key={q.id} href={q.href}>
+          {home.quickLinks.map((q, index) => (
+            <QuickLinkPill key={q.id} href={q.href} delay={index * 45}>
               {q.label}
             </QuickLinkPill>
           ))}
@@ -100,9 +111,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="py-7">
+    <section className="home-section py-7">
       <div className="mb-6 flex items-baseline justify-between gap-4">
-        <h2 className="font-mono text-sm font-medium lowercase tracking-normal text-[var(--color-ink-3)]">
+        <h2 className="home-section-title font-mono text-sm font-medium lowercase tracking-normal text-[var(--color-ink-3)]">
           {title}
         </h2>
         {link && (
@@ -121,9 +132,11 @@ function Section({
 
 function QuickLinkPill({
   href,
+  delay,
   children,
 }: {
   href: string;
+  delay: number;
   children: React.ReactNode;
 }) {
   const isExternal = href.startsWith('http') || href.endsWith('.xml');
@@ -133,7 +146,8 @@ function QuickLinkPill({
         href={href}
         target={href.startsWith('http') ? '_blank' : undefined}
         rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
-        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 font-mono text-[13px] text-[var(--color-ink-3)] transition-all duration-200 hover:border-[color-mix(in_srgb,var(--color-accent)_30%,transparent)] hover:text-[var(--color-accent)]"
+        className="home-quick-pill inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 font-mono text-[13px] text-[var(--color-ink-3)] transition-all duration-200 hover:border-[color-mix(in_srgb,var(--color-accent)_30%,transparent)] hover:text-[var(--color-accent)]"
+        style={{ '--enter-delay': `${delay}ms` } as React.CSSProperties}
       >
         {children}
       </a>
@@ -142,7 +156,8 @@ function QuickLinkPill({
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 font-mono text-[13px] text-[var(--color-ink-3)] transition-all duration-200 hover:border-[color-mix(in_srgb,var(--color-accent)_30%,transparent)] hover:text-[var(--color-accent)]"
+      className="home-quick-pill inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] px-3 py-1.5 font-mono text-[13px] text-[var(--color-ink-3)] transition-all duration-200 hover:border-[color-mix(in_srgb,var(--color-accent)_30%,transparent)] hover:text-[var(--color-accent)]"
+      style={{ '--enter-delay': `${delay}ms` } as React.CSSProperties}
     >
       {children}
     </Link>

@@ -74,7 +74,7 @@ export function HomeHero({
 
   return (
     <>
-      <div className="mb-7 flex items-center gap-2.5 font-mono text-xs tracking-wide text-[var(--color-ink-3)]">
+      <div className="home-intro-label mb-7 flex items-center gap-2.5 font-mono text-xs tracking-wide text-[var(--color-ink-3)]">
         {monoLabel}
         <span className="h-px w-[60px] flex-1 max-w-[60px] bg-[var(--color-line)]" />
       </div>
@@ -118,8 +118,21 @@ export function HomeHero({
           <span className="home-typing-cursor" />
         </span>
       </h1>
-      <p className="home-lead-wave mb-6 max-w-[540px] text-[17.5px] leading-[1.65] text-[var(--color-ink-2)]">
-        {lead}
+      <p
+        className="home-lead-wave home-lead-enter mb-6 max-w-[540px] text-[17.5px] leading-[1.65] text-[var(--color-ink-2)]"
+        aria-label={lead}
+      >
+        <span aria-hidden="true">
+          {Array.from(lead).map((char, index) => (
+            <span
+              key={`${char}-${index}`}
+              className="home-lead-char"
+              style={{ '--wave-delay': `${index * 18}ms` } as React.CSSProperties}
+            >
+              {char === ' ' ? '\u00A0' : char}
+            </span>
+          ))}
+        </span>
       </p>
     </>
   );
