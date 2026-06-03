@@ -44,18 +44,30 @@ export function HomeHero({
       return;
     }
 
-    setVisibleChars(0);
-    const interval = window.setInterval(() => {
-      setVisibleChars((current) => {
-        if (current >= fullLength) {
-          window.clearInterval(interval);
-          return current;
-        }
-        return current + 1;
-      });
-    }, 42);
+    let typingInterval: number | undefined;
+    let restartTimeout: number | undefined;
 
-    return () => window.clearInterval(interval);
+    const playTyping = () => {
+      setVisibleChars(0);
+      typingInterval = window.setInterval(() => {
+        setVisibleChars((current) => {
+          if (current >= fullLength) {
+            window.clearInterval(typingInterval);
+            restartTimeout = window.setTimeout(playTyping, 8000);
+            return current;
+          }
+
+          return current + 1;
+        });
+      }, 42);
+    };
+
+    playTyping();
+
+    return () => {
+      window.clearInterval(typingInterval);
+      window.clearTimeout(restartTimeout);
+    };
   }, [fullLength]);
 
   let remainingChars = visibleChars;

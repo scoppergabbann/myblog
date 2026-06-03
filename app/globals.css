@@ -231,6 +231,7 @@ body {
 
 .home-lead-wave {
   display: block;
+  cursor: default;
   transform-origin: left center;
   transition:
     color 220ms cubic-bezier(0.2, 0, 0, 1),
@@ -243,7 +244,12 @@ body {
   text-shadow:
     0 0 18px color-mix(in srgb, var(--color-accent) 16%, transparent),
     0 10px 28px color-mix(in srgb, var(--color-ink) 10%, transparent);
-  animation: leadWaveZoom 760ms cubic-bezier(0.2, 0, 0, 1);
+  animation: leadWaveZoom 920ms cubic-bezier(0.2, 0, 0, 1) infinite;
+}
+
+.home-lead-wave:active {
+  color: var(--color-accent);
+  animation-duration: 520ms;
 }
 
 @keyframes typingCursor {
@@ -260,10 +266,13 @@ body {
     transform: translateY(0) scale(1);
   }
   28% {
-    transform: translateY(-2px) scale(1.018) skewX(-0.5deg);
+    transform: translateY(-3px) scale(1.028) skewX(-1.2deg);
   }
   55% {
-    transform: translateY(1px) scale(1.012) skewX(0.35deg);
+    transform: translateY(2px) scale(1.018) skewX(0.9deg);
+  }
+  78% {
+    transform: translateY(-1px) scale(1.024) skewX(-0.45deg);
   }
   100% {
     transform: translateY(0) scale(1);
