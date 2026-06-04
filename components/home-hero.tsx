@@ -35,6 +35,7 @@ export function HomeHero({
   );
   const fullText = segments.map((segment) => segment.text).join('');
   const fullLength = Array.from(fullText).length;
+  const leadParts = useMemo(() => lead.split(/(\s+)/), [lead]);
   const [visibleChars, setVisibleChars] = useState(0);
 
   useEffect(() => {
@@ -71,6 +72,7 @@ export function HomeHero({
   }, [fullLength]);
 
   let remainingChars = visibleChars;
+  let waveCharIndex = 0;
 
   return (
     <>
@@ -123,15 +125,30 @@ export function HomeHero({
         aria-label={lead}
       >
         <span aria-hidden="true">
-          {Array.from(lead).map((char, index) => (
-            <span
-              key={`${char}-${index}`}
-              className="home-lead-char"
-              style={{ '--wave-delay': `${index * 18}ms` } as React.CSSProperties}
-            >
-              {char === ' ' ? '\u00A0' : char}
-            </span>
-          ))}
+          {leadParts.map((part, partIndex) => {
+            if (/^\s+$/.test(part)) {
+              return part;
+            }
+
+            return (
+              <span key={`${part}-${partIndex}`} className="home-lead-word">
+                {Array.from(part).map((char, charIndex) => {
+                  const delay = waveCharIndex * 18;
+                  waveCharIndex += 1;
+
+                  return (
+                    <span
+                      key={`${char}-${charIndex}`}
+                      className="home-lead-char"
+                      style={{ '--wave-delay': `${delay}ms` } as React.CSSProperties}
+                    >
+                      {char}
+                    </span>
+                  );
+                })}
+              </span>
+            );
+          })}
         </span>
       </p>
     </>

@@ -249,6 +249,11 @@ body {
   will-change: transform;
 }
 
+.home-lead-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
 .home-lead-enter {
   opacity: 0;
   animation: homeFadeUp 560ms cubic-bezier(0.2, 0, 0, 1) 520ms forwards;
