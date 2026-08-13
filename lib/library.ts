@@ -37,6 +37,7 @@ export type LibraryItem = {
 export type LibraryData = {
   categories: LibraryCategory[];
   itemsByCategory: Record<number, LibraryItem[]>;
+  updated: string;
 };
 
 // =============================================================================
@@ -74,6 +75,7 @@ export async function getLibraryData(): Promise<LibraryData> {
 
   const categories = (categoriesResult.data ?? []) as LibraryCategory[];
   const rawItems = (itemsResult.data ?? []) as LibraryItem[];
+  const visibleCategoryIds = new Set(categories.map((category) => category.id));
 
   // Group photos by new_item_id — use Number() to ensure numeric keys
   const photoMap: Record<number, LibraryPhoto[]> = {};
@@ -92,6 +94,7 @@ export async function getLibraryData(): Promise<LibraryData> {
   // Attach photos to items + group by category
   const itemsByCategory: Record<number, LibraryItem[]> = {};
   for (const item of rawItems) {
+    if (!visibleCategoryIds.has(item.category_id)) continue;
     const withPhotos: LibraryItem = {
       ...item,
       photos: photoMap[item.id] ?? [],
@@ -102,5 +105,20 @@ export async function getLibraryData(): Promise<LibraryData> {
     itemsByCategory[item.category_id].push(withPhotos);
   }
 
-  return { categories, itemsByCategory };
+  const timestamps = [
+    ...categories.map((category) => category.created_at),
+    ...Object.values(itemsByCategory)
+      .flat()
+      .map((item) => item.created_at),
+  ];
+
+  return {
+    categories,
+    itemsByCategory,
+    updated:
+      timestamps
+        .filter(Boolean)
+        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ??
+      new Date().toISOString(),
+  };
 }

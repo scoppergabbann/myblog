@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getLibraryData } from '@/lib/library';
 import { LibraryShelf } from './library-shelf';
+import { formatDate } from '@/lib/utils';
 import { siteConfig } from '@/lib/site-config';
 
 export const revalidate = 60;
@@ -28,6 +29,10 @@ export default async function LibraryPage() {
         <p className="text-[15.5px] leading-[1.65] text-[var(--color-ink-3)]">
           Kumpulan hal-hal yang pernah saya baca, teguk, dan kagumi.
         </p>
+        <div className="mt-6 flex items-center gap-2 font-mono text-xs text-[var(--color-ink-3)]">
+          <span className="dot-live h-[5px] w-[5px] rounded-full" />
+          terakhir diperbarui {formatDate(data.updated, true)}
+        </div>
       </div>
       <LibraryShelf data={data} />
     </div>

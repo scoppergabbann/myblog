@@ -20,6 +20,7 @@ export type Project = {
   status: 'live' | 'wip' | 'archived';
   url?: string;
   github?: string;
+  updated: string;
 };
 
 export type NowSection = {
@@ -77,4 +78,5 @@ export type AboutData = {
   contactEmail: string;
   contactIntro: string;
   stack: StackItem[];
+  updated: string;
 };

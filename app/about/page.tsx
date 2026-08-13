@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getAboutData } from '@/lib/page-queries';
+import { formatDate } from '@/lib/utils';
 import { compileMdx } from '@/lib/mdx-compile';
 import { mdxComponents } from '@/components/mdx-components';
 
@@ -26,6 +27,10 @@ export default async function AboutPage() {
         <p className="mb-10 text-base text-[var(--color-ink-3)]">
           {about.subtitle}
         </p>
+        <div className="mb-8 flex items-center gap-2 font-mono text-xs text-[var(--color-ink-3)]">
+          <span className="dot-live h-[5px] w-[5px] rounded-full" />
+          terakhir diperbarui {formatDate(about.updated, true)}
+        </div>
 
         {mdxContent && (
           <div className="article-body">{mdxContent}</div>

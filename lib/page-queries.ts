@@ -86,6 +86,7 @@ const ABOUT_FALLBACK: AboutData = {
   contactIntro:
     'Saya merespon email pelan-pelan, tapi saya merespon semua:',
   stack: [],
+  updated: new Date().toISOString(),
 };
 
 export async function getAboutData(): Promise<AboutData> {
@@ -94,7 +95,7 @@ export async function getAboutData(): Promise<AboutData> {
     const [metaRes, stackRes] = await Promise.all([
       supabase
         .from('about_meta')
-        .select('title, subtitle, content, contact_email, contact_intro')
+        .select('title, subtitle, content, contact_email, contact_intro, updated_at')
         .eq('id', 1)
         .maybeSingle(),
       supabase
@@ -114,6 +115,7 @@ export async function getAboutData(): Promise<AboutData> {
       contactEmail: m.contact_email,
       contactIntro: m.contact_intro,
       stack: (stackRes.data ?? []) as StackItem[],
+      updated: m.updated_at,
     };
   } catch {
     return ABOUT_FALLBACK;

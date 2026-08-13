@@ -9,6 +9,7 @@ type ProjectRow = {
   status: 'live' | 'wip' | 'archived';
   url: string | null;
   github_url: string | null;
+  updated_at: string;
 };
 
 export async function getAllProjects(): Promise<Project[]> {
@@ -16,7 +17,7 @@ export async function getAllProjects(): Promise<Project[]> {
     const supabase = createSupabasePublic();
     const { data, error } = await supabase
       .from('projects')
-      .select('title, description, stack, status, url, github_url')
+      .select('title, description, stack, status, url, github_url, updated_at')
       .order('display_order', { ascending: false })
       .order('created_at', { ascending: false });
     if (error) {
@@ -32,6 +33,7 @@ export async function getAllProjects(): Promise<Project[]> {
         status: row.status,
         url: row.url ?? undefined,
         github: row.github_url ?? undefined,
+        updated: row.updated_at,
       };
     });
   } catch {
