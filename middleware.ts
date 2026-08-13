@@ -31,11 +31,16 @@ export default auth(async (req) => {
   }
 
   const isLoggedIn = !!req.auth;
-  const adminUser = (process.env.ADMIN_GITHUB_USERNAME || '')
+  const adminGithubUser = (process.env.ADMIN_GITHUB_USERNAME || '')
+    .toLowerCase()
+    .trim();
+  const adminPasswordUser = (process.env.ADMIN_USERNAME || 'admin')
     .toLowerCase()
     .trim();
   const userLogin = req.auth?.user?.login;
-  const isAdmin = isLoggedIn && adminUser && userLogin === adminUser;
+  const isAdmin =
+    isLoggedIn &&
+    (userLogin === adminPasswordUser || userLogin === adminGithubUser);
 
   const requiresAuth =
     path.startsWith('/admin') || path.startsWith('/ngedumel');

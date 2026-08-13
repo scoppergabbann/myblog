@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth, isAdmin } from '@/auth';
-import { LoginButton } from './login-button';
+import { CredentialsLoginForm, GithubLoginButton } from './login-button';
 
 export default async function LoginPage({
   searchParams,
@@ -15,6 +15,9 @@ export default async function LoginPage({
   const sp = await searchParams;
   const from = sp.from || '/admin';
   const error = sp.error;
+  const githubEnabled = Boolean(
+    process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET
+  );
 
   return (
     <div className="mx-auto max-w-[400px] px-6">
@@ -26,11 +29,24 @@ export default async function LoginPage({
           Sign in
         </h1>
         <p className="mb-7 text-sm leading-[1.65] text-[var(--color-ink-3)]">
-          Hanya admin yang ditentukan yang dapat masuk. Login via GitHub akan
-          memverifikasi username kamu.
+          Masuk dengan username dan password admin. GitHub tetap tersedia
+          sebagai opsi jika OAuth dikonfigurasi.
         </p>
 
-        <LoginButton callbackUrl={from} />
+        <CredentialsLoginForm callbackUrl={from} />
+
+        {githubEnabled && (
+          <div className="mt-5">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="h-px flex-1 bg-[var(--color-line)]" />
+              <span className="font-mono text-[11px] text-[var(--color-ink-4)]">
+                atau
+              </span>
+              <span className="h-px flex-1 bg-[var(--color-line)]" />
+            </div>
+            <GithubLoginButton callbackUrl={from} />
+          </div>
+        )}
 
         {error === 'AccessDenied' && (
           <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-[12.5px] text-red-600 dark:text-red-400">
@@ -39,7 +55,7 @@ export default async function LoginPage({
         )}
 
         <p className="mt-10 font-mono text-[11.5px] text-[var(--color-ink-4)]">
-          tip: configure ADMIN_GITHUB_USERNAME in env to set the allowlist
+          tip: set ADMIN_USERNAME and ADMIN_PASSWORD in env
         </p>
       </div>
     </div>
