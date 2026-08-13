@@ -18,6 +18,7 @@ type Post = {
   tags: string[];
   status: 'draft' | 'published' | 'archived';
   published_at: string | null;
+  is_premium: boolean;
 };
 
 const DEFAULT_POST: Post = {
@@ -28,6 +29,7 @@ const DEFAULT_POST: Post = {
   tags: [],
   status: 'draft',
   published_at: null,
+  is_premium: false,
 };
 
 export function PostEditor({
@@ -345,6 +347,39 @@ export function PostEditor({
             wajib diisi · gunakan waktu Asia/Jakarta GMT+7
           </p>
         </div>
+        </div>
+
+        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-4 py-3">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              name="is_premium"
+              defaultChecked={post.is_premium}
+              className="mt-1 h-4 w-4 rounded border-[var(--color-line)]"
+            />
+            <span>
+              <span className="block text-[14px] font-medium text-[var(--color-ink)]">
+                Premium / password protected
+              </span>
+              <span className="mt-1 block text-[12.5px] leading-[1.55] text-[var(--color-ink-3)]">
+                Pembaca harus memasukkan password sebelum isi tulisan ditampilkan.
+              </span>
+            </span>
+          </label>
+          <div className="mt-3">
+            <Label>premium password</Label>
+            <input
+              type="password"
+              name="premium_password"
+              minLength={4}
+              placeholder={
+                post.is_premium
+                  ? 'Kosongkan jika tidak ingin mengganti password'
+                  : 'Isi jika post premium'
+              }
+              className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-bg)] px-3 py-2 text-[13px] text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
+            />
+          </div>
         </div>
 
         {/* Action row */}

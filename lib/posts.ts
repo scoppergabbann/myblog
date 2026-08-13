@@ -1,5 +1,6 @@
+import 'server-only';
 import readingTimeFn from 'reading-time';
-import { createSupabasePublic } from './supabase/public';
+import { createSupabaseAdmin } from './supabase/admin';
 import type { Writing } from '@/types/content';
 
 type PostRow = {
@@ -10,24 +11,30 @@ type PostRow = {
   tags: string[];
   status: string;
   published_at: string | null;
+  is_premium: boolean;
 };
 
-function rowToWriting(row: PostRow): Writing {
+function rowToWriting(
+  row: PostRow,
+  options: { includeContent?: boolean } = {}
+): Writing {
+  const includeContent = options.includeContent ?? true;
   const stats = readingTimeFn(row.content);
   return {
     slug: row.slug,
     title: row.title,
     summary: row.summary,
-    content: row.content,
+    content: includeContent ? row.content : '',
     tags: row.tags ?? [],
     date: row.published_at ?? new Date().toISOString(),
     readingTime: `${Math.ceil(stats.minutes)} min`,
+    isPremium: Boolean(row.is_premium),
   };
 }
 
 export async function getAllWritingSlugs(): Promise<string[]> {
   try {
-    const supabase = createSupabasePublic();
+    const supabase = createSupabaseAdmin();
     const { data, error } = await supabase
       .from('posts')
       .select('slug')
@@ -48,10 +55,10 @@ export async function getWritingBySlug(
   options: { includeDraft?: boolean } = {}
 ): Promise<Writing | null> {
   try {
-    const supabase = createSupabasePublic();
+    const supabase = createSupabaseAdmin();
     let q = supabase
       .from('posts')
-      .select('slug, title, summary, content, tags, status, published_at')
+      .select('slug, title, summary, content, tags, status, published_at, is_premium')
       .eq('slug', slug);
     if (!options.includeDraft) {
       q = q.eq('status', 'published');
@@ -66,17 +73,19 @@ export async function getWritingBySlug(
 
 export async function getAllWritings(): Promise<Writing[]> {
   try {
-    const supabase = createSupabasePublic();
+    const supabase = createSupabaseAdmin();
     const { data, error } = await supabase
       .from('posts')
-      .select('slug, title, summary, content, tags, status, published_at')
+      .select('slug, title, summary, content, tags, status, published_at, is_premium')
       .eq('status', 'published')
       .order('published_at', { ascending: false });
     if (error) {
       console.error('[posts.all]', error);
       return [];
     }
-    return (data ?? []).map((r) => rowToWriting(r as PostRow));
+    return (data ?? []).map((r) =>
+      rowToWriting(r as PostRow, { includeContent: false })
+    );
   } catch {
     return [];
   }

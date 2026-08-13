@@ -10,6 +10,7 @@ export type Writing = WritingFrontmatter & {
   slug: string;
   content: string;
   readingTime: string;
+  isPremium: boolean;
 };
 
 export type Project = {

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { auth, isAdmin } from '@/auth';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
+import { hashPremiumPassword } from '@/lib/premium';
 
 async function requireAdmin() {
   const session = await auth();
@@ -152,6 +153,8 @@ export async function createPost(
   const tagsRaw = String(formData.get('tags') ?? '').trim();
   const status = String(formData.get('status') ?? 'draft');
   const publishedAtRaw = String(formData.get('published_at') ?? '').trim();
+  const isPremium = formData.get('is_premium') === 'on';
+  const premiumPassword = String(formData.get('premium_password') ?? '');
 
   const validationError = validatePostPayload({
     slug,
@@ -174,6 +177,13 @@ export async function createPost(
   const tags = parseTags(tagsRaw);
   const publishedAt = publishedAtResult;
 
+  if (isPremium && premiumPassword.length < 4) {
+    return {
+      ok: false,
+      error: 'Password premium wajib diisi minimal 4 karakter.',
+    };
+  }
+
   const supabase = createSupabaseAdmin();
 
   const { data, error } = await supabase
@@ -186,6 +196,7 @@ export async function createPost(
       tags,
       status,
       published_at: publishedAt,
+      is_premium: isPremium,
     })
     .select('id, slug')
     .single();
@@ -197,6 +208,21 @@ export async function createPost(
 
     console.error('[posts.create]', error);
     return { ok: false, error: error.message };
+  }
+
+  if (isPremium) {
+    const { error: lockError } = await supabase
+      .from('post_premium_locks')
+      .insert({
+        post_id: data.id,
+        password_hash: hashPremiumPassword(premiumPassword),
+      });
+
+    if (lockError) {
+      console.error('[posts.create premium lock]', lockError);
+      await supabase.from('posts').delete().eq('id', data.id);
+      return { ok: false, error: lockError.message };
+    }
   }
 
   revalidatePath('/admin/posts');
@@ -224,6 +250,8 @@ export async function updatePost(
   const tagsRaw = String(formData.get('tags') ?? '').trim();
   const status = String(formData.get('status') ?? 'draft');
   const publishedAtRaw = String(formData.get('published_at') ?? '').trim();
+  const isPremium = formData.get('is_premium') === 'on';
+  const premiumPassword = String(formData.get('premium_password') ?? '');
 
   const validationError = validatePostPayload({
     slug,
@@ -248,6 +276,26 @@ export async function updatePost(
 
   const supabase = createSupabaseAdmin();
 
+  const { data: existingLock } = await supabase
+    .from('post_premium_locks')
+    .select('post_id')
+    .eq('post_id', id)
+    .maybeSingle();
+
+  if (isPremium && !existingLock && premiumPassword.length < 4) {
+    return {
+      ok: false,
+      error: 'Password premium wajib diisi minimal 4 karakter.',
+    };
+  }
+
+  if (isPremium && premiumPassword && premiumPassword.length < 4) {
+    return {
+      ok: false,
+      error: 'Password premium minimal 4 karakter.',
+    };
+  }
+
   // Get old slug for revalidation
   const { data: old } = await supabase
     .from('posts')
@@ -265,6 +313,7 @@ export async function updatePost(
       tags,
       status,
       published_at: publishedAt,
+      is_premium: isPremium,
     })
     .eq('id', id);
 
@@ -275,6 +324,28 @@ export async function updatePost(
 
     console.error('[posts.update]', error);
     return { ok: false, error: error.message };
+  }
+
+  if (!isPremium) {
+    const { error: lockDeleteError } = await supabase
+      .from('post_premium_locks')
+      .delete()
+      .eq('post_id', id);
+    if (lockDeleteError) {
+      console.error('[posts.update premium unlock]', lockDeleteError);
+      return { ok: false, error: lockDeleteError.message };
+    }
+  } else if (premiumPassword) {
+    const { error: lockUpsertError } = await supabase
+      .from('post_premium_locks')
+      .upsert({
+        post_id: id,
+        password_hash: hashPremiumPassword(premiumPassword),
+      });
+    if (lockUpsertError) {
+      console.error('[posts.update premium lock]', lockUpsertError);
+      return { ok: false, error: lockUpsertError.message };
+    }
   }
 
   revalidatePath('/admin/posts');

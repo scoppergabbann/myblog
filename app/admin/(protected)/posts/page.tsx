@@ -13,13 +13,14 @@ type Row = {
   status: 'draft' | 'published' | 'archived';
   published_at: string | null;
   updated_at: string;
+  is_premium: boolean;
 };
 
 async function getPosts(): Promise<Row[]> {
   const supabase = createSupabaseAdmin();
   const { data, error } = await supabase
     .from('posts')
-    .select('id, slug, title, summary, tags, status, published_at, updated_at')
+    .select('id, slug, title, summary, tags, status, published_at, updated_at, is_premium')
     .order('updated_at', { ascending: false });
   if (error) {
     console.error('[admin.posts fetch]', error);

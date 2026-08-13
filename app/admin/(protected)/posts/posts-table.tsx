@@ -15,6 +15,7 @@ type Row = {
   status: 'draft' | 'published' | 'archived';
   published_at: string | null;
   updated_at: string;
+  is_premium: boolean;
 };
 
 type Action =
@@ -63,6 +64,11 @@ export function PostsTable({ initialData }: { initialData: Row[] }) {
           className="block font-medium text-[var(--color-ink)] transition-colors hover:text-[var(--color-accent)]"
         >
           {r.title}
+          {r.is_premium && (
+            <span className="ml-2 rounded-full border border-[color-mix(in_srgb,var(--color-accent)_35%,transparent)] bg-[var(--color-accent-soft)] px-1.5 py-[1px] align-middle font-mono text-[9.5px] uppercase tracking-wide text-[var(--color-accent)]">
+              premium
+            </span>
+          )}
         </Link>
       ),
     },

@@ -12,7 +12,9 @@ import { CommentsSection } from '@/components/comments-section';
 import { NewsletterSignup } from '@/components/newsletter-signup';
 import { ArticleFooterNav } from '@/components/article-footer-nav';
 import { getReactionsForSlug, getViewCount } from '@/lib/queries';
+import { isPremiumUnlocked } from '@/lib/premium';
 import { siteConfig } from '@/lib/site-config';
+import { PremiumUnlockForm } from './premium-unlock-form';
 
 // `searchParams` (for ?preview=) requires dynamic rendering. Trade off ISR
 // for simpler preview handling — Supabase queries are fast enough.
@@ -94,15 +96,24 @@ export default async function WritingDetailPage({
   const w = await getWritingBySlug(slug, { includeDraft: isPreview });
   if (!w) notFound();
 
-  const toc = extractToc(w.content);
+  const unlocked = !w.isPremium || isPreview || (await isPremiumUnlocked(slug));
+  const toc = unlocked ? extractToc(w.content) : [];
 
-  const [reactions, viewCount, mdxContent, adjacent, related] = await Promise.all([
-    getReactionsForSlug(slug),
-    getViewCount(slug),
-    compileMdx(w.content, mdxComponents),
-    getAdjacentWritings(slug),
-    getRelatedWritings(slug, 3),
-  ]);
+  const [reactions, viewCount, mdxContent, adjacent, related] = unlocked
+    ? await Promise.all([
+        getReactionsForSlug(slug),
+        getViewCount(slug),
+        compileMdx(w.content, mdxComponents),
+        getAdjacentWritings(slug),
+        getRelatedWritings(slug, 3),
+      ])
+    : await Promise.all([
+        Promise.resolve(null),
+        Promise.resolve(0),
+        Promise.resolve(null),
+        getAdjacentWritings(slug),
+        getRelatedWritings(slug, 3),
+      ]);
 
   return (
     <>
@@ -170,8 +181,18 @@ export default async function WritingDetailPage({
                   <span>{formatDate(w.date)}</span>
                   <span>·</span>
                   <span>{w.readingTime}</span>
+                  {w.isPremium && (
+                    <>
+                      <span>·</span>
+                      <span className="text-[var(--color-accent)]">premium</span>
+                    </>
+                  )}
                   <span>·</span>
-                  <ViewCounter slug={slug} initialCount={viewCount} />
+                  {unlocked ? (
+                    <ViewCounter slug={slug} initialCount={viewCount} />
+                  ) : (
+                    <span>terkunci</span>
+                  )}
                   {w.tags.length > 0 && (
                     <>
                       <span>·</span>
@@ -200,16 +221,18 @@ export default async function WritingDetailPage({
               </header>
 
               <div className="article-body">
-                {mdxContent}
+                {unlocked ? mdxContent : <PremiumUnlockForm slug={slug} />}
               </div>
 
-              <Reactions slug={slug} initialCounts={reactions} />
+              {unlocked && reactions && (
+                <Reactions slug={slug} initialCounts={reactions} />
+              )}
 
               <ArticleFooterNav prev={adjacent.prev} next={adjacent.next} related={related} />
 
-              <NewsletterSignup />
+              {unlocked && <NewsletterSignup />}
 
-              <CommentsSection slug={slug} />
+              {unlocked && <CommentsSection slug={slug} />}
             </div>
 
             <aside className="max-md:hidden">

@@ -31,6 +31,7 @@ export function getWritingBySlug(slug: string): Writing | null {
     slug,
     content,
     readingTime: `${Math.ceil(stats.minutes)} min`,
+    isPremium: false,
   };
 }
 
