@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryData, LibraryCategory, LibraryItem, LibraryPhoto } from '@/lib/library';
 import { getCoverUrl } from '@/lib/library';
+
+const ITEMS_PER_PAGE = 9;
 
 export function LibraryShelf({ data }: { data: LibraryData }) {
   const { categories, itemsByCategory } = data;
@@ -98,15 +100,11 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
               {items.length === 0 ? (
                 <p className="text-sm text-[var(--color-ink-3)]">Belum ada item.</p>
               ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {items.map((item) => (
-                    <LibraryCard
-                      key={item.id}
-                      item={item}
-                      onClick={() => setSelected(item)}
-                    />
-                  ))}
-                </div>
+                <CategoryCarousel
+                  categoryId={cat.id}
+                  items={items}
+                  onSelect={setSelected}
+                />
               )}
             </section>
           );
@@ -120,6 +118,135 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
         />
       )}
     </>
+  );
+}
+
+// =============================================================================
+// Category carousel
+// =============================================================================
+
+function CategoryCarousel({
+  categoryId,
+  items,
+  onSelect,
+}: {
+  categoryId: number;
+  items: LibraryItem[];
+  onSelect: (item: LibraryItem) => void;
+}) {
+  const [page, setPage] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
+  const sortedItems = useMemo(
+    () =>
+      [...items].sort((a, b) => {
+        const dateDiff =
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (dateDiff !== 0) return dateDiff;
+        return a.display_order - b.display_order;
+      }),
+    [items]
+  );
+
+  const pages = useMemo(() => {
+    const chunks: LibraryItem[][] = [];
+    for (let i = 0; i < sortedItems.length; i += ITEMS_PER_PAGE) {
+      chunks.push(sortedItems.slice(i, i + ITEMS_PER_PAGE));
+    }
+    return chunks;
+  }, [sortedItems]);
+
+  const totalPages = pages.length;
+  const canGoPrev = page > 0;
+  const canGoNext = page < totalPages - 1;
+  const firstItem = page * ITEMS_PER_PAGE + 1;
+  const lastItem = Math.min((page + 1) * ITEMS_PER_PAGE, sortedItems.length);
+
+  useEffect(() => {
+    setPage(0);
+  }, [categoryId, items]);
+
+  const goPrev = useCallback(() => {
+    setPage((current) => Math.max(0, current - 1));
+  }, []);
+
+  const goNext = useCallback(() => {
+    setPage((current) => Math.min(totalPages - 1, current + 1));
+  }, [totalPages]);
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-mono text-[11.5px] text-[var(--color-ink-4)]">
+          {firstItem}-{lastItem} dari {sortedItems.length} · terbaru ke terlama
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[11px] text-[var(--color-ink-4)]">
+              {page + 1}/{totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={goPrev}
+              disabled={!canGoPrev}
+              aria-label="Lihat konten yang lebih baru"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-line)] text-[var(--color-ink-3)] transition-colors hover:border-[var(--color-line-2)] hover:text-[var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={!canGoNext}
+              aria-label="Lihat konten yang lebih lama"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-line)] text-[var(--color-ink-3)] transition-colors hover:border-[color-mix(in_srgb,var(--color-accent)_35%,transparent)] hover:text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div
+        className="overflow-hidden"
+        onTouchStart={(event) => {
+          touchStartX.current = event.touches[0]?.clientX ?? null;
+        }}
+        onTouchEnd={(event) => {
+          if (touchStartX.current === null) return;
+          const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
+          const deltaX = endX - touchStartX.current;
+          touchStartX.current = null;
+          if (Math.abs(deltaX) < 50) return;
+          if (deltaX < 0) goNext();
+          if (deltaX > 0) goPrev();
+        }}
+      >
+        <div
+          className="flex transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${page * 100}%)` }}
+        >
+          {pages.map((pageItems, index) => (
+            <div
+              key={`${categoryId}-${index}`}
+              className="grid w-full flex-shrink-0 grid-cols-2 gap-3 sm:grid-cols-3"
+            >
+              {pageItems.map((item) => (
+                <LibraryCard
+                  key={item.id}
+                  item={item}
+                  onClick={() => onSelect(item)}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

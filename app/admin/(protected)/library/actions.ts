@@ -50,7 +50,13 @@ export async function uploadLibraryImage(
 
 export async function upsertCategory(
   id: number | null,
-  data: { name: string; emoji: string; description: string | null; display_order: number }
+  data: {
+    name: string;
+    emoji: string;
+    description: string | null;
+    display_order: number;
+    is_hidden: boolean;
+  }
 ): Promise<ActionResult> {
   await requireAdmin();
   const supabase = createSupabaseAdmin();

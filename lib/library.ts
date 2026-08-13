@@ -15,6 +15,7 @@ export type LibraryCategory = {
   name: string;
   emoji: string;
   description: string | null;
+  is_hidden: boolean;
   display_order: number;
   created_at: string;
 };
@@ -57,12 +58,13 @@ export async function getLibraryData(): Promise<LibraryData> {
     supabase
       .from('library_categories')
       .select('*')
+      .eq('is_hidden', false)
       .order('display_order', { ascending: true }),
     supabase
       .from('library_items')
       .select('*')
-      .order('display_order', { ascending: true })
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .order('display_order', { ascending: true }),
     supabase
       .from('library_photos')
       .select('id, new_item_id, url, position')

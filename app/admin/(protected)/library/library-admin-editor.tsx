@@ -69,6 +69,11 @@ export function LibraryAdminEditor({
               }`}
             >
               {cat.emoji} {cat.name}
+              {cat.is_hidden && (
+                <span className="ml-1.5 rounded-full border border-amber-500/30 px-1.5 py-[1px] font-mono text-[9px] uppercase text-amber-600 dark:text-amber-400">
+                  hidden
+                </span>
+              )}
               <span className="ml-1.5 font-mono text-[10.5px] text-[var(--color-ink-4)]">
                 {items.filter((i) => i.category_id === cat.id).length}
               </span>
@@ -203,6 +208,7 @@ function CategoryModal({
   const [emoji, setEmoji] = useState(category?.emoji ?? '📦');
   const [description, setDescription] = useState(category?.description ?? '');
   const [displayOrder, setDisplayOrder] = useState(String(category?.display_order ?? 0));
+  const [isHidden, setIsHidden] = useState(Boolean(category?.is_hidden));
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -212,6 +218,7 @@ function CategoryModal({
       emoji: emoji.trim() || '📦',
       description: description.trim() || null,
       display_order: parseInt(displayOrder) || 0,
+      is_hidden: isHidden,
     });
     setSaving(false);
     if (res.ok) { toast.success('Tersimpan'); onSaved(); }
@@ -235,6 +242,22 @@ function CategoryModal({
         <Field label="Urutan tampil">
           <input type="number" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} min={0} className="input-base w-24" />
         </Field>
+        <label className="flex items-start gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-2">
+          <input
+            type="checkbox"
+            checked={isHidden}
+            onChange={(e) => setIsHidden(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-[var(--color-line)]"
+          />
+          <span>
+            <span className="block text-[13px] font-medium text-[var(--color-ink)]">
+              Hidden dari public /library
+            </span>
+            <span className="mt-0.5 block text-[12px] leading-[1.5] text-[var(--color-ink-3)]">
+              Kategori dan item di dalamnya tetap muncul di admin, tapi tidak tampil untuk pengunjung.
+            </span>
+          </span>
+        </label>
       </div>
       <ModalActions onClose={onClose} onSave={handleSave} saving={saving} disabled={!name.trim()} />
     </Modal>
