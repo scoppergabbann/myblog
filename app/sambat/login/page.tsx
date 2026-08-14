@@ -4,29 +4,29 @@ import { auth, isAdmin } from '@/auth';
 import { LoginButton } from './login-button';
 
 export const metadata: Metadata = {
-  title: 'Sign in · ngedumel',
+  title: 'Sign in · sambat',
   robots: { index: false, follow: false },
 };
 
-export default async function NgedumelLoginPage({
+export default async function SambatLoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ from?: string; error?: string }>;
 }) {
   const session = await auth();
   if (isAdmin(session)) {
-    redirect('/ngedumel');
+    redirect('/sambat');
   }
 
   const sp = await searchParams;
-  const from = sp.from || '/ngedumel';
+  const from = sp.from || '/sambat';
   const error = sp.error;
 
   return (
     <div className="mx-auto max-w-[400px] px-6">
       <div className="py-32">
         <div className="mb-3 font-mono text-xs text-[var(--color-ink-3)]">
-          ~/ngedumel
+          ~/sambat
         </div>
         <h1 className="mb-3 text-[28px] font-medium tracking-[-0.025em] text-[var(--color-ink)]">
           Sign in

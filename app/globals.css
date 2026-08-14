@@ -506,11 +506,11 @@ body {
 }
 
 /* Ngedumel carousel — hide scrollbar but keep horizontal scroll functional */
-.ngedumel-carousel {
+.sambat-carousel {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-.ngedumel-carousel::-webkit-scrollbar {
+.sambat-carousel::-webkit-scrollbar {
   display: none;
 }
 

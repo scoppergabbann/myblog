@@ -9,7 +9,7 @@ import { DumelFeed } from './feed';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Ngedumel',
+  title: 'Sambat',
   robots: { index: false, follow: false },
 };
 
@@ -53,7 +53,7 @@ async function getDumels(): Promise<{
     .order('created_at', { ascending: false })
     .limit(PAGE_SIZE + 1);
   if (error) {
-    console.error('[ngedumel.list]', error);
+    console.error('[sambat.list]', error);
     return { dumels: [], hasMore: false };
   }
   const rows = data ?? [];
@@ -89,7 +89,7 @@ async function getTotalCount(): Promise<number> {
   return count ?? 0;
 }
 
-export default async function NgedumelPage() {
+export default async function SambatPage() {
   const session = await auth();
   const [{ dumels, hasMore }, totalCount] = await Promise.all([
     getDumels(),
@@ -104,10 +104,10 @@ export default async function NgedumelPage() {
     <div className="mx-auto max-w-[600px] px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-8">
         <div className="mb-2 font-mono text-[11.5px] text-[var(--color-ink-3)]">
-          ~/ngedumel · {totalCount} posts
+          ~/sambat · {totalCount} posts
         </div>
         <h1 className="mb-2 text-[28px] font-medium tracking-[-0.025em] text-[var(--color-ink)]">
-          Ngedumel
+          Sambat
         </h1>
         <p className="text-[14px] leading-[1.6] text-[var(--color-ink-3)]">
           Curhat tanpa social media. Hanya kamu yang bisa baca.

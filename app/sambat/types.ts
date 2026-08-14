@@ -1,4 +1,4 @@
-// Shared types + constants for /ngedumel.
+// Shared types + constants for /sambat.
 // Keep this file free of 'use server' so it can be imported by client components.
 
 export const DUMEL_PAGE_SIZE = 20;

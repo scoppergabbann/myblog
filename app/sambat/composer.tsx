@@ -471,7 +471,7 @@ export function DumelComposer({
             ? 'Posting...'
             : anyUploading
               ? 'Uploading...'
-              : 'Ngedumel'}
+              : 'Sambat'}
         </button>
       </div>
     </div>

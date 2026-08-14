@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 import { isMaintenanceEnabled } from '@/lib/maintenance-edge';
 
 // Routes that should ALWAYS be accessible regardless of maintenance state.
-// Admin/ngedumel are auth-protected separately; api/auth handles login flow.
+// Admin/sambat are auth-protected separately; api/auth handles login flow.
 const BYPASS_PATHS = [
   '/admin',
-  '/ngedumel',
+  '/sambat',
   '/maintenance',
   '/api',
   '/_next',
@@ -22,10 +22,19 @@ function isBypassed(path: string): boolean {
 export default auth(async (req) => {
   const path = req.nextUrl.pathname;
 
+  if (path === '/ngedumel' || path.startsWith('/ngedumel/')) {
+    const url = new URL(
+      path.replace(/^\/ngedumel/, '/sambat'),
+      req.nextUrl
+    );
+    url.search = req.nextUrl.search;
+    return NextResponse.redirect(url, 308);
+  }
+
   // ============================================================
-  // Layer 1: Auth gating for /admin and /ngedumel
+  // Layer 1: Auth gating for /admin and /sambat
   // ============================================================
-  if (path === '/admin/login' || path === '/ngedumel/login') {
+  if (path === '/admin/login' || path === '/sambat/login') {
     // Always allow login pages
     return NextResponse.next();
   }
@@ -43,10 +52,10 @@ export default auth(async (req) => {
     (userLogin === adminPasswordUser || userLogin === adminGithubUser);
 
   const requiresAuth =
-    path.startsWith('/admin') || path.startsWith('/ngedumel');
+    path.startsWith('/admin') || path.startsWith('/sambat');
   if (requiresAuth && !isAdmin) {
-    const loginPath = path.startsWith('/ngedumel')
-      ? '/ngedumel/login'
+    const loginPath = path.startsWith('/sambat')
+      ? '/sambat/login'
       : '/admin/login';
     const url = new URL(loginPath, req.nextUrl);
     url.searchParams.set('from', path);

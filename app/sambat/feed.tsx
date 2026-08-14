@@ -365,7 +365,7 @@ function ImageCarousel({
   return (
     <div className="relative">
       <div
-        className="ngedumel-carousel flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1"
+        className="sambat-carousel flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1"
         role="region"
         aria-label="Foto carousel"
       >

@@ -218,7 +218,7 @@ export async function createDumel(
     }
   }
 
-  revalidatePath('/ngedumel');
+  revalidatePath('/sambat');
   return { ok: true, id: data.id };
 }
 
@@ -271,7 +271,7 @@ export async function deleteDumel(id: number): Promise<DumelResult> {
   }
   if (cleanups.length > 0) await Promise.allSettled(cleanups);
 
-  revalidatePath('/ngedumel');
+  revalidatePath('/sambat');
   return { ok: true };
 }
 
