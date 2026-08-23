@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState, useTransition } from 'react';
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -20,6 +20,18 @@ type Post = {
   published_at: string | null;
   is_premium: boolean;
 };
+
+type ContentFormat =
+  | 'bold'
+  | 'italic'
+  | 'h1'
+  | 'h2'
+  | 'quote'
+  | 'bullet-list'
+  | 'numbered-list'
+  | 'link'
+  | 'inline-code'
+  | 'code-block';
 
 const DEFAULT_POST: Post = {
   slug: '',
@@ -56,6 +68,8 @@ export function PostEditor({
   // For existing posts (edit mode), default to manual to avoid clobbering.
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(!isNew);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saved'>('idle');
+  const [showMarkdownHelp, setShowMarkdownHelp] = useState(false);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
   const toast = useToast();
@@ -149,6 +163,28 @@ export function PostEditor({
     const snippet = `\n\n![](${url})\n\n`;
     setContent((c) => c + snippet);
     toast.success('Image uploaded.');
+  };
+
+  const formatContent = (format: ContentFormat) => {
+    const textarea = contentRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = content.slice(start, end);
+    const fallback = selected || formatPlaceholder(format);
+    const { text, selectionStart, selectionEnd } = applyContentFormat(
+      format,
+      fallback,
+      start
+    );
+    const nextContent = content.slice(0, start) + text + content.slice(end);
+
+    setContent(nextContent);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+    });
   };
 
   const onDelete = () => {
@@ -290,14 +326,21 @@ export function PostEditor({
             <Label noMargin>content (MDX)</Label>
             <ImageUploadButton onUploaded={onImageUploaded} label="upload image" />
           </div>
+          <MarkdownToolbar
+            onFormat={formatContent}
+            showHelp={showMarkdownHelp}
+            onToggleHelp={() => setShowMarkdownHelp((visible) => !visible)}
+          />
+          {showMarkdownHelp && <MarkdownHelp />}
           <textarea
+            ref={contentRef}
             name="content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             required
             rows={24}
             spellCheck
-            className="w-full resize-y rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-3 font-mono text-[13.5px] leading-[1.65] text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
+            className="w-full resize-y rounded-b-lg border border-t-0 border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-3 font-mono text-[13.5px] leading-[1.65] text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
           />
           <div className="mt-1.5 flex items-baseline justify-between gap-3">
             <p className="font-mono text-[11px] text-[var(--color-ink-4)]">
@@ -398,6 +441,190 @@ export function PostEditor({
       </form>
     </div>
   );
+}
+
+const FORMAT_BUTTONS: Array<{
+  format: ContentFormat;
+  label: string;
+  title: string;
+}> = [
+  { format: 'bold', label: 'B', title: 'Bold: **teks**' },
+  { format: 'italic', label: 'I', title: 'Italic: *teks*' },
+  { format: 'h1', label: 'H1', title: 'Heading 1: # Judul' },
+  { format: 'h2', label: 'H2', title: 'Heading 2: ## Judul' },
+  { format: 'quote', label: '>', title: 'Quote: > kutipan' },
+  { format: 'bullet-list', label: '•', title: 'Bullet list: - item' },
+  { format: 'numbered-list', label: '1.', title: 'Numbered list: 1. item' },
+  { format: 'link', label: '↗', title: 'Link: [teks](https://...)' },
+  { format: 'inline-code', label: '</>', title: 'Inline code: `kode`' },
+  { format: 'code-block', label: '```', title: 'Code block' },
+];
+
+function MarkdownToolbar({
+  onFormat,
+  showHelp,
+  onToggleHelp,
+}: {
+  onFormat: (format: ContentFormat) => void;
+  showHelp: boolean;
+  onToggleHelp: () => void;
+}) {
+  return (
+    <div className="flex min-h-10 flex-wrap items-center gap-1 rounded-t-lg border border-[var(--color-line)] bg-[var(--color-bg)] px-2 py-1.5">
+      {FORMAT_BUTTONS.map((button) => (
+        <button
+          key={button.format}
+          type="button"
+          title={button.title}
+          aria-label={button.title}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => onFormat(button.format)}
+          className={`flex h-7 min-w-7 items-center justify-center rounded border border-transparent px-1.5 font-mono text-[11px] text-[var(--color-ink-3)] transition-colors hover:border-[var(--color-line)] hover:bg-[var(--color-paper)] hover:text-[var(--color-ink)] ${
+            button.format === 'bold'
+              ? 'font-bold'
+              : button.format === 'italic'
+                ? 'italic'
+                : ''
+          }`}
+        >
+          {button.label}
+        </button>
+      ))}
+      <span className="mx-1 h-5 w-px bg-[var(--color-line)]" aria-hidden="true" />
+      <button
+        type="button"
+        title="Dokumentasi Markdown"
+        aria-label="Buka dokumentasi Markdown"
+        aria-expanded={showHelp}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={onToggleHelp}
+        className={`flex h-7 min-w-7 items-center justify-center rounded border px-1.5 font-mono text-[12px] transition-colors ${
+          showHelp
+            ? 'border-[var(--color-accent)] bg-[var(--color-paper)] text-[var(--color-accent)]'
+            : 'border-transparent text-[var(--color-ink-3)] hover:border-[var(--color-line)] hover:bg-[var(--color-paper)] hover:text-[var(--color-ink)]'
+        }`}
+      >
+        ?
+      </button>
+    </div>
+  );
+}
+
+function MarkdownHelp() {
+  const references = [
+    ['# Judul', 'Heading 1'],
+    ['## Judul', 'Heading 2'],
+    ['> tulisan', 'Quote / kutipan'],
+    ['**teks**', 'Bold'],
+    ['*teks*', 'Italic'],
+    ['- item', 'Bullet list'],
+    ['1. item', 'Numbered list'],
+    ['[teks](url)', 'Link'],
+    ['`kode`', 'Inline code'],
+  ];
+
+  return (
+    <div className="border-x border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-3">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-2 max-sm:grid-cols-1">
+        {references.map(([syntax, meaning]) => (
+          <div key={syntax} className="flex items-center justify-between gap-4 text-[11.5px]">
+            <code className="font-mono text-[var(--color-accent)]">{syntax}</code>
+            <span className="text-right text-[var(--color-ink-3)]">{meaning}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 border-t border-[var(--color-line)] pt-2 text-[11.5px] text-[var(--color-ink-3)]">
+        Blok tulisan terlebih dahulu, lalu klik format yang dibutuhkan. Tanpa seleksi, contoh teks akan disisipkan.
+      </p>
+    </div>
+  );
+}
+
+function formatPlaceholder(format: ContentFormat) {
+  switch (format) {
+    case 'h1':
+    case 'h2':
+      return 'Judul bagian';
+    case 'quote':
+      return 'Tuliskan kutipan';
+    case 'bullet-list':
+    case 'numbered-list':
+      return 'Item daftar';
+    case 'link':
+      return 'teks link';
+    case 'inline-code':
+    case 'code-block':
+      return 'kode';
+    default:
+      return 'teks';
+  }
+}
+
+function applyContentFormat(
+  format: ContentFormat,
+  selected: string,
+  offset: number
+) {
+  let text = selected;
+  let innerStart = 0;
+  let innerEnd = selected.length;
+
+  const wrap = (before: string, after = before) => {
+    text = `${before}${selected}${after}`;
+    innerStart = before.length;
+    innerEnd = before.length + selected.length;
+  };
+
+  const prefixLines = (prefix: string | ((index: number) => string)) => {
+    const lines = selected.split('\n');
+    const prefixes = lines.map((_, index) =>
+      typeof prefix === 'function' ? prefix(index) : prefix
+    );
+    text = lines.map((line, index) => `${prefixes[index]}${line}`).join('\n');
+    innerStart = prefixes[0].length;
+    innerEnd = text.length;
+  };
+
+  switch (format) {
+    case 'bold':
+      wrap('**');
+      break;
+    case 'italic':
+      wrap('*');
+      break;
+    case 'h1':
+      prefixLines('# ');
+      break;
+    case 'h2':
+      prefixLines('## ');
+      break;
+    case 'quote':
+      prefixLines('> ');
+      break;
+    case 'bullet-list':
+      prefixLines('- ');
+      break;
+    case 'numbered-list':
+      prefixLines((index) => `${index + 1}. `);
+      break;
+    case 'link':
+      text = `[${selected}](https://)`;
+      innerStart = 1;
+      innerEnd = 1 + selected.length;
+      break;
+    case 'inline-code':
+      wrap('`');
+      break;
+    case 'code-block':
+      wrap('```\n', '\n```');
+      break;
+  }
+
+  return {
+    text,
+    selectionStart: offset + innerStart,
+    selectionEnd: offset + innerEnd,
+  };
 }
 
 function Label({
