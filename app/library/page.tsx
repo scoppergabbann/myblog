@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
+import { auth, isAdmin } from '@/auth';
 import { getLibraryData } from '@/lib/library';
+import { createSupabaseAdmin } from '@/lib/supabase/admin';
 import { LibraryShelf } from './library-shelf';
 import { formatDate } from '@/lib/utils';
 import { siteConfig } from '@/lib/site-config';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Library',
@@ -18,7 +21,13 @@ export const metadata: Metadata = {
 };
 
 export default async function LibraryPage() {
-  const data = await getLibraryData();
+  const session = await auth();
+  const adminView = isAdmin(session);
+  const data = await getLibraryData(
+    adminView
+      ? { includeHidden: true, client: createSupabaseAdmin() }
+      : undefined
+  );
   return (
     <div className="page-fade mx-auto max-w-[1080px] px-6 py-14">
       <div className="mb-10 max-w-[560px]">

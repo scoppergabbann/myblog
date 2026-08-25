@@ -1,4 +1,5 @@
 import { createSupabasePublic } from './supabase/public';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // =============================================================================
 // Types
@@ -52,15 +53,25 @@ export function getCoverUrl(item: LibraryItem): string | null {
 // Public query (anon read)
 // =============================================================================
 
-export async function getLibraryData(): Promise<LibraryData> {
-  const supabase = createSupabasePublic();
+export async function getLibraryData({
+  includeHidden = false,
+  client,
+}: {
+  includeHidden?: boolean;
+  client?: SupabaseClient;
+} = {}): Promise<LibraryData> {
+  const supabase = client ?? createSupabasePublic();
+
+  let categoriesQuery = supabase
+    .from('library_categories')
+    .select('*');
+
+  if (!includeHidden) {
+    categoriesQuery = categoriesQuery.eq('is_hidden', false);
+  }
 
   const [categoriesResult, itemsResult, photosResult] = await Promise.all([
-    supabase
-      .from('library_categories')
-      .select('*')
-      .eq('is_hidden', false)
-      .order('display_order', { ascending: true }),
+    categoriesQuery.order('display_order', { ascending: true }),
     supabase
       .from('library_items')
       .select('*')

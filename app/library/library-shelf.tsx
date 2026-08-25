@@ -67,6 +67,11 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
             >
               <span>{cat.emoji}</span>
               <span>{cat.name}</span>
+              {cat.is_hidden && (
+                <span className="rounded border border-[var(--color-line)] px-1 py-0.5 font-mono text-[9px] uppercase text-[var(--color-ink-4)]">
+                  hidden
+                </span>
+              )}
               <span className="font-mono text-[10.5px] text-[var(--color-ink-4)]">
                 {(itemsByCategory[cat.id] ?? []).length}
               </span>
@@ -93,6 +98,11 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
                 <span className="font-mono text-[12px] text-[var(--color-ink-4)]">
                   {items.length} item
                 </span>
+                {cat.is_hidden && (
+                  <span className="rounded border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-[9.5px] uppercase text-[var(--color-ink-4)]">
+                    hidden · admin only
+                  </span>
+                )}
               </div>
               {cat.description && (
                 <p className="mb-5 text-[14px] text-[var(--color-ink-3)]">{cat.description}</p>
