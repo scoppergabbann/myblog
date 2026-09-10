@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { getAllProjects } from '@/lib/content-queries';
 import { formatDate } from '@/lib/utils';
 import { ProjectCard } from '@/components/project-card';
 
-export const metadata: Metadata = {
-  title: 'Proyek',
-  description: 'Hal-hal kecil yang saya bangun.',
-};
+export const metadata: Metadata = pageMetadata('/projects', 'Proyek', 'Hal-hal kecil yang saya bangun.');
 
 export const revalidate = 60;
 

@@ -1,13 +1,22 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { notFound } from 'next/navigation';
-import { getAllWritings, getAllTags } from '@/lib/posts';
+import { getAllWritings } from '@/lib/posts';
 import { WritingFilter } from './writing-filter';
 
-export const metadata: Metadata = {
-  title: 'Tulisan',
-  description:
-    'Catatan tentang engineering, menulis, investasi pelan-pelan, dan internet personal.',
-};
+function pageNumber(value?: string) {
+  const requested = Number(value ?? 1);
+  return Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : 1;
+}
+
+export async function generateMetadata({ searchParams }: {
+  searchParams: Promise<{ page?: string }>;
+}): Promise<Metadata> {
+  const page = pageNumber((await searchParams).page);
+  return pageMetadata(page === 1 ? '/writing' : `/writing?page=${page}`,
+    page === 1 ? 'Tulisan' : `Tulisan - Halaman ${page}`,
+    'Catatan tentang engineering, menulis, investasi pelan-pelan, dan internet personal.');
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +29,9 @@ export default async function WritingPage({
 }) {
   const sp = await searchParams;
   const allWritings = await getAllWritings();
-  const tags = ['all', ...(await getAllTags())];
+  const tags = ['all', ...new Set(allWritings.flatMap((post) => post.tags))].sort((a, b) =>
+    a === 'all' ? -1 : b === 'all' ? 1 : a.localeCompare(b)
+  );
 
 const visibleWritingsCount = allWritings.filter((post) => {
   const postTags = post.tags ?? [];
@@ -28,8 +39,7 @@ const visibleWritingsCount = allWritings.filter((post) => {
 }).length;
 
   const totalPages = Math.max(1, Math.ceil(allWritings.length / PAGE_SIZE));
-  const requested = Number(sp.page ?? 1);
-  const page = Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : 1;
+  const page = pageNumber(sp.page);
 
   // Out-of-range page → 404
   if (page > totalPages) notFound();

@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { getAboutData } from '@/lib/page-queries';
 import { formatDate } from '@/lib/utils';
 import { compileMdx } from '@/lib/mdx-compile';
 import { mdxComponents } from '@/components/mdx-components';
 
-export const metadata: Metadata = {
-  title: 'Tentang',
-  description: 'Cerita singkat, filosofi, dan perjalanan belajar.',
-};
+export const metadata: Metadata = pageMetadata('/about', 'Tentang', 'Cerita singkat, filosofi, dan perjalanan belajar.');
 
 export const revalidate = 60;
 

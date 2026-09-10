@@ -2,10 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Image from 'next/image';
 import type { LibraryData, LibraryCategory, LibraryItem, LibraryPhoto } from '@/lib/library';
 import { getCoverUrl } from '@/lib/library';
 
 const ITEMS_PER_PAGE = 9;
+
+function LibraryImage({ src, alt, sizes, className, eager = false }: {
+  src: string; alt: string; sizes: string; className: string; eager?: boolean;
+}) {
+  let optimized = src.startsWith('/') && !src.startsWith('//');
+  try {
+    const url = new URL(src);
+    optimized = url.protocol === 'https:' && (
+      (url.hostname === 'res.cloudinary.com' && url.pathname.startsWith('/dvalads2e/image/upload/')) ||
+      (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/storage/v1/object/public/'))
+    );
+  } catch { /* Relative images are handled above. */ }
+  return <Image src={src} alt={alt} fill sizes={sizes} unoptimized={!optimized}
+    loading={eager ? 'eager' : 'lazy'} className={className} />;
+}
 
 export function LibraryShelf({ data }: { data: LibraryData }) {
   const { categories, itemsByCategory } = data;
@@ -91,7 +107,7 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
               data-catid={cat.id}
               className="scroll-mt-24"
             >
-              <div className="mb-5 flex items-baseline gap-3">
+              <div className="mb-5 flex flex-wrap items-baseline gap-3">
                 <h2 className="text-[22px] font-medium tracking-[-0.02em] text-[var(--color-ink)]">
                   <span className="mr-2">{cat.emoji}</span>{cat.name}
                 </h2>
@@ -274,11 +290,10 @@ function LibraryCard({ item, onClick }: { item: LibraryItem; onClick: () => void
         {/* Cover */}
         <div className="relative w-full overflow-hidden bg-[var(--color-paper-2)]" style={{ aspectRatio: '4/3' }}>
           {coverUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <LibraryImage
               src={coverUrl}
               alt={item.name}
-              loading="lazy"
+              sizes="(max-width: 639px) calc((100vw - 64px) / 2), (max-width: 1079px) calc((100vw - 76px) / 3), 335px"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
             />
           ) : (
@@ -396,8 +411,7 @@ function DetailModal({ item, onClose }: { item: LibraryItem; onClose: () => void
         <div className="relative flex w-full flex-col bg-black sm:w-[280px] sm:flex-shrink-0">
           <div className="relative flex-1 overflow-hidden" style={{ aspectRatio: '4/3' }}>
             {activePhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={activePhoto.id} src={activePhoto.url} alt={item.name} className="h-full w-full object-cover" />
+              <LibraryImage key={activePhoto.id} src={activePhoto.url} alt={item.name} sizes="(max-width: 639px) calc(100vw - 32px), 280px" eager className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-[var(--color-paper-2)] text-5xl opacity-20">📷</div>
             )}
@@ -432,9 +446,8 @@ function DetailModal({ item, onClose }: { item: LibraryItem; onClose: () => void
                 <button key={photo.id} type="button" onClick={(e) => { e.stopPropagation(); setActiveIdx(idx); }}
                   aria-label={`Foto ${idx + 1}`}
                   className={`flex-shrink-0 overflow-hidden rounded-[5px] transition-all ${idx === activeIdx ? 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-black/80' : 'opacity-60 hover:opacity-100'}`}
-                  style={{ width: 44, height: 44 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  style={{ position: 'relative', width: 44, height: 44 }}>
+                  <LibraryImage src={photo.url} alt="" sizes="44px" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>

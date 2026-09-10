@@ -3,13 +3,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getAllTags, getAllWritings } from '@/lib/posts';
 import { WritingItem } from '@/components/writing-item';
-import { siteConfig } from '@/lib/site-config';
+import { pageMetadata } from '@/lib/seo';
 
 export const revalidate = 60;
 
 export async function generateStaticParams() {
   const tags = await getAllTags();
-  return tags.map((tag) => ({ tag: encodeURIComponent(tag) }));
+  return [...new Set(tags.map((tag) => tag.toLowerCase()))].map((tag) => ({ tag }));
 }
 
 export async function generateMetadata({
@@ -18,17 +18,9 @@ export async function generateMetadata({
   params: Promise<{ tag: string }>;
 }): Promise<Metadata> {
   const { tag } = await params;
-  const decoded = decodeURIComponent(tag);
-  return {
-    title: `#${decoded}`,
-    description: `Tulisan dengan tag #${decoded}.`,
-    openGraph: {
-      title: `#${decoded} — ${siteConfig.shortName}`,
-      description: `Tulisan dengan tag #${decoded}.`,
-      type: 'website',
-      url: `${siteConfig.url}/writing/tag/${tag}`,
-    },
-  };
+  const decoded = tag.toLowerCase();
+  return pageMetadata(`/writing/tag/${encodeURIComponent(decoded)}`,
+    `#${decoded}`, `Tulisan dengan tag #${decoded}.`);
 }
 
 export default async function TagPage({
@@ -37,7 +29,7 @@ export default async function TagPage({
   params: Promise<{ tag: string }>;
 }) {
   const { tag: rawTag } = await params;
-  const tag = decodeURIComponent(rawTag).toLowerCase();
+  const tag = rawTag.toLowerCase();
   const all = await getAllWritings();
   const filtered = all.filter((w) =>
     w.tags.some((t) => t.toLowerCase() === tag)

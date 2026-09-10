@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Yang saya pakai',
-  description: 'Hardware, software, dan tools yang saya pakai sehari-hari.',
-};
+export const metadata: Metadata = pageMetadata('/uses', 'Yang saya pakai', 'Hardware, software, dan tools yang saya pakai sehari-hari.');
 
 type UsesItem = { key: string; value: string; note?: string };
 

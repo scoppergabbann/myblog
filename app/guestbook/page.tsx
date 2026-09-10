@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { getGuestbookEntries } from '@/lib/queries';
 import { formatDate } from '@/lib/utils';
 import { GuestbookForm } from './guestbook-form';
 
-export const metadata: Metadata = {
-  title: 'Buku tamu',
-  description: 'Tinggalkan pesan, salam, atau apapun.',
-};
+export const metadata: Metadata = pageMetadata('/guestbook', 'Buku tamu', 'Tinggalkan pesan, salam, atau apapun.');
 
 export const revalidate = 0; // Always fetch fresh; tiny table
 

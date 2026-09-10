@@ -41,12 +41,12 @@ export async function getAllWritingSlugs(): Promise<string[]> {
       .eq('status', 'published');
     if (error) {
       console.error('[posts.slugs]', error);
-      return [];
+      throw new Error('Unable to load article slugs');
     }
     return (data ?? []).map((r) => r.slug);
   } catch (e) {
     console.error('[posts.slugs] exception', e);
-    return [];
+    throw new Error('Article slugs temporarily unavailable', { cause: e });
   }
 }
 
@@ -64,10 +64,11 @@ export async function getWritingBySlug(
       q = q.eq('status', 'published');
     }
     const { data, error } = await q.maybeSingle();
-    if (error || !data) return null;
+    if (error) throw new Error('Unable to load article');
+    if (!data) return null;
     return rowToWriting(data as PostRow);
-  } catch {
-    return null;
+  } catch (error) {
+    throw new Error('Article temporarily unavailable', { cause: error });
   }
 }
 
@@ -81,13 +82,13 @@ export async function getAllWritings(): Promise<Writing[]> {
       .order('published_at', { ascending: false });
     if (error) {
       console.error('[posts.all]', error);
-      return [];
+      throw new Error('Unable to load articles');
     }
     return (data ?? []).map((r) =>
       rowToWriting(r as PostRow, { includeContent: false })
     );
-  } catch {
-    return [];
+  } catch (error) {
+    throw new Error('Articles temporarily unavailable', { cause: error });
   }
 }
 

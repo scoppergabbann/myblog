@@ -1,0 +1,30 @@
+{
+  "environment": "Local headless Edge, 390x844, no CPU/network throttling; 5-second observation. Not field CWV/INP.",
+  "results": [
+    {
+      "path": "/",
+      "lcpMs": 1324,
+      "layoutShiftSum": 0.04349958653550989,
+      "overflow": false,
+      "h1Count": 1,
+      "mobileMenu": "pass"
+    },
+    {
+      "path": "/about",
+      "lcpMs": 428,
+      "layoutShiftSum": 0,
+      "overflow": false,
+      "h1Count": 1,
+      "mobileMenu": "pass"
+    },
+    {
+      "path": "/writing/episode-08-indeks-sektoral-dan-cara-membaca-rotasi-uang",
+      "lcpMs": 2740,
+      "layoutShiftSum": 0,
+      "overflow": false,
+      "h1Count": 1,
+      "mobileMenu": "pass"
+    }
+  ],
+  "noJavaScriptHeading": ""
+}

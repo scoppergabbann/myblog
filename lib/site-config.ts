@@ -1,7 +1,21 @@
+function productionOrigin() {
+  const fallback = 'https://belutbakarsurabaya.com';
+  try {
+    const url = new URL(process.env.NEXT_PUBLIC_SITE_URL || fallback);
+    if (url.protocol !== 'https:' || url.hostname === 'localhost' ||
+        url.hostname.endsWith('.vercel.app') || /^[\d.]+$/.test(url.hostname)) {
+      return fallback;
+    }
+    return url.origin;
+  } catch {
+    return fallback;
+  }
+}
+
 export const siteConfig = {
   name: 'belutbakarsurabaya',
   shortName: 'bbs/',
-  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://belutbakarsurabaya.com',
+  url: productionOrigin(),
   description:
     'A quiet corner on the internet. Catatan, proyek, dan refleksi dari seorang software engineer, writer, dan investor muda.',
   tagline: 'a quiet corner on the internet',

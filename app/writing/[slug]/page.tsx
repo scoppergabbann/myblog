@@ -15,6 +15,7 @@ import { getReactionsForSlug, getViewCount } from '@/lib/queries';
 import { isPremiumUnlocked } from '@/lib/premium';
 import { siteConfig } from '@/lib/site-config';
 import { PremiumUnlockForm } from './premium-unlock-form';
+import { JsonLd } from '@/components/json-ld';
 
 // `searchParams` (for ?preview=) requires dynamic rendering. Trade off ISR
 // for simpler preview handling — Supabase queries are fast enough.
@@ -37,12 +38,13 @@ export async function generateMetadata({
   }
 
   const w = await getWritingBySlug(slug, { includeDraft: isPreview });
-  if (!w) return {};
+  if (!w) notFound();
 
   const ogImage = `${siteConfig.url}/api/og?title=${encodeURIComponent(w.title)}&subtitle=${encodeURIComponent(w.summary)}`;
 
   return {
     title: w.title,
+    alternates: { canonical: `/writing/${encodeURIComponent(w.slug)}` },
     description: w.summary,
     openGraph: {
       title: w.title,
@@ -127,6 +129,7 @@ export default async function WritingDetailPage({
               headline: w.title,
               description: w.summary,
               datePublished: w.date,
+              isAccessibleForFree: !w.isPremium,
               author: {
                 '@type': 'Person',
                 name: siteConfig.author.name,
@@ -143,11 +146,19 @@ export default async function WritingDetailPage({
               },
               keywords: w.tags.join(', '),
               image: `${siteConfig.url}/api/og?title=${encodeURIComponent(w.title)}`,
-            }),
+            }).replace(/</g, '\\u003c'),
           }}
         />
       )}
       <ReadingProgress />
+      {!isPreview && <JsonLd data={{
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Beranda', item: siteConfig.url },
+          { '@type': 'ListItem', position: 2, name: 'Tulisan', item: `${siteConfig.url}/writing` },
+          { '@type': 'ListItem', position: 3, name: w.title, item: `${siteConfig.url}/writing/${encodeURIComponent(w.slug)}` },
+        ],
+      }} />}
       <div className="page-fade mx-auto max-w-[920px] px-6">
         {isPreview && (
           <div className="mt-4 rounded-[10px] border border-[color-mix(in_srgb,var(--color-accent)_40%,transparent)] bg-[var(--color-accent-soft)] px-4 py-2.5 font-mono text-[12px] text-[var(--color-accent)]">
@@ -155,6 +166,11 @@ export default async function WritingDetailPage({
           </div>
         )}
         <article className="py-14 pb-10">
+          <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap gap-2 text-[12px] text-[var(--color-ink-3)]">
+            <Link href="/">Beranda</Link><span aria-hidden="true">/</span>
+            <Link href="/writing">Tulisan</Link><span aria-hidden="true">/</span>
+            <span aria-current="page">{w.title}</span>
+          </nav>
           <Link
             href="/writing"
             className="mb-8 inline-flex items-center gap-1.5 text-[13px] text-[var(--color-ink-3)] transition-colors duration-200 hover:text-[var(--color-accent)]"

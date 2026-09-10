@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
 import { isMaintenanceEnabled } from '@/lib/maintenance-edge';
+import { articleStatus } from '@/lib/article-status-edge';
 
 // Routes that should ALWAYS be accessible regardless of maintenance state.
 // Admin/sambat are auth-protected separately; api/auth handles login flow.
@@ -69,8 +70,10 @@ export default auth(async (req) => {
     const maintenanceOn = await isMaintenanceEnabled();
     if (maintenanceOn) {
       const url = new URL('/maintenance', req.nextUrl);
-      // 307 Temporary Redirect — preserves method, signals temporary state
-      return NextResponse.redirect(url, 307);
+      return NextResponse.rewrite(url, {
+        status: 503,
+        headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' },
+      });
     }
   }
 
@@ -83,8 +86,30 @@ export default auth(async (req) => {
     if (!maintenanceOn) {
       return NextResponse.redirect(new URL('/', req.nextUrl));
     }
+    return NextResponse.next({
+      status: 503,
+      headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' },
+    });
   }
 
+  const articleMatch = path.match(/^\/writing\/([^/]+)$/);
+  if (articleMatch) {
+    let slug: string;
+    try { slug = decodeURIComponent(articleMatch[1]); } catch { slug = ''; }
+    const status = slug ? await articleStatus(slug, req.nextUrl.searchParams.get('preview')) : 404;
+    if (status === 404) {
+      return NextResponse.rewrite(new URL('/_not-found', req.nextUrl), {
+        status: 404,
+        headers: { 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store' },
+      });
+    }
+    if (status === 503) {
+      return new NextResponse('Konten sementara tidak tersedia. Silakan coba lagi.', {
+        status: 503,
+        headers: { 'Retry-After': '60', 'Cache-Control': 'no-store', 'Content-Type': 'text/plain; charset=utf-8' },
+      });
+    }
+  }
   return NextResponse.next();
 });
 

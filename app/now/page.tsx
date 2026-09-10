@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { getNowData } from '@/lib/content-queries';
 import { formatDate } from '@/lib/utils';
 import { SpotifyEmbed } from '@/components/spotify-embed';
 import type { NowSection } from '@/types/content';
 
-export const metadata: Metadata = {
-  title: 'Saat ini',
-  description: 'Apa yang sedang saya kerjakan, baca, dan pikirkan.',
-};
+export const metadata: Metadata = pageMetadata('/now', 'Saat ini', 'Apa yang sedang saya kerjakan, baca, dan pikirkan.');
 
 export const revalidate = 60;
 

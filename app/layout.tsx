@@ -30,7 +30,6 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   alternates: {
-    canonical: '/',
     types: {
       'application/rss+xml': [
         { url: '/rss.xml', title: `${siteConfig.name} — writings RSS` },
@@ -79,7 +78,11 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
-  robots: { index: true, follow: true },
+  verification: { google: process.env.GOOGLE_SITE_VERIFICATION || undefined },
+  robots: {
+    index: process.env.VERCEL_ENV ? process.env.VERCEL_ENV === 'production' : process.env.NODE_ENV === 'production',
+    follow: true,
+  },
 };
 
 // Pre-paint script to prevent FOUC on theme

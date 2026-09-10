@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { JsonLd } from '@/components/json-ld';
+import { siteConfig } from '@/lib/site-config';
 import { getAllWritings } from '@/lib/posts';
 import { getAllProjects } from '@/lib/content-queries';
 import { getHomeData } from '@/lib/page-queries';
@@ -7,6 +9,7 @@ import { ProjectCard } from '@/components/project-card';
 import { HomeHero } from '@/components/home-hero';
 
 export const revalidate = 60;
+export const metadata = { alternates: { canonical: '/' } };
 
 export default async function HomePage() {
   const [allWritings, allProjects, home] = await Promise.all([
@@ -19,6 +22,9 @@ export default async function HomePage() {
 
   return (
     <div className="page-fade mx-auto max-w-[680px] px-6">
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebSite',
+        name: siteConfig.name, alternateName: siteConfig.shortName,
+        url: siteConfig.url, inLanguage: 'id', description: siteConfig.description }} />
       <section className="py-24 pb-16">
         <HomeHero
           monoLabel={home.monoLabel}

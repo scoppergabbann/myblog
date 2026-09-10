@@ -4,21 +4,13 @@ import { getLibraryData } from '@/lib/library';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
 import { LibraryShelf } from './library-shelf';
 import { formatDate } from '@/lib/utils';
-import { siteConfig } from '@/lib/site-config';
+import { pageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export const metadata: Metadata = {
-  title: 'Library',
-  description: 'Koleksi hal-hal yang pernah saya baca, coba, dan kagumi.',
-  openGraph: {
-    title: `Library — ${siteConfig.shortName}`,
-    description: 'Koleksi hal-hal yang pernah saya baca, coba, dan kagumi.',
-    type: 'website',
-    url: `${siteConfig.url}/library`,
-  },
-};
+export const metadata: Metadata = pageMetadata('/library', 'Library',
+  'Koleksi hal-hal yang pernah saya baca, coba, dan kagumi.');
 
 export default async function LibraryPage() {
   const session = await auth();

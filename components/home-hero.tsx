@@ -36,7 +36,7 @@ export function HomeHero({
   const fullText = segments.map((segment) => segment.text).join('');
   const fullLength = Array.from(fullText).length;
   const leadParts = useMemo(() => lead.split(/(\s+)/), [lead]);
-  const [visibleChars, setVisibleChars] = useState(0);
+  const [visibleChars, setVisibleChars] = useState(fullLength);
 
   useEffect(() => {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -63,7 +63,9 @@ export function HomeHero({
       }, 42);
     };
 
-    playTyping();
+    // Keep the server-rendered heading readable before replaying the animation.
+    setVisibleChars(fullLength);
+    restartTimeout = window.setTimeout(playTyping, 8000);
 
     return () => {
       window.clearInterval(typingInterval);

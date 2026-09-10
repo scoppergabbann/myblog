@@ -84,6 +84,10 @@ export async function getLibraryData({
       .order('position', { ascending: true }),
   ]);
 
+  if (categoriesResult.error || itemsResult.error || photosResult.error) {
+    throw new Error('Library temporarily unavailable');
+  }
+
   const categories = (categoriesResult.data ?? []) as LibraryCategory[];
   const rawItems = (itemsResult.data ?? []) as LibraryItem[];
   const visibleCategoryIds = new Set(categories.map((category) => category.id));
