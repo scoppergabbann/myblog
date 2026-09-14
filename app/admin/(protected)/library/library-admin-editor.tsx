@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/admin/toast';
+import { useUnsavedClose } from '@/components/admin/use-unsaved-close';
 import type { LibraryCategory, LibraryItem, LibraryPhoto } from '@/lib/library';
 import {
   uploadLibraryImage,
@@ -209,6 +210,7 @@ function CategoryModal({
   const [description, setDescription] = useState(category?.description ?? '');
   const [displayOrder, setDisplayOrder] = useState(String(category?.display_order ?? 0));
   const [isHidden, setIsHidden] = useState(Boolean(category?.is_hidden));
+  const requestClose = useUnsavedClose([name, emoji, description, displayOrder, isHidden], false, saving, onClose);
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -226,7 +228,7 @@ function CategoryModal({
   };
 
   return (
-    <Modal title={category ? 'Edit Kategori' : 'Tambah Kategori'} onClose={onClose}>
+    <Modal title={category ? 'Edit Kategori' : 'Tambah Kategori'} onClose={requestClose}>
       <div className="space-y-4">
         <div className="grid grid-cols-[80px_1fr] gap-3">
           <Field label="Emoji">
@@ -259,7 +261,7 @@ function CategoryModal({
           </span>
         </label>
       </div>
-      <ModalActions onClose={onClose} onSave={handleSave} saving={saving} disabled={!name.trim()} />
+      <ModalActions onClose={requestClose} onSave={handleSave} saving={saving} disabled={!name.trim()} />
     </Modal>
   );
 }
@@ -293,6 +295,17 @@ function ItemModal({
   const [pendingPhotoUrls, setPendingPhotoUrls] = useState<string[]>([]);
   // Pending reorders for existing photos (id → new position)
   const [pendingReorders, setPendingReorders] = useState<{ id: number; position: number }[]>([]);
+  const [photos, setPhotos] = useState(item?.photos ?? []);
+  const [galleryDirty, setGalleryDirty] = useState(false);
+  const [galleryBusy, setGalleryBusy] = useState(false);
+  const router = useRouter();
+  const requestClose = useUnsavedClose(
+    [name, subtitle, description, badge, reelsUrl, linkUrl, displayOrder],
+    galleryDirty || pendingPhotoUrls.length > 0 || pendingReorders.some((entry) =>
+      photos.find((photo) => photo.id === entry.id)?.position !== entry.position),
+    saving || galleryBusy,
+    onClose,
+  );
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -325,7 +338,7 @@ function ItemModal({
         // Insert pending new photos.
         // Posisi dimulai setelah jumlah foto existing agar cover lama tidak ketimpa secara acak.
         if (pendingPhotoUrls.length > 0) {
-          const existingCount = item?.photos?.length ?? 0;
+          const existingCount = photos.length;
           const photoResults = await Promise.all(
             pendingPhotoUrls.map((url, i) => addItemPhoto(savedId, url, existingCount + i))
           );
@@ -348,7 +361,7 @@ function ItemModal({
   };
 
   return (
-    <Modal title={item ? 'Edit Item' : 'Tambah Item'} onClose={onClose}>
+    <Modal title={item ? 'Edit Item' : 'Tambah Item'} onClose={requestClose}>
       <div className="space-y-4">
         <Field label="Nama">
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="input-base" placeholder="BMW E30, Norwegian Wood, Kopi Tubruk..." />
@@ -375,27 +388,21 @@ function ItemModal({
         </Field>
 
         {/* Gallery photos */}
-        {item ? (
           <GallerySection
-            itemId={item.id}
-            existingPhotos={item.photos}
+            itemId={item?.id ?? null}
+            existingPhotos={photos}
             pendingUrls={pendingPhotoUrls}
             onPendingChange={setPendingPhotoUrls}
             onReorderChange={setPendingReorders}
-            onDeleted={onSaved}
+            onDirtyChange={setGalleryDirty}
+            onBusyChange={setGalleryBusy}
+            onDeleted={(id) => {
+              setPhotos((current) => current.filter((photo) => photo.id !== id));
+              router.refresh();
+            }}
           />
-        ) : (
-          <GallerySection
-            itemId={null}
-            existingPhotos={[]}
-            pendingUrls={pendingPhotoUrls}
-            onPendingChange={setPendingPhotoUrls}
-            onReorderChange={setPendingReorders}
-            onDeleted={() => {}}
-          />
-        )}
       </div>
-      <ModalActions onClose={onClose} onSave={handleSave} saving={saving} disabled={!name.trim()} />
+      <ModalActions onClose={requestClose} onSave={handleSave} saving={saving} disabled={!name.trim() || galleryBusy} />
     </Modal>
   );
 }
@@ -416,13 +423,17 @@ function GallerySection({
   onPendingChange,
   onReorderChange,
   onDeleted,
+  onDirtyChange,
+  onBusyChange,
 }: {
   itemId: number | null;
   existingPhotos: LibraryPhoto[];
   pendingUrls: string[];
   onPendingChange: (urls: string[]) => void;
   onReorderChange: (reorders: { id: number; position: number }[]) => void;
-  onDeleted: () => void;
+  onDeleted: (id: number) => void;
+  onDirtyChange: (dirty: boolean) => void;
+  onBusyChange: (busy: boolean) => void;
 }) {
   const toast = useToast();
   const [entries, setEntries] = useState<GalleryEntry[]>(() => [
@@ -440,6 +451,8 @@ function GallerySection({
   }, [itemId, existingPhotos, pendingUrls]);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [urlInput, setUrlInput] = useState('');
+  useEffect(() => { onDirtyChange(urlInput.length > 0); }, [urlInput, onDirtyChange]);
+  useEffect(() => { onBusyChange(uploadingCount > 0); }, [uploadingCount, onBusyChange]);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragIdx = useRef<number | null>(null);
   const MAX = 6;
@@ -501,7 +514,7 @@ function GallerySection({
     if (entry.kind === 'existing') {
       const res = await deleteItemPhoto(entry.photo.id);
       if (!res.ok) { toast.error(res.error); return; }
-      onDeleted();
+      onDeleted(entry.photo.id);
     }
     updateEntries(entries.filter((_, i) => i !== idx));
   };
@@ -618,12 +631,19 @@ function GallerySection({
 // =============================================================================
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
       <div className="max-h-[90vh] w-full max-w-[520px] overflow-y-auto rounded-[16px] bg-[var(--color-paper)] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-[17px] font-medium text-[var(--color-ink)]">{title}</h2>
-          <button type="button" onClick={onClose} className="text-[var(--color-ink-3)] hover:text-[var(--color-ink)]">✕</button>
+          <button type="button" onClick={onClose} aria-label="Tutup modal" className="text-[var(--color-ink-3)] hover:text-[var(--color-ink)]">✕</button>
         </div>
         {children}
       </div>
