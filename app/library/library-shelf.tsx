@@ -455,7 +455,7 @@ function DetailModal({ item, onClose }: { item: LibraryItem; onClose: () => void
         </div>
 
         {/* Info */}
-        <div className="flex flex-1 flex-col overflow-y-auto p-5">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-5">
           {item.badge && (
             <span className="mb-1 inline-block self-start rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] px-2 py-0.5 font-mono text-[10px] text-[var(--color-ink-3)]">
               {item.badge}
@@ -466,7 +466,7 @@ function DetailModal({ item, onClose }: { item: LibraryItem; onClose: () => void
             <p className="mb-3 font-mono text-[11.5px] text-[var(--color-ink-3)]">{item.subtitle}</p>
           )}
           {item.description && (
-            <p className="mb-4 flex-1 text-[14px] leading-[1.65] text-[var(--color-ink-2)]">{item.description}</p>
+            <p className="mb-4 shrink-0 whitespace-pre-wrap break-words text-[14px] leading-[1.65] text-[var(--color-ink-2)]">{item.description}</p>
           )}
           <div className="mt-auto flex flex-wrap gap-2 border-t border-[var(--color-line)] pt-4">
             {item.reels_url && (

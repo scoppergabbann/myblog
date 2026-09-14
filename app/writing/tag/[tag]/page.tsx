@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getAllTags, getAllWritings } from '@/lib/posts';
+import { getAllWritings } from '@/lib/posts';
 import { WritingItem } from '@/components/writing-item';
 import { pageMetadata } from '@/lib/seo';
 
 export const revalidate = 60;
 
 export async function generateStaticParams() {
-  const tags = await getAllTags();
-  return [...new Set(tags.map((tag) => tag.toLowerCase()))].map((tag) => ({ tag }));
+  // Generate tags on first request, then retain the existing ISR interval.
+  return [];
 }
 
 export async function generateMetadata({

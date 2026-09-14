@@ -8,7 +8,8 @@ import { WritingItem } from '@/components/writing-item';
 import { ProjectCard } from '@/components/project-card';
 import { HomeHero } from '@/components/home-hero';
 
-export const revalidate = 60;
+// Query articles at request time so database outages do not prevent deployment.
+export const dynamic = 'force-dynamic';
 export const metadata = { alternates: { canonical: '/' } };
 
 export default async function HomePage() {

@@ -2,10 +2,18 @@ import { Feed } from 'feed';
 import { getAllWritings } from '@/lib/posts';
 import { siteConfig } from '@/lib/site-config';
 
-export const revalidate = 300; // Refresh feed every 5 minutes
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const writings = await getAllWritings();
+  let writings: Awaited<ReturnType<typeof getAllWritings>>;
+  try {
+    writings = await getAllWritings();
+  } catch {
+    return new Response('Articles temporarily unavailable', {
+      status: 503,
+      headers: { 'Cache-Control': 'no-store', 'Retry-After': '60', 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
 
   const feed = new Feed({
     title: `${siteConfig.name} — writings`,

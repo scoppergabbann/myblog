@@ -1,10 +1,18 @@
 import { getAllWritings } from '@/lib/posts';
 import { siteConfig } from '@/lib/site-config';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const writings = await getAllWritings();
+  let writings: Awaited<ReturnType<typeof getAllWritings>>;
+  try {
+    writings = await getAllWritings();
+  } catch {
+    return new Response('Articles temporarily unavailable', {
+      status: 503,
+      headers: { 'Cache-Control': 'no-store', 'Retry-After': '60', 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
 
   const feed = {
     version: 'https://jsonfeed.org/version/1.1',
