@@ -4,6 +4,13 @@ Vercel memanggil `/api/cron/supabase-heartbeat` setiap hari dengan jadwal
 02.00 UTC (09.00 WIB). Pada paket Hobby, waktu eksekusi dapat bergeser dalam
 jam tersebut. Cron berjalan pada deployment production, bukan localhost/preview.
 
+Cron membaca heartbeat setiap hari, tetapi hanya menulis jika sudah berlalu
+tiga tanggal kalender WIB sejak penulisan terakhir. Misalnya 30 Januari ke
+2 Februari, tetap tiga hari meskipun berganti bulan. Panggilan pertama membuat
+baris jika belum ada; panggilan lebih awal mengembalikan `skipped: true` tanpa
+menulis. Ini bukan timer tepat 72 jam. Jika eksekusi gagal, pengecekan harian
+berikutnya mencoba lagi karena timestamp terakhir tidak diubah.
+
 ## Aktivasi
 
 1. Jalankan `supabase/migrations/014_database_heartbeat.sql` di SQL Editor project

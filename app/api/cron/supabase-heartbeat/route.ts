@@ -24,7 +24,25 @@ export async function GET(request: Request) {
 
   try {
     const lastSeenAt = new Date().toISOString();
-    const { error } = await createSupabaseAdmin()
+    const supabase = createSupabaseAdmin();
+    const { data, error: readError } = await supabase
+      .from('database_heartbeat')
+      .select('last_seen_at')
+      .eq('id', 1)
+      .abortSignal(AbortSignal.timeout(10_000))
+      .maybeSingle();
+    if (readError) {
+      console.error('Supabase heartbeat read failed', { code: readError.code });
+      return json({ ok: false, error: 'Database heartbeat unavailable' }, 503);
+    }
+
+    // Compare WIB calendar dates to tolerate Vercel Hobby's hourly scheduling window.
+    const wibDay = (timestamp: string) => Math.floor((Date.parse(timestamp) + 7 * 60 * 60 * 1000) / 86_400_000);
+    if (data && wibDay(lastSeenAt) - wibDay(data.last_seen_at) < 3) {
+      return json({ ok: true, skipped: true, lastSeenAt: data.last_seen_at });
+    }
+
+    const { error } = await supabase
       .from('database_heartbeat')
       .upsert({ id: 1, last_seen_at: lastSeenAt }, { onConflict: 'id' })
       .abortSignal(AbortSignal.timeout(10_000));

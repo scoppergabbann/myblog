@@ -12,7 +12,15 @@ const env = {};
 let calls = 0;
 let failure = false;
 let throws = false;
+let readFailure = false;
+let stored = null;
+let writes = 0;
+let now = '2026-01-30T02:45:00.000Z';
+class TestDate extends Date {
+  constructor(...args) { super(...(args.length ? args : [now])); }
+}
 const context = {
+  Date: TestDate,
   exports: {}, Buffer, Response, AbortSignal, process: { env }, console: { error() {} },
   require(name) {
     if (name === 'node:crypto') return require(name);
@@ -22,12 +30,25 @@ const context = {
       if (throws) throw new Error('sensitive credentials');
       return { from(table) {
         assert.equal(table, 'database_heartbeat');
-        return { upsert(row, options) {
+        return {
+          select(column) {
+            assert.equal(column, 'last_seen_at');
+            return { eq(key, value) {
+              assert.equal(key, 'id');
+              assert.equal(value, 1);
+              return { abortSignal: () => ({ maybeSingle: async () => ({
+                data: stored ? { last_seen_at: stored } : null,
+                error: readFailure ? { code: 'TEST' } : null,
+              }) }) };
+            } };
+          },
+          upsert(row, options) {
           assert.equal(row.id, 1);
           assert.ok(Number.isFinite(Date.parse(row.last_seen_at)));
           assert.equal(options.onConflict, 'id');
           return { abortSignal: async (signal) => {
             assert.ok(signal instanceof AbortSignal);
+            if (!failure) { stored = row.last_seen_at; writes++; }
             return { error: failure ? { code: 'TEST', message: 'sensitive database error' } : null };
           } };
         } };
@@ -53,13 +74,30 @@ const run = (authorization) => context.exports.GET(new Request('https://example.
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.equal((await response.json()).ok, true);
   }
+  assert.equal(writes, 1, 'Repeated call does not rewrite heartbeat');
+  now = '2026-02-01T02:00:00.000Z';
+  assert.equal((await (await run(auth)).json()).skipped, true);
+  assert.equal(writes, 1);
+  now = '2026-02-02T02:00:00.000Z';
+  assert.equal((await run(auth)).status, 200);
+  assert.equal(writes, 2, 'Third calendar day writes across month boundary despite earlier clock time');
+  readFailure = true;
+  assert.equal((await run(auth)).status, 503);
+  assert.equal(writes, 2);
+  readFailure = false;
+  now = '2026-02-05T02:00:00.000Z';
   failure = true;
   assert.equal((await run(auth)).status, 503);
+  assert.equal(writes, 2);
+  failure = false;
+  now = '2026-02-06T02:00:00.000Z';
+  assert.equal((await run(auth)).status, 200);
+  assert.equal(writes, 3, 'Next daily invocation retries a failed write');
   throws = true;
   const failed = await run(auth);
   assert.equal(failed.status, 503);
   assert.doesNotMatch(await failed.text(), /sensitive/);
   const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
   assert.deepEqual(config.crons, [{ path: '/api/cron/supabase-heartbeat', schedule: '0 2 * * *' }]);
-  console.log('PASS: missing/invalid secrets, no unauthorized DB access, singleton upsert, no cache, DB errors, exception redaction, daily schedule');
+  console.log('PASS: authorization, singleton, three-day writes, month boundary, early/repeated calls, read/write failures, retry, daily schedule');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

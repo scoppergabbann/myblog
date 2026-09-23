@@ -33,19 +33,19 @@ export default async function WritingPage({
     a === 'all' ? -1 : b === 'all' ? 1 : a.localeCompare(b)
   );
 
-const visibleWritingsCount = allWritings.filter((post) => {
-  const postTags = post.tags ?? [];
-  return !postTags.some((tag) => ['investasi', 'saham'].includes(tag));
-}).length;
+  const visibleWritings = allWritings.filter((post) =>
+    !post.tags.some((tag) => ['investasi', 'saham'].includes(tag.trim().toLowerCase()))
+  );
+  const visibleWritingsCount = visibleWritings.length;
 
-  const totalPages = Math.max(1, Math.ceil(allWritings.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(visibleWritingsCount / PAGE_SIZE));
   const page = pageNumber(sp.page);
 
   // Out-of-range page → 404
   if (page > totalPages) notFound();
 
   const start = (page - 1) * PAGE_SIZE;
-  const paginated = allWritings.slice(start, start + PAGE_SIZE);
+  const paginated = visibleWritings.slice(start, start + PAGE_SIZE);
 
   return (
     <div className="page-fade mx-auto max-w-[680px] px-6">
@@ -66,6 +66,7 @@ const visibleWritingsCount = allWritings.filter((post) => {
           tags={tags}
           page={page}
           totalPages={totalPages}
+          totalItems={visibleWritingsCount}
           pageSize={PAGE_SIZE}
         />
       </div>

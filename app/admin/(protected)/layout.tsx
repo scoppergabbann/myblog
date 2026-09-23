@@ -11,18 +11,18 @@ export const metadata: Metadata = {
 };
 
 const nav = [
+  { href: '/admin/about', label: 'about' },
+  { href: '/admin/comments', label: 'comments' },
+  { href: '/admin/guestbook', label: 'guestbook' },
+  { href: '/admin/home', label: 'home' },
+  { href: '/admin/library', label: 'library' },
+  { href: '/admin/maintenance', label: 'maintenance' },
+  { href: '/admin/now', label: 'now' },
   { href: '/admin', label: 'overview', exact: true },
   { href: '/admin/posts', label: 'posts' },
   { href: '/admin/projects', label: 'projects' },
-  { href: '/admin/home', label: 'home' },
-  { href: '/admin/about', label: 'about' },
-  { href: '/admin/now', label: 'now' },
-  { href: '/admin/guestbook', label: 'guestbook' },
-  { href: '/admin/comments', label: 'comments' },
   { href: '/admin/subscribers', label: 'subscribers' },
   { href: '/admin/views', label: 'views' },
-  { href: '/admin/maintenance', label: 'maintenance' },
-  { href: '/admin/library', label: 'library' },
 ];
 
 export default async function AdminLayout({

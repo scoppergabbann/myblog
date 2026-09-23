@@ -11,6 +11,7 @@ export function WritingFilter({
   tags,
   page,
   totalPages,
+  totalItems,
   pageSize,
 }: {
   paginated: Writing[];
@@ -18,6 +19,7 @@ export function WritingFilter({
   tags: string[];
   page: number;
   totalPages: number;
+  totalItems: number;
   pageSize: number;
 }) {
   const [activeTag, setActiveTag] = useState('all');
@@ -115,7 +117,7 @@ export function WritingFilter({
           page={page}
           totalPages={totalPages}
           pageSize={pageSize}
-          totalItems={allWritings.length}
+          totalItems={totalItems}
         />
       )}
     </>
