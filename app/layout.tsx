@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { geist } from '@/lib/fonts';
 import { Nav } from '@/components/nav';
 import { Footer } from '@/components/footer';
 import { NavProgress } from '@/components/nav-progress';
@@ -9,18 +9,6 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { HideOnMaintenance } from '@/components/hide-on-maintenance';
 import { siteConfig } from '@/lib/site-config';
 import './globals.css';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -109,7 +97,7 @@ export default function RootLayout({
     <html
       lang="id"
       suppressHydrationWarning
-      className={`${inter.variable} ${jetbrains.variable}`}
+      className={geist.variable}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />

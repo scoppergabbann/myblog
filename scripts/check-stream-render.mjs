@@ -1,0 +1,10 @@
+import { compile, run } from '@mdx-js/mdx';
+import * as runtime from 'react/jsx-runtime';
+import { renderToStaticMarkup } from 'react-dom/server';
+import remarkGfm from 'remark-gfm';
+const markdown = '**Bold**\n\n- Item with `code`\n- [Link](https://example.com)\n\n{process.exit(1)}\n\n<script>alert(1)</script>';
+const compiled = await compile(markdown, { format: 'md', outputFormat: 'function-body', remarkPlugins: [remarkGfm] });
+const { default: Content } = await run(String(compiled), runtime);
+const html = renderToStaticMarkup(Content({}));
+if (!html.includes('<strong>Bold</strong>') || !html.includes('<ul>') || !html.includes('<code>code</code>') || html.includes('<script>')) throw Error(html);
+console.log('PASS Markdown paragraphs, lists, inline code, links, and non-executable expressions/HTML');

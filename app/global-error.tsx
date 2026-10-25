@@ -1,5 +1,7 @@
 'use client';
 
+import { geist } from '@/lib/fonts';
+
 export default function GlobalError({
   error,
   reset,
@@ -8,10 +10,10 @@ export default function GlobalError({
   reset: () => void;
 }) {
   return (
-    <html lang="id">
+    <html lang="id" className={geist.className}>
       <body
         style={{
-          fontFamily: 'system-ui, sans-serif',
+          fontFamily: 'inherit',
           background: '#fbfaf7',
           color: '#14130f',
           margin: 0,
@@ -31,7 +33,7 @@ export default function GlobalError({
           Aplikasi gagal dimuat sepenuhnya. Coba muat ulang halaman.
         </p>
         {error.digest && (
-          <p style={{ fontFamily: 'monospace', fontSize: 11.5, color: '#8a8780', marginBottom: 24 }}>
+          <p style={{ fontFamily: 'inherit', fontSize: 11.5, color: '#8a8780', marginBottom: 24 }}>
             error id: {error.digest}
           </p>
         )}
@@ -45,6 +47,7 @@ export default function GlobalError({
             border: 'none',
             borderRadius: 8,
             cursor: 'pointer',
+            fontFamily: 'inherit',
             fontSize: 13,
             fontWeight: 500,
           }}
