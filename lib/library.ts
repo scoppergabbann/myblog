@@ -1,3 +1,4 @@
+import type { LibraryKind, LibraryDetails } from './library-fields';
 import { createSupabasePublic } from './supabase/public';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -12,6 +13,7 @@ export type LibraryPhoto = {
 };
 
 export type LibraryCategory = {
+  item_type?: LibraryKind | null;
   id: number;
   name: string;
   emoji: string;
@@ -22,6 +24,8 @@ export type LibraryCategory = {
 };
 
 export type LibraryItem = {
+  item_type?: LibraryKind | null;
+  details?: LibraryDetails;
   id: number;
   category_id: number;
   name: string;

@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import type { LibraryData, LibraryCategory, LibraryItem, LibraryPhoto } from '@/lib/library';
 import { getCoverUrl } from '@/lib/library';
+import { getLibraryItemSubtitle, isLibraryKind, libraryForms } from '@/lib/library-fields';
+import { LibraryItemDetails, LibraryItemNotes } from '@/components/library-item-details';
 
 const ITEMS_PER_PAGE = 9;
 
@@ -314,8 +316,8 @@ function LibraryCard({ item, onClick }: { item: LibraryItem; onClick: () => void
         {/* Info */}
         <div className="p-3">
           <p className="mb-0.5 line-clamp-2 text-[13px] font-medium leading-[1.35] text-[var(--color-ink)]">{item.name}</p>
-          {item.subtitle && (
-            <p className="mb-2 line-clamp-1 text-[11.5px] text-[var(--color-ink-3)]">{item.subtitle}</p>
+          {getLibraryItemSubtitle(item) && (
+            <p className="mb-2 line-clamp-1 text-[11.5px] text-[var(--color-ink-3)]">{getLibraryItemSubtitle(item)}</p>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
             {item.badge && (
@@ -462,13 +464,16 @@ function DetailModal({ item, onClose }: { item: LibraryItem; onClose: () => void
             </span>
           )}
           <h2 className="mb-1 text-[20px] font-medium tracking-[-0.02em] text-[var(--color-ink)]">{item.name}</h2>
-          {item.subtitle && (
-            <p className="mb-3 font-mono text-[11.5px] text-[var(--color-ink-3)]">{item.subtitle}</p>
+          {getLibraryItemSubtitle(item) && (
+            <p className="mb-3 font-mono text-[11.5px] text-[var(--color-ink-3)]">{getLibraryItemSubtitle(item)}</p>
           )}
-          {item.description && (
+          <LibraryItemDetails item={item} />
+          {item.description?.trim() && isLibraryKind(item.item_type) && <h3 className="mb-2 shrink-0 text-sm font-medium">{libraryForms[item.item_type].description}</h3>}
+          {item.description?.trim() && (
             <p className="mb-4 shrink-0 whitespace-pre-wrap break-words text-[14px] leading-[1.65] text-[var(--color-ink-2)]">{item.description}</p>
           )}
-          <div className="mt-auto flex flex-wrap gap-2 border-t border-[var(--color-line)] pt-4">
+          <LibraryItemNotes item={item} />
+          {(item.reels_url || item.link_url) && <div className="mt-auto flex flex-wrap gap-2 border-t border-[var(--color-line)] pt-4">
             {item.reels_url && (
               <a href={item.reels_url} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90">
@@ -484,7 +489,7 @@ function DetailModal({ item, onClose }: { item: LibraryItem; onClose: () => void
                 Lihat lebih lanjut →
               </a>
             )}
-          </div>
+          </div>}
           <p className="mt-3 font-mono text-[10.5px] text-[var(--color-ink-4)]">
             {hasMultiple ? 'esc · ← → untuk navigasi foto' : 'esc untuk tutup'}
           </p>

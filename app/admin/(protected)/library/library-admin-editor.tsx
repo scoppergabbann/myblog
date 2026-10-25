@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Children, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/admin/toast';
 import { useUnsavedClose } from '@/components/admin/use-unsaved-close';
 import type { LibraryCategory, LibraryItem, LibraryPhoto } from '@/lib/library';
+import { libraryKinds, libraryForms, resolveLibraryKind, cleanLibraryDetails, getLibraryItemSubtitle, type LibraryKind, type LibraryDetails } from '@/lib/library-fields';
+import { LibraryDetailFields } from './library-detail-fields';
 import {
   uploadLibraryImage,
   upsertCategory,
@@ -34,6 +36,7 @@ export function LibraryAdminEditor({
   const toast = useToast();
 
   const activeItems = items.filter((i) => i.category_id === activeCatId);
+  const activeKind = resolveLibraryKind(null, categories.find(category => category.id === activeCatId));
 
   const handleDeleteCategory = async (id: number) => {
     if (!confirm('Hapus kategori ini dan semua item di dalamnya?')) return;
@@ -115,13 +118,13 @@ export function LibraryAdminEditor({
               onClick={() => setEditingItem({ item: null, categoryId: activeCatId })}
               className="rounded-lg bg-[var(--color-ink)] px-3 py-2 text-[13px] font-medium text-[var(--color-paper)] transition-opacity hover:opacity-85"
             >
-              + Tambah Item
+              + Tambah {libraryKinds[activeKind]}
             </button>
           </div>
 
           {activeItems.length === 0 ? (
             <p className="py-10 text-center text-sm text-[var(--color-ink-3)]">
-              Belum ada item. Klik "+ Tambah Item" untuk mulai.
+              Belum ada koleksi. Tambahkan {libraryKinds[activeKind].toLowerCase()} pertama kamu.
             </p>
           ) : (
             <div className="space-y-2">
@@ -141,7 +144,7 @@ export function LibraryAdminEditor({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13.5px] font-medium text-[var(--color-ink)]">{item.name}</p>
                     <p className="font-mono text-[11px] text-[var(--color-ink-4)]">
-                      {item.subtitle && `${item.subtitle} · `}
+                      {getLibraryItemSubtitle(item) && `${getLibraryItemSubtitle(item)} · `}
                       {item.photos.length} foto · order: {item.display_order}
                     </p>
                   </div>
@@ -182,6 +185,7 @@ export function LibraryAdminEditor({
         <ItemModal
           item={editingItem.item}
           categoryId={editingItem.categoryId}
+          category={categories.find(c => c.id === editingItem.categoryId)}
           onClose={() => setEditingItem(null)}
           onSaved={() => { setEditingItem(null); router.refresh(); }}
         />
@@ -209,8 +213,9 @@ function CategoryModal({
   const [emoji, setEmoji] = useState(category?.emoji ?? '📦');
   const [description, setDescription] = useState(category?.description ?? '');
   const [displayOrder, setDisplayOrder] = useState(String(category?.display_order ?? 0));
+  const [itemType, setItemType] = useState<LibraryKind>(resolveLibraryKind(null, category));
   const [isHidden, setIsHidden] = useState(Boolean(category?.is_hidden));
-  const requestClose = useUnsavedClose([name, emoji, description, displayOrder, isHidden], false, saving, onClose);
+  const requestClose = useUnsavedClose([name, emoji, description, displayOrder, isHidden, itemType], false, saving, onClose);
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -221,6 +226,7 @@ function CategoryModal({
       description: description.trim() || null,
       display_order: parseInt(displayOrder) || 0,
       is_hidden: isHidden,
+      item_type: itemType,
     });
     setSaving(false);
     if (res.ok) { toast.success('Tersimpan'); onSaved(); }
@@ -238,6 +244,12 @@ function CategoryModal({
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="input-base" placeholder="Vinyl Record" />
           </Field>
         </div>
+        <Field label="Jenis form untuk kategori ini">
+          <select value={itemType} onChange={e => setItemType(e.target.value as LibraryKind)} className="input-base">
+            {Object.entries(libraryKinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </Field>
+        <p className="text-xs text-[var(--color-ink-3)]">Menentukan isian awal item baru. Jenis item yang sudah tersimpan tetap dipertahankan.</p>
         <Field label="Deskripsi (opsional)">
           <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="input-base" placeholder="Koleksi piringan hitam favorit" />
         </Field>
@@ -273,16 +285,22 @@ function CategoryModal({
 function ItemModal({
   item,
   categoryId,
+  category,
   onClose,
   onSaved,
 }: {
   item: LibraryItem | null;
   categoryId: number;
+  category?: LibraryCategory;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
+  const [itemType, setItemType] = useState<LibraryKind>(resolveLibraryKind(item, category));
+  const [details, setDetails] = useState<LibraryDetails>(item?.details ?? {});
+  const [savedItemId, setSavedItemId] = useState<number | null>(item?.id ?? null);
+  const form = libraryForms[itemType];
   const [name, setName] = useState(item?.name ?? '');
   const [subtitle, setSubtitle] = useState(item?.subtitle ?? '');
   const [description, setDescription] = useState(item?.description ?? '');
@@ -300,7 +318,7 @@ function ItemModal({
   const [galleryBusy, setGalleryBusy] = useState(false);
   const router = useRouter();
   const requestClose = useUnsavedClose(
-    [name, subtitle, description, badge, reelsUrl, linkUrl, displayOrder],
+    [name, subtitle, description, badge, reelsUrl, linkUrl, displayOrder, itemType, details],
     galleryDirty || pendingPhotoUrls.length > 0 || pendingReorders.some((entry) =>
       photos.find((photo) => photo.id === entry.id)?.position !== entry.position),
     saving || galleryBusy,
@@ -308,88 +326,124 @@ function ItemModal({
   );
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (saving || galleryBusy) return;
+    if (!name.trim()) { toast.error(form.name + ' wajib diisi.'); return; }
+    const checked = cleanLibraryDetails(itemType, details);
+    if (checked.error) { toast.error(checked.error); return; }
     setSaving(true);
 
-    const res = await upsertItem(item?.id ?? null, {
-      category_id: categoryId,
-      name: name.trim(),
-      subtitle: subtitle.trim() || null,
-      description: description.trim() || null,
-      badge: badge.trim() || null,
-      reels_url: reelsUrl.trim() || null,
-      link_url: linkUrl.trim() || null,
-      display_order: parseInt(displayOrder) || 0,
-    });
+    try {
+      const res = await upsertItem(savedItemId, {
+        category_id: categoryId,
+        item_type: itemType,
+        details: checked.details,
+        name: name.trim(),
+        subtitle: subtitle.trim() || null,
+        description: description.trim() || null,
+        badge: badge.trim() || null,
+        reels_url: reelsUrl.trim() || null,
+        link_url: linkUrl.trim() || null,
+        display_order: displayOrder.trim() ? Number(displayOrder) : 0,
+      });
 
-    if (res.ok) {
-      const savedId = res.id ?? item?.id;
-      if (savedId) {
-        // Flush reorders for existing photos
-        if (pendingReorders.length > 0) {
-          const reorderRes = await reorderItemPhotos(pendingReorders);
-          if (!reorderRes.ok) {
-            toast.error(reorderRes.error);
-            setSaving(false);
-            return;
+      if (res.ok) {
+        const savedId = res.id ?? savedItemId;
+        if (savedId) setSavedItemId(savedId);
+        if (savedId) {
+          // Flush reorders for existing photos
+          if (pendingReorders.length > 0) {
+            const reorderRes = await reorderItemPhotos(pendingReorders);
+            if (!reorderRes.ok) {
+              toast.error(reorderRes.error);
+              setSaving(false);
+              return;
+            }
+            setPendingReorders([]);
+          }
+
+          // Insert pending new photos.
+          // Posisi dimulai setelah jumlah foto existing agar cover lama tidak ketimpa secara acak.
+          if (pendingPhotoUrls.length > 0) {
+            const existingCount = Math.max(-1, ...photos.map(photo => photo.position), ...pendingReorders.map(photo => photo.position)) + 1;
+            const photoResults = await Promise.all(
+              pendingPhotoUrls.map((url, i) => addItemPhoto(savedId, url, existingCount + i))
+            );
+
+            const successful = photoResults.flatMap((result, index) => result.ok && result.id ? [{ id: result.id, url: pendingPhotoUrls[index], position: existingCount + index }] : []);
+            setPhotos(current => [...current, ...successful]);
+            setPendingPhotoUrls(current => current.filter((_, index) => !photoResults[index]?.ok));
+            const failedPhoto = photoResults.find((r) => !r.ok);
+            if (failedPhoto && !failedPhoto.ok) {
+              toast.error(failedPhoto.error);
+              setSaving(false);
+              return;
+            }
           }
         }
-
-        // Insert pending new photos.
-        // Posisi dimulai setelah jumlah foto existing agar cover lama tidak ketimpa secara acak.
-        if (pendingPhotoUrls.length > 0) {
-          const existingCount = photos.length;
-          const photoResults = await Promise.all(
-            pendingPhotoUrls.map((url, i) => addItemPhoto(savedId, url, existingCount + i))
-          );
-
-          const failedPhoto = photoResults.find((r) => !r.ok);
-          if (failedPhoto && !failedPhoto.ok) {
-            toast.error(failedPhoto.error);
-            setSaving(false);
-            return;
-          }
-        }
+        toast.success('Tersimpan');
+        onSaved();
+      } else {
+        toast.error(res.error);
       }
-      toast.success('Tersimpan');
-      onSaved();
-    } else {
-      toast.error(res.error);
-    }
 
-    setSaving(false);
+    } catch { toast.error('Gagal menyimpan. Isian tetap tersedia; coba lagi.'); }
+    finally { setSaving(false); }
   };
 
   return (
-    <Modal title={item ? 'Edit Item' : 'Tambah Item'} onClose={requestClose}>
+    <Modal title={`${item ? 'Edit' : 'Tambah'} ${libraryKinds[itemType]}`} onClose={requestClose}>
       <div className="space-y-4">
-        <Field label="Nama">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="input-base" placeholder="BMW E30, Norwegian Wood, Kopi Tubruk..." />
-        </Field>
-        <Field label="Subtitle (opsional)">
-          <input type="text" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} className="input-base" placeholder="Haruki Murakami · 1987, E30 · 1987, Kapal Api..." />
-        </Field>
-        <Field label="Deskripsi / Kesan">
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="input-base resize-y" placeholder="Ceritakan kenapa kamu suka ini..." />
-        </Field>
-        <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-          <Field label="Badge (opsional)">
-            <input type="text" value={badge} onChange={(e) => setBadge(e.target.value)} className="input-base" placeholder="Selesai, Wishlist, Impian, Kopi..." />
-          </Field>
-          <Field label="Urutan tampil">
-            <input type="number" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} min={0} className="input-base" />
-          </Field>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--color-paper-2)] px-3 py-2.5">
+          <p className="text-xs text-[var(--color-ink-3)]">Kategori: <span className="font-medium text-[var(--color-ink)]">{category?.name ?? 'Library'}</span></p>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-ink-3)]">Jenis item
+            <select disabled={saving || galleryBusy} value={itemType} onChange={e => {
+              const next = e.target.value as LibraryKind;
+              if (Object.values(details).some(Boolean) && !confirm('Ganti jenis item? Detail khusus jenis sebelumnya akan dikosongkan.')) return;
+              setItemType(next); setDetails({}); setBadge('');
+            }} className="input-base w-auto">
+              {Object.entries(libraryKinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </label>
         </div>
-        <Field label="Link Reels IG (opsional)">
-          <input type="url" value={reelsUrl} onChange={(e) => setReelsUrl(e.target.value)} className="input-base" placeholder="https://www.instagram.com/reel/..." />
-        </Field>
-        <Field label="Link eksternal (opsional)">
-          <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} className="input-base" placeholder="https://..." />
-        </Field>
+        <fieldset disabled={saving || galleryBusy} className="space-y-5">
+          <Field label={form.name + ' *'}>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} required maxLength={200} className="input-base" placeholder={form.placeholder} />
+          </Field>
+          <LibraryDetailFields kind={itemType} details={details} onChange={setDetails} />
+          {form.statuses.length > 0 && <Field label={itemType === 'book' ? 'Status membaca' : 'Status koleksi'}>
+            <select value={badge} onChange={e => setBadge(e.target.value)} className="input-base">
+              <option value="">Belum dipilih</option>
+              {badge && !form.statuses.includes(badge) && <option value={badge}>{badge} (status lama)</option>}
+              {form.statuses.map(status => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </Field>}
+          <section className="space-y-4 border-t border-[var(--color-line)] pt-5">
+            <h3 className="text-sm font-medium">{itemType === 'book' ? 'Pengalaman membaca' : itemType === 'note' ? 'Catatanmu' : 'Cerita pribadi'}</h3>
+            <Field label={form.description}>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={5} maxLength={20000} className="input-base resize-y" placeholder={form.descriptionPlaceholder} />
+            </Field>
+            {form.notes && <Field label={form.notes}>
+              <textarea value={details.notes ?? ''} onChange={e => setDetails(current => ({ ...current, notes: e.target.value }))} rows={4} maxLength={12000} className="input-base resize-y" placeholder={itemType === 'book' ? 'Ide yang ingin diingat, kutipan, atau catatan per bab…' : 'Catatan tambahan yang ingin kamu simpan…'} />
+            </Field>}
+            <p className="text-xs leading-relaxed text-[var(--color-ink-3)]">Kesan dan catatan ini akan tampil di detail library publik.</p>
+          </section>
+          <Field label={itemType === 'book' ? 'Tautan buku / referensi (opsional)' : 'Tautan referensi (opsional)'}>
+            <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} className="input-base" placeholder="https://..." />
+          </Field>
+          <details className="rounded-lg border border-[var(--color-line)] p-3">
+            <summary className="cursor-pointer text-sm text-[var(--color-ink-3)]">Pengaturan tambahan</summary>
+            <div className="mt-4 space-y-4">
+              <Field label="Subtitle tambahan (opsional)"><input value={subtitle} maxLength={600} onChange={e => setSubtitle(e.target.value)} className="input-base" placeholder="Otomatis dari identitas jika dikosongkan" /></Field>
+              {(form.reels || reelsUrl) && <Field label="Link Reels IG (opsional)"><input type="url" value={reelsUrl} onChange={e => setReelsUrl(e.target.value)} className="input-base" placeholder="https://www.instagram.com/reel/..." /></Field>}
+              {form.statuses.length === 0 && <Field label="Label (opsional)"><input value={badge} maxLength={100} onChange={e => setBadge(e.target.value)} className="input-base" /></Field>}
+              <Field label="Urutan tampil"><input type="number" value={displayOrder} onChange={e => setDisplayOrder(e.target.value)} min={0} step={1} className="input-base" /></Field>
+            </div>
+          </details>
+        </fieldset>
 
         {/* Gallery photos */}
-          <GallerySection
-            itemId={item?.id ?? null}
+          <fieldset disabled={saving}><GallerySection
+            itemId={savedItemId}
             existingPhotos={photos}
             pendingUrls={pendingPhotoUrls}
             onPendingChange={setPendingPhotoUrls}
@@ -400,7 +454,7 @@ function ItemModal({
               setPhotos((current) => current.filter((photo) => photo.id !== id));
               router.refresh();
             }}
-          />
+          /></fieldset>
       </div>
       <ModalActions onClose={requestClose} onSave={handleSave} saving={saving} disabled={!name.trim() || galleryBusy} />
     </Modal>
@@ -631,6 +685,8 @@ function GallerySection({
 // =============================================================================
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  const content = Children.toArray(children);
+  const footer = content.pop();
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); onClose(); }
@@ -640,12 +696,13 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-[520px] overflow-y-auto rounded-[16px] bg-[var(--color-paper)] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-5 flex items-center justify-between">
+      <div role="dialog" aria-modal="true" aria-label={title} className="flex max-h-[90dvh] w-full max-w-[700px] flex-col overflow-hidden rounded-[20px] bg-[var(--color-paper)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-line)] px-6 py-5">
           <h2 className="text-[17px] font-medium text-[var(--color-ink)]">{title}</h2>
           <button type="button" onClick={onClose} aria-label="Tutup modal" className="text-[var(--color-ink-3)] hover:text-[var(--color-ink)]">✕</button>
         </div>
-        {children}
+        <div className="min-h-0 overflow-y-auto px-6 py-5">{content}</div>
+        {footer}
       </div>
     </div>
   );
@@ -653,16 +710,16 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-[var(--color-ink-3)]">{label}</label>
+    <label className="block">
+      <span className="mb-1.5 block text-xs text-[var(--color-ink-3)]">{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 
 function ModalActions({ onClose, onSave, saving, disabled }: { onClose: () => void; onSave: () => void; saving: boolean; disabled: boolean }) {
   return (
-    <div className="mt-5 flex justify-end gap-3 border-t border-[var(--color-line)] pt-4">
+    <div className="flex shrink-0 justify-end gap-3 border-t border-[var(--color-line)] bg-[var(--color-paper)] px-6 py-4">
       <button type="button" onClick={onClose} className="px-3 py-2 text-[13px] text-[var(--color-ink-3)] hover:text-[var(--color-ink)]">Batal</button>
       <button type="button" onClick={onSave} disabled={saving || disabled}
         className="rounded-lg bg-[var(--color-ink)] px-4 py-2 text-[13.5px] font-medium text-[var(--color-paper)] transition-opacity hover:opacity-85 disabled:cursor-wait disabled:opacity-60">
