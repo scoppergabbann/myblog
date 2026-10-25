@@ -2,11 +2,14 @@ import 'server-only';
 import { createSupabasePublic } from './supabase/public';
 import { getNowData } from './content-queries';
 import type { StreamEntry } from './now-stream';
+import type { LibraryStreamEntry } from './library-stream';
+import { enrichLibraryStreamEntries } from './library-stream-queries';
 export async function getStreamEntries(): Promise<StreamEntry[]> {
-  const { data, error } = await createSupabasePublic().from('now_entries')
-    .select('id, title, category, project, project_url, content, published_on, published')
+  const db = createSupabasePublic();
+  const { data, error } = await db.from('now_entries')
+    .select('*')
     .eq('published', true).order('published_on', { ascending: false }).order('id', { ascending: false });
-  if (!error) return (data ?? []) as StreamEntry[];
+  if (!error) return enrichLibraryStreamEntries((data ?? []) as LibraryStreamEntry[], db);
   if (error.code !== 'PGRST205' && error.code !== '42P01') throw new Error('Stream sementara tidak tersedia.');
   const old = await getNowData();
   const groups = [['Sedang belajar', old.learning], ['Sedang dikerjakan', old.working], ['Sedang dikonsumsi', old.consuming]] as const;

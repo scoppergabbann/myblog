@@ -1,0 +1,50 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const ts = require('typescript');
+function load(file, imports) {
+  const module = { exports: {} };
+  const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  vm.runInNewContext(code, { module, exports: module.exports, require: name => { if (!(name in imports)) throw Error('Unexpected import: ' + name); return imports[name]; } });
+  return module.exports;
+}
+const fields = load('lib/library-fields.ts', {});
+const stream = load('lib/library-stream.ts', { './library-fields': fields });
+const queries = load('lib/library-stream-queries.ts', { 'server-only': {}, './library-stream': stream });
+const book = { id: 7, name: 'Norwegian Wood', item_type: 'book', badge: 'Sedang dibaca', details: { author: 'Haruki Murakami', publisher: 'Gramedia', published_year: '1987', pages: '400', rating: '4 / 5', notes: 'Kutipan favorit' }, description: 'Berkesan sekali.', subtitle: null };
+const content = stream.buildLibraryStreamContent(book);
+for (const text of ['**Norwegian Wood**', '**Status baca:** Sedang dibaca', '**Penulis:** Haruki Murakami', '**Penerbit:** Gramedia', '**Tahun terbit:** 1987', '**Jumlah halaman:** 400', '**Penilaian pribadi:** 4 / 5', 'Berkesan sekali.', 'Kutipan favorit', '/library#item-7']) assert.ok(content.includes(text), text);
+assert.ok(!content.includes('ISBN'), 'Empty field must have no label');
+assert.ok(!content.includes('Bahasa'), 'Empty field must have no label');
+const minimal = stream.buildLibraryStreamContent({ ...book, badge: ' ', details: {}, description: null });
+for (const label of ['Status baca', 'Penulis', 'Penerbit', 'Kesan setelah membaca', 'Catatan & kutipan']) assert.ok(!minimal.includes(label));
+const vehicle = stream.buildLibraryStreamContent({ ...book, item_type: 'car', badge: 'Impian', details: { brand: 'BMW', model: 'E30', year: '1987' }, description: null });
+assert.ok(vehicle.includes('**Status:** Impian') && vehicle.includes('**Merek:** BMW') && !vehicle.includes('Penulis'));
+const escaped = stream.buildLibraryStreamContent({ ...book, name: 'A [B] *C*', description: 'x'.repeat(1000), details: {} });
+assert.ok(escaped.includes('A \\[B\\] \\*C\\*'));
+assert.ok(!escaped.includes('x'.repeat(501)), 'Reviews are excerpts, not the whole body');
+const original = { id: 1, content: 'Baru menambahkan buku ke koleksi library.\n\n[Lihat detail di library](/library#item-7).', source_library_item_id: 7, title: 'Old title' };
+assert.equal(stream.isGeneratedLibraryEntry(original), true);
+assert.equal(stream.isGeneratedLibraryEntry({ ...original, source_library_item_id: 8 }), false);
+assert.equal(stream.isGeneratedLibraryEntry({ ...original, content: 'My handwritten post' }), false);
+(async () => {
+  let calls = 0, rows = [book];
+  const db = { from: table => {
+    calls++; assert.equal(table, 'library_items');
+    return { select: () => ({ in: async (key, ids) => { assert.equal(key, 'id'); assert.equal(ids.join(','), '7'); return { data: rows, error: null }; } }) };
+  } };
+  const updated = await queries.enrichLibraryStreamEntries([original, { ...original, id: 2 }], db);
+  assert.equal(calls, 1, 'Load all sources in one batch');
+  assert.ok(updated[0].content.includes('Sedang dibaca'));
+  rows = [{ ...book, badge: 'Selesai dibaca' }];
+  const latest = await queries.enrichLibraryStreamEntries([original], db);
+  assert.ok(latest[0].content.includes('Selesai dibaca') && !latest[0].content.includes('Sedang dibaca'));
+  const manual = { ...original, content: 'Manually edited Stream post' };
+  const before = calls;
+  const preserved = await queries.enrichLibraryStreamEntries([manual], db);
+  assert.equal(preserved[0].content, manual.content); assert.equal(calls, before);
+  const legacy = { id: 5, content: 'Legacy standalone post' };
+  const standalone = await queries.enrichLibraryStreamEntries([legacy], db);
+  assert.equal(standalone[0].content, legacy.content); assert.equal(calls, before);
+  console.log('PASS detailed Stream book/title/status, optional fields, other types, safe Markdown, excerpts, live status, batching, and manual overrides');
+})().catch(error => { console.error(error); process.exitCode = 1; });
