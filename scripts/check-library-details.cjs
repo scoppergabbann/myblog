@@ -4,11 +4,11 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
-function load(file, imports = {}, extra = '') {
+function load(file, imports = {}, extra = '', globals = {}) {
   const module = { exports: {} };
   const source = fs.readFileSync(file, 'utf8') + extra;
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, require: key => key in imports ? imports[key] : require(key), URL, Date, TextEncoder, Number, Buffer, File: globalThis.File });
+  vm.runInNewContext(code, { module, exports: module.exports, require: key => key in imports ? imports[key] : require(key), URL, Date, TextEncoder, Number, Buffer, File: globalThis.File, ...globals });
   return module.exports;
 }
 const fields = load('lib/library-fields.ts');
@@ -50,24 +50,51 @@ assert.ok(publicHTML.includes('Gramedia') && publicHTML.includes('1987'));
 const notesHTML = render(React.createElement(detailPublic.LibraryItemNotes, { item: { item_type: 'book', details: book.details } }));
 assert.ok(notesHTML.includes('Catatan buku'));
 assert.equal(render(React.createElement(detailPublic.LibraryItemDetails, { item: { name: 'Legacy', subtitle: 'Old subtitle' } })), '');
+// A Stream hash must open the referenced item, including items beyond carousel page one.
+const effects = [], selectedItems = [], events = {};
+let stateIndex = 0;
+const fakeWindow = { location: { hash: '#item-19' }, addEventListener: (name, handler) => { events[name] = handler; }, removeEventListener() {} };
+const shelf = load('app/library/library-shelf.tsx', {
+  react: { ...React, useRef: () => ({ current: {} }), useState: initial => { const index = stateIndex++; return [initial, value => { if (index === 1) selectedItems.push(value); }]; }, useEffect: effect => effects.push(effect) },
+  'next/image': () => null, '@/lib/library': { getCoverUrl: () => null },
+  '@/lib/library-fields': fields, '@/components/library-item-details': detailPublic,
+}, '', { window: fakeWindow });
+const visibleItems = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, category_id: 1, name: 'Item ' + (i + 1), photos: [] }));
+shelf.LibraryShelf({ data: { categories: [{ id: 1, name: 'Buku' }], itemsByCategory: { 1: visibleItems } } });
+effects[0]();
+assert.equal(selectedItems.at(-1).id, 19);
+fakeWindow.location.hash = '#item-999'; events.hashchange(); assert.equal(selectedItems.at(-1), null);
+fakeWindow.location.hash = '#other'; events.hashchange(); assert.equal(selectedItems.at(-1), null);
+let rpcCalls = 0;
 let admin = true, written, response = { data: { id: 7 }, error: null }, invalidated = [];
 const query = new Proxy({}, { get: (_, key) => (...args) => { if (key === 'insert' || key === 'update') written = args[0]; if (key === 'single' || key === 'maybeSingle') return Promise.resolve(response); return query; } });
 const actions = load('app/admin/(protected)/library/actions.ts', {
   '@/auth': { auth: async () => ({}), isAdmin: () => admin },
-  '@/lib/supabase/admin': { createSupabaseAdmin: () => ({ from: () => query }) },
+  '@/lib/supabase/admin': { createSupabaseAdmin: () => ({ from: () => query, rpc: async (name, args) => { assert.equal(name, 'create_library_item_with_stream'); assert.equal(args.p_site_url, 'https://example.com'); rpcCalls++; written = args.p_item; return { data: response.data?.id ?? null, error: response.error }; } }) },
+  '@/lib/site-config': { siteConfig: { url: 'https://example.com' } },
   '@/lib/cloudinary': {}, 'next/cache': { revalidatePath: route => invalidated.push(route) }, '@/lib/library-fields': fields,
 });
 (async () => {
   const input = { category_id: 1, item_type: 'book', details: book.details, name: 'Book', subtitle: null, description: 'My impression', badge: 'Selesai dibaca', reels_url: null, link_url: null, display_order: 0 };
   assert.equal((await actions.upsertItem(null, input)).ok, true);
   assert.equal(written.details.publisher, 'Gramedia'); assert.equal(written.description, 'My impression');
-  assert.deepEqual(invalidated, ['/library', '/admin/library']);
+  assert.deepEqual(invalidated, ['/library', '/admin/library', '/now', '/now/rss.xml', '/admin/now']);
+  assert.equal(rpcCalls, 1);
+  assert.equal((await actions.upsertItem(7, input)).ok, true);
+  assert.equal(rpcCalls, 1, 'Editing must not create another Stream entry');
   assert.equal((await actions.upsertItem(null, { ...input, details: {}, description: null })).ok, true);
   assert.equal((await actions.upsertItem(null, { ...input, link_url: 'javascript:alert(1)' })).ok, false);
   assert.equal((await actions.upsertItem(null, { ...input, item_type: 'note', details: {}, description: '' })).ok, true);
   response = { data: null, error: { code: 'PGRST204', message: 'Column missing' } };
   const missing = await actions.upsertItem(null, input);
   assert.equal(missing.ok, false); assert.match(missing.error, /016_library_item_details/);
+  response = { data: null, error: { code: 'PGRST202', message: 'RPC missing' } };
+  const noIntegration = await actions.upsertItem(null, input);
+  assert.equal(noIntegration.ok, false); assert.match(noIntegration.error, /017_library_stream/);
+  response = { data: null, error: { code: '23514', message: 'Stream constraint failed' } };
+  invalidated = [];
+  assert.equal((await actions.upsertItem(null, input)).ok, false);
+  assert.equal(invalidated.length, 0, 'Failed transaction must not report success');
   admin = false; await assert.rejects(actions.upsertItem(null, input), /Unauthorized/);
-  console.log('PASS category forms, validation, metadata round trip, legacy rendering, missing migration, URLs, notes, and admin authorization');
+  console.log('PASS category forms, validation, metadata round trip, legacy rendering, missing migration, URLs, notes, Stream RPC, edit deduplication, deep links, and admin authorization');
 })().catch(error => { console.error(error); process.exitCode = 1; });

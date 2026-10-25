@@ -31,6 +31,26 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
   const [activeId, setActiveId] = useState(categories[0]?.id ?? 0);
   const [selected, setSelected] = useState<LibraryItem | null>(null);
 
+  // Stream links open the referenced item, even if it is on a later carousel page.
+  useEffect(() => {
+    const openFromHash = () => {
+      const match = /^#item-([1-9]\d*)$/.exec(window.location.hash);
+      if (!match) { setSelected(null); return; }
+      const item = Object.values(itemsByCategory).flat().find(entry => entry.id === Number(match[1]));
+      setSelected(item ?? null);
+    };
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+    return () => window.removeEventListener('hashchange', openFromHash);
+  }, [itemsByCategory]);
+
+  const closeDetail = () => {
+    setSelected(null);
+    if (/^#item-/.test(window.location.hash)) {
+      window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+    }
+  };
+
   // Highlight tab on scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -142,7 +162,7 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
       {selected && (
         <DetailModal
           item={selected}
-          onClose={() => setSelected(null)}
+          onClose={closeDetail}
         />
       )}
     </>

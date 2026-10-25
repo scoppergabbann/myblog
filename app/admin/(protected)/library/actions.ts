@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { auth, isAdmin } from '@/auth';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
 import { cloudinaryUpload } from '@/lib/cloudinary';
+import { siteConfig } from '@/lib/site-config';
 import { isLibraryKind, cleanLibraryDetails, type LibraryKind, type LibraryDetails } from '@/lib/library-fields';
 
 async function requireAdmin() {
@@ -18,6 +19,9 @@ export type ActionResult =
 const revalidate = () => {
   revalidatePath('/library');
   revalidatePath('/admin/library');
+  revalidatePath('/now');
+  revalidatePath('/now/rss.xml');
+  revalidatePath('/admin/now');
 };
 
 // =============================================================================
@@ -99,6 +103,7 @@ export async function deleteCategory(id: number): Promise<ActionResult> {
 // =============================================================================
 
 function libraryWriteError(error: { code?: string; message: string }) {
+  if (error.code === 'PGRST202' || error.code === '42883') return 'Integrasi library ke Stream belum aktif. Jalankan migrasi 017_library_stream.sql di Supabase; item belum disimpan.';
   return ['PGRST204', '42703'].includes(error.code ?? '')
     ? 'Struktur detail library belum aktif. Jalankan migrasi 016_library_item_details.sql di Supabase; isian belum disimpan.'
     : error.message;
@@ -148,16 +153,15 @@ export async function upsertItem(
     return { ok: true, id };
   }
 
-  const { data: inserted, error } = await supabase
-    .from('library_items')
-    .insert(payload)
-    .select('id')
-    .single();
-
-  if (error || !inserted) return { ok: false, error: error ? libraryWriteError(error) : 'Insert failed' };
-
+  // The RPC creates both records atomically; an edit only updates the existing item.
+  const { data: insertedId, error } = await supabase.rpc('create_library_item_with_stream', {
+    p_item: payload, p_site_url: siteConfig.url,
+  });
+  if (error) return { ok: false, error: libraryWriteError(error) };
+  const newId = Number(insertedId);
+  if (!Number.isSafeInteger(newId) || newId <= 0) return { ok: false, error: 'Database tidak mengembalikan ID item.' };
   revalidate();
-  return { ok: true, id: inserted.id };
+  return { ok: true, id: newId };
 }
 
 export async function deleteItem(id: number): Promise<ActionResult> {

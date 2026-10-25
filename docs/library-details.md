@@ -25,3 +25,11 @@ Detail dan catatan yang disimpan tampil di detail library publik. Catatan ini bu
 `npm run type-check` dan `node scripts/check-library-details.cjs` memeriksa jenis form, validasi, pemisahan metadata, render publik, kompatibilitas data lama, otorisasi, serta error migrasi. Setelah migrasi, uji tambah/edit buku dan kendaraan serta simpan foto melalui admin yang sudah login.
 
 Semua detail, kesan, isi catatan, dan catatan tambahan bersifat opsional. Isian kosong tidak disimpan sebagai metadata dan tidak menghasilkan label atau bagian kosong pada detail publik. Nama/judul tetap diperlukan untuk mengidentifikasi item.
+
+## Catatan otomatis di Stream
+
+Sesudah migrasi 015 dan 016, jalankan `supabase/migrations/017_library_stream.sql`. Penambahan item baru dari admin memakai `create_library_item_with_stream`, yang menyimpan item dan satu catatan Stream dalam transaksi yang sama. Kegagalan pembuatan catatan membatalkan penambahan item; form menampilkan error dan isian tetap tersedia. Edit item memakai update biasa dan tidak membuat catatan baru. Tidak ada impor otomatis item lama ke Stream.
+
+Catatan berjudul `Menambahkan buku: ...` (atau jenis item lain), berkategori Life, bertanggal Asia/Jakarta, dan memiliki tautan `/library#item-ID` yang langsung membuka detailnya. Kategori tersembunyi menghasilkan draft. RLS juga memeriksa visibilitas kategori sumber, sehingga catatan tetap tidak dapat dibaca publik bila kategori disembunyikan kemudian. Membuka kategori kembali tidak otomatis memublikasikan draft yang sebelumnya dibuat untuk kategori tersembunyi; publikasi dapat diatur melalui CRUD Stream.
+
+Menghapus item juga menghapus catatan Stream terkait melalui foreign key. Pengeditan judul atau detail item tidak mengubah teks historis catatan penambahan, tetapi tautannya tetap menuju data item terbaru. Cache library, Stream, RSS, dan admin diinvalidasi oleh aksi library.

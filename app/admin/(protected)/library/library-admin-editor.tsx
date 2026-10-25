@@ -405,6 +405,9 @@ function ItemModal({
             </select>
           </label>
         </div>
+        {!savedItemId && <p className="text-xs leading-relaxed text-[var(--color-ink-3)]">{category?.is_hidden
+          ? 'Kategori ini tersembunyi. Catatan penambahan akan disimpan sebagai draft di Stream.'
+          : 'Item baru otomatis muncul sebagai pembaruan di Stream (/now), lengkap dengan tautan ke detailnya.'}</p>}
         <fieldset disabled={saving || galleryBusy} className="space-y-5">
           <Field label={form.name + ' *'}>
             <input type="text" value={name} onChange={e => setName(e.target.value)} required maxLength={200} className="input-base" placeholder={form.placeholder} />
