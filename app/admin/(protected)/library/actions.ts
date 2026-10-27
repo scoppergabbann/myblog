@@ -53,31 +53,52 @@ export async function uploadLibraryImage(
 // Categories CRUD
 // =============================================================================
 
+function validLibraryOrder(value: number | null | undefined): boolean {
+  return value == null || (Number.isInteger(value) && value >= 0 && value <= 2147483647);
+}
+async function nextLibraryOrder(db: ReturnType<typeof createSupabaseAdmin>, table: 'library_categories' | 'library_items', categoryId?: number) {
+  let query = db.from(table).select('display_order').order('display_order', { ascending: false }).limit(1);
+  if (categoryId !== undefined) query = query.eq('category_id', categoryId);
+  const { data, error } = await query.maybeSingle();
+  if (error) return { ok: false as const, error: 'Gagal menentukan urutan otomatis. Coba lagi.' };
+  const value = Math.max(0, Number(data?.display_order ?? 0)) + 1;
+  if (!validLibraryOrder(value)) return { ok: false as const, error: 'Urutan sudah mencapai batas. Atur urutan manual atau rapikan nomor yang ada.' };
+  return { ok: true as const, value };
+}
+
 export async function upsertCategory(
   id: number | null,
   data: {
     name: string;
     emoji: string;
     description: string | null;
-    display_order: number;
+    display_order?: number | null;
     is_hidden: boolean;
     item_type: LibraryKind;
   }
 ): Promise<ActionResult> {
   await requireAdmin();
   if (!isLibraryKind(data.item_type)) return { ok: false, error: 'Jenis kategori tidak valid.' };
+  if (!validLibraryOrder(data.display_order)) return { ok: false, error: 'Urutan manual harus berupa bilangan bulat antara 0 dan 2147483647.' };
   const supabase = createSupabaseAdmin();
+  const { display_order, ...fields } = data;
+  const payload = { ...fields, ...(display_order != null ? { display_order } : {}) };
 
   if (id) {
-    const { error } = await supabase.from('library_categories').update(data).eq('id', id);
+    const { error } = await supabase.from('library_categories').update(payload).eq('id', id);
     if (error) return { ok: false, error: libraryWriteError(error) };
     revalidate();
     return { ok: true, id };
   }
 
+  if (display_order == null) {
+    const order = await nextLibraryOrder(supabase, 'library_categories');
+    if (!order.ok) return order;
+    payload.display_order = order.value;
+  }
   const { data: inserted, error } = await supabase
     .from('library_categories')
-    .insert(data)
+    .insert(payload)
     .select('id')
     .single();
 
@@ -121,14 +142,14 @@ export async function upsertItem(
     badge: string | null;
     reels_url: string | null;
     link_url: string | null;
-    display_order: number;
+    display_order?: number | null;
   }
 ): Promise<ActionResult> {
   await requireAdmin();
   if (id !== null && (!Number.isSafeInteger(id) || id <= 0)) return { ok: false, error: 'ID item tidak valid.' };
   if (!isLibraryKind(data.item_type)) return { ok: false, error: 'Jenis item tidak valid.' };
   if (!data.name.trim() || data.name.length > 200) return { ok: false, error: 'Nama / judul wajib diisi, maksimal 200 karakter.' };
-  if (!Number.isSafeInteger(data.category_id) || data.category_id <= 0 || !Number.isSafeInteger(data.display_order) || data.display_order < 0) return { ok: false, error: 'Kategori atau urutan tampil tidak valid.' };
+  if (!Number.isSafeInteger(data.category_id) || data.category_id <= 0 || !validLibraryOrder(data.display_order)) return { ok: false, error: 'Kategori atau urutan tampil tidak valid.' };
   if (data.description && data.description.length > 20000) return { ok: false, error: 'Cerita / kesan maksimal 20.000 karakter.' };
   if ((data.subtitle?.length ?? 0) > 600 || (data.badge?.length ?? 0) > 100) return { ok: false, error: 'Subtitle atau status terlalu panjang.' };
   for (const value of [data.link_url, data.reels_url]) {
@@ -142,7 +163,7 @@ export async function upsertItem(
   const payload = { category_id: data.category_id, item_type: data.item_type, details: cleaned.details,
     name: data.name.trim(), subtitle: data.subtitle?.trim() || null,
     description: data.description?.trim() || null, badge: data.badge?.trim() || null,
-    reels_url: data.reels_url?.trim() || null, link_url: data.link_url?.trim() || null, display_order: data.display_order };
+    reels_url: data.reels_url?.trim() || null, link_url: data.link_url?.trim() || null, ...(data.display_order != null ? { display_order: data.display_order } : {}) };
   const supabase = createSupabaseAdmin();
 
   if (id) {
@@ -153,6 +174,11 @@ export async function upsertItem(
     return { ok: true, id };
   }
 
+  if (data.display_order == null) {
+    const order = await nextLibraryOrder(supabase, 'library_items', data.category_id);
+    if (!order.ok) return order;
+    payload.display_order = order.value;
+  }
   // The RPC creates both records atomically; an edit only updates the existing item.
   const { data: insertedId, error } = await supabase.rpc('create_library_item_with_stream', {
     p_item: payload, p_site_url: siteConfig.url,

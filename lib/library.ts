@@ -75,12 +75,13 @@ export async function getLibraryData({
   }
 
   const [categoriesResult, itemsResult, photosResult] = await Promise.all([
-    categoriesQuery.order('display_order', { ascending: true }),
+    categoriesQuery.order('display_order', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }),
     supabase
       .from('library_items')
       .select('*')
+      .order('display_order', { ascending: false })
       .order('created_at', { ascending: false })
-      .order('display_order', { ascending: true }),
+      .order('id', { ascending: false }),
     supabase
       .from('library_photos')
       .select('id, new_item_id, url, position')

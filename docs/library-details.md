@@ -35,3 +35,11 @@ Catatan berjudul `Menambahkan buku: ...` (atau jenis item lain), berkategori Lif
 Menghapus item juga menghapus catatan Stream terkait melalui foreign key. Judul posting Stream tetap menjadi catatan historis penambahan. Isi catatan otomatis dibentuk dari data item terbaru sehingga judul lengkap, status baca/koleksi, dan metadata yang terisi ikut diperbarui saat item diedit. Isi Stream yang ditulis ulang secara manual tetap dipertahankan. Cache library, Stream, RSS, dan admin diinvalidasi oleh aksi library.
 
 Pembaruan format detail Stream tidak memerlukan migrasi tambahan: query Stream membaca relasi sumber dari migrasi 017, mengambil metadata dalam satu batch, dan membentuk isi untuk halaman publik, RSS, serta editor admin. Kolom kosong tidak diberi label; kesan dan catatan panjang dibatasi cuplikan 500 karakter per bagian dengan tautan ke detail penuh. Verifikasi format dengan `node scripts/check-library-stream.cjs`.
+
+## Urutan otomatis
+
+Item dan kategori baru memakai urutan otomatis secara bawaan. Server mengambil nomor terbesar lalu menambahkan 1; item dihitung per kategori, sedangkan kategori dihitung secara global. Saat mengedit dalam mode otomatis, `display_order` tidak dikirim ke update sehingga posisi lama tetap dipertahankan. Aktifkan **Atur manual** untuk mengisi nomor sendiri, termasuk 0.
+
+Admin dan publik menggunakan aturan yang sama: `display_order` terbesar lebih dulu, lalu tanggal pembuatan terbaru dan ID terbesar jika nomornya sama. Nomor urutan adalah prioritas tampilan, bukan primary key atau nomor unik; beberapa data boleh memiliki prioritas yang sama. Tidak ada perubahan primary key, penomoran ulang data lama, atau migrasi database baru.
+
+Jalankan `node scripts/check-library-order.cjs` untuk memeriksa penomoran awal, kelanjutan nomor per kategori, mode manual, pelestarian urutan saat edit, kegagalan pembacaan urutan, batas integer, dan kesamaan pengurutan admin/publik.

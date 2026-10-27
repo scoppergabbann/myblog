@@ -16,12 +16,13 @@ export default async function LibraryAdminPage() {
   const supabase = createSupabaseAdmin();
 
   const [categoriesResult, itemsResult, photosResult] = await Promise.all([
-    supabase.from('library_categories').select('*').order('display_order', { ascending: true }),
+    supabase.from('library_categories').select('*').order('display_order', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }),
     supabase
       .from('library_items')
       .select('*')
-      .order('display_order', { ascending: true })
-      .order('created_at', { ascending: false }),
+      .order('display_order', { ascending: false })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }),
     supabase
       .from('library_photos')
       .select('id, new_item_id, url, position')

@@ -212,10 +212,11 @@ function CategoryModal({
   const [name, setName] = useState(category?.name ?? '');
   const [emoji, setEmoji] = useState(category?.emoji ?? '📦');
   const [description, setDescription] = useState(category?.description ?? '');
-  const [displayOrder, setDisplayOrder] = useState(String(category?.display_order ?? 0));
+  const [manualOrder, setManualOrder] = useState(false);
+  const [displayOrder, setDisplayOrder] = useState(String(category?.display_order ?? ''));
   const [itemType, setItemType] = useState<LibraryKind>(resolveLibraryKind(null, category));
   const [isHidden, setIsHidden] = useState(Boolean(category?.is_hidden));
-  const requestClose = useUnsavedClose([name, emoji, description, displayOrder, isHidden, itemType], false, saving, onClose);
+  const requestClose = useUnsavedClose([name, emoji, description, displayOrder, manualOrder, isHidden, itemType], false, saving, onClose);
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -224,7 +225,7 @@ function CategoryModal({
       name: name.trim(),
       emoji: emoji.trim() || '📦',
       description: description.trim() || null,
-      display_order: parseInt(displayOrder) || 0,
+      display_order: manualOrder ? (displayOrder.trim() ? Number(displayOrder) : NaN) : null,
       is_hidden: isHidden,
       item_type: itemType,
     });
@@ -253,9 +254,7 @@ function CategoryModal({
         <Field label="Deskripsi (opsional)">
           <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="input-base" placeholder="Koleksi piringan hitam favorit" />
         </Field>
-        <Field label="Urutan tampil">
-          <input type="number" value={displayOrder} onChange={(e) => setDisplayOrder(e.target.value)} min={0} className="input-base w-24" />
-        </Field>
+        <OrderField manual={manualOrder} onManualChange={setManualOrder} value={displayOrder} onChange={setDisplayOrder} currentOrder={category?.display_order} disabled={saving} />
         <label className="flex items-start gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-2">
           <input
             type="checkbox"
@@ -307,7 +306,8 @@ function ItemModal({
   const [badge, setBadge] = useState(item?.badge ?? '');
   const [reelsUrl, setReelsUrl] = useState(item?.reels_url ?? '');
   const [linkUrl, setLinkUrl] = useState(item?.link_url ?? '');
-  const [displayOrder, setDisplayOrder] = useState(String(item?.display_order ?? 0));
+  const [manualOrder, setManualOrder] = useState(false);
+  const [displayOrder, setDisplayOrder] = useState(String(item?.display_order ?? ''));
 
   // Pending photos (not yet in DB — saved on submit)
   const [pendingPhotoUrls, setPendingPhotoUrls] = useState<string[]>([]);
@@ -318,7 +318,7 @@ function ItemModal({
   const [galleryBusy, setGalleryBusy] = useState(false);
   const router = useRouter();
   const requestClose = useUnsavedClose(
-    [name, subtitle, description, badge, reelsUrl, linkUrl, displayOrder, itemType, details],
+    [name, subtitle, description, badge, reelsUrl, linkUrl, displayOrder, manualOrder, itemType, details],
     galleryDirty || pendingPhotoUrls.length > 0 || pendingReorders.some((entry) =>
       photos.find((photo) => photo.id === entry.id)?.position !== entry.position),
     saving || galleryBusy,
@@ -343,7 +343,7 @@ function ItemModal({
         badge: badge.trim() || null,
         reels_url: reelsUrl.trim() || null,
         link_url: linkUrl.trim() || null,
-        display_order: displayOrder.trim() ? Number(displayOrder) : 0,
+        display_order: manualOrder ? (displayOrder.trim() ? Number(displayOrder) : NaN) : null,
       });
 
       if (res.ok) {
@@ -439,7 +439,7 @@ function ItemModal({
               <Field label="Subtitle tambahan (opsional)"><input value={subtitle} maxLength={600} onChange={e => setSubtitle(e.target.value)} className="input-base" placeholder="Otomatis dari identitas jika dikosongkan" /></Field>
               {(form.reels || reelsUrl) && <Field label="Link Reels IG (opsional)"><input type="url" value={reelsUrl} onChange={e => setReelsUrl(e.target.value)} className="input-base" placeholder="https://www.instagram.com/reel/..." /></Field>}
               {form.statuses.length === 0 && <Field label="Label (opsional)"><input value={badge} maxLength={100} onChange={e => setBadge(e.target.value)} className="input-base" /></Field>}
-              <Field label="Urutan tampil"><input type="number" value={displayOrder} onChange={e => setDisplayOrder(e.target.value)} min={0} step={1} className="input-base" /></Field>
+              <OrderField manual={manualOrder} onManualChange={setManualOrder} value={displayOrder} onChange={setDisplayOrder} currentOrder={item?.display_order} disabled={saving} />
             </div>
           </details>
         </fieldset>
@@ -709,6 +709,23 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
       </div>
     </div>
   );
+}
+
+function OrderField({ manual, onManualChange, value, onChange, currentOrder, disabled }: {
+  manual: boolean; onManualChange: (value: boolean) => void; value: string;
+  onChange: (value: string) => void; currentOrder?: number; disabled: boolean;
+}) {
+  return <div className="rounded-lg border border-[var(--color-line)] p-3">
+    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <span className="text-sm font-medium">Urutan tampil</span>
+      <label className="flex items-center gap-2 text-xs text-[var(--color-ink-3)]"><input type="checkbox" checked={manual} disabled={disabled} onChange={event => onManualChange(event.target.checked)} />Atur manual</label>
+    </div>
+    {manual ? <label className="block text-xs text-[var(--color-ink-3)]">Nomor urutan (lebih besar tampil lebih atas)
+      <input type="number" min={0} max={2147483647} step={1} required disabled={disabled} value={value} onChange={event => onChange(event.target.value)} placeholder="Misalnya 10" className="input-base mt-1.5" />
+    </label> : <p className="text-xs leading-relaxed text-[var(--color-ink-3)]">{currentOrder !== undefined
+      ? 'Urutan saat ini (' + currentOrder + ') tetap dipertahankan. Aktifkan manual jika ingin mengubahnya.'
+      : 'Otomatis: nomor dilanjutkan dari urutan terbesar. Data baru tampil paling atas.'}</p>}
+  </div>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
