@@ -27,8 +27,7 @@ function urlValid(s: string | null | undefined): boolean {
   if (!s) return true;
   if (s === '#') return true;
   try {
-    new URL(s);
-    return true;
+    return ['https:', 'http:'].includes(new URL(s).protocol);
   } catch {
     return false;
   }
@@ -39,10 +38,10 @@ function fromForm(formData: FormData) {
     title: String(formData.get('title') ?? '').trim(),
     description: String(formData.get('description') ?? '').trim(),
     stack: parseStack(String(formData.get('stack') ?? '')),
-    status: String(formData.get('status') ?? 'wip'),
+    status: String(formData.get('status') ?? 'live'),
     url: String(formData.get('url') ?? '').trim() || null,
     github_url: String(formData.get('github_url') ?? '').trim() || null,
-    display_order: Number(formData.get('display_order') ?? 0) || 0,
+    display_order: Number(formData.get('display_order') ?? 0),
   };
 }
 
@@ -51,7 +50,8 @@ function validate(d: ReturnType<typeof fromForm>): string | null {
   if (d.title.length > 100) return 'Title terlalu panjang (max 100).';
   if (!d.description) return 'Description wajib diisi.';
   if (d.description.length > 500) return 'Description terlalu panjang (max 500).';
-  if (!['live', 'wip', 'archived'].includes(d.status)) return 'Status tidak valid.';
+  if (!['live', 'archived'].includes(d.status)) return 'Status tidak valid.';
+  if (!Number.isSafeInteger(d.display_order)) return 'Urutan tampil harus berupa bilangan bulat.';
   if (!urlValid(d.url)) return 'URL tidak valid.';
   if (!urlValid(d.github_url)) return 'GitHub URL tidak valid.';
   return null;
@@ -78,6 +78,7 @@ export async function createProject(
     return { ok: false, error: error.message };
   }
 
+  if (!data) return { ok: false, error: 'Project gagal dibuat.' };
   revalidatePath('/admin/projects');
   revalidatePath('/projects');
   revalidatePath('/');
@@ -91,18 +92,20 @@ export async function updateProject(
   formData: FormData
 ): Promise<ProjectFormState> {
   await requireAdmin();
+  if (!Number.isSafeInteger(id) || id <= 0) return { ok: false as const, error: 'ID project tidak valid.' };
   const d = fromForm(formData);
   const err = validate(d);
   if (err) return { ok: false, error: err };
 
   const supabase = createSupabaseAdmin();
-  const { error } = await supabase.from('projects').update(d).eq('id', id);
+  const { data, error } = await supabase.from('projects').update(d).eq('id', id).select('id').maybeSingle();
 
   if (error) {
     console.error('[projects.update]', error);
     return { ok: false, error: error.message };
   }
 
+  if (!data) return { ok: false as const, error: 'Project tidak ditemukan.' };
   revalidatePath('/admin/projects');
   revalidatePath('/projects');
   revalidatePath('/');
@@ -112,10 +115,12 @@ export async function updateProject(
 
 export async function deleteProject(id: number) {
   await requireAdmin();
+  if (!Number.isSafeInteger(id) || id <= 0) return { ok: false as const, error: 'ID project tidak valid.' };
   const supabase = createSupabaseAdmin();
-  const { error } = await supabase.from('projects').delete().eq('id', id);
+  const { data, error } = await supabase.from('projects').delete().eq('id', id).select('id').maybeSingle();
   if (error) return { ok: false as const, error: error.message };
 
+  if (!data) return { ok: false as const, error: 'Project tidak ditemukan.' };
   revalidatePath('/admin/projects');
   revalidatePath('/projects');
   revalidatePath('/');
@@ -124,12 +129,15 @@ export async function deleteProject(id: number) {
 
 export async function setProjectStatus(
   id: number,
-  status: 'live' | 'wip' | 'archived'
+  status: 'live' | 'archived'
 ) {
   await requireAdmin();
+  if (!Number.isSafeInteger(id) || id <= 0) return { ok: false as const, error: 'ID project tidak valid.' };
+  if (!['live', 'archived'].includes(status)) return { ok: false as const, error: 'Status tidak valid.' };
   const supabase = createSupabaseAdmin();
-  const { error } = await supabase.from('projects').update({ status }).eq('id', id);
+  const { data, error } = await supabase.from('projects').update({ status }).eq('id', id).select('id').maybeSingle();
   if (error) return { ok: false as const, error: error.message };
+  if (!data) return { ok: false as const, error: 'Project tidak ditemukan.' };
   revalidatePath('/admin/projects');
   revalidatePath('/projects');
   revalidatePath('/');

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
 import { ProjectsTable } from './projects-table';
+import { projectGroup } from '@/lib/project-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,15 +25,15 @@ async function getProjects(): Promise<Row[]> {
     .order('created_at', { ascending: false });
   if (error) {
     console.error('[admin.projects fetch]', error);
-    return [];
+    throw new Error('Data projects sementara tidak tersedia.');
   }
   return (data ?? []) as Row[];
 }
 
 export default async function AdminProjectsPage() {
   const projects = await getProjects();
-  const live = projects.filter((p) => p.status === 'live').length;
-  const wip = projects.filter((p) => p.status === 'wip').length;
+  const active = projects.filter((p) => projectGroup(p.status) === 'active').length;
+  const archived = projects.length - active;
 
   return (
     <div>
@@ -44,10 +45,10 @@ export default async function AdminProjectsPage() {
           <p className="text-sm text-[var(--color-ink-3)]">
             {projects.length} total ·{' '}
             <span className="text-emerald-600 dark:text-emerald-400">
-              {live} live
+              {active} active
             </span>{' '}
             ·{' '}
-            <span className="text-[var(--color-accent)]">{wip} wip</span>
+            <span className="text-[var(--color-accent)]">{archived} archived</span>
           </p>
         </div>
         <Link
@@ -67,7 +68,7 @@ export default async function AdminProjectsPage() {
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          New project
+          Tambah project
         </Link>
       </div>
 

@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/admin/toast';
+import { projectGroup } from '@/lib/project-status';
 import {
   createProject,
   updateProject,
@@ -27,7 +28,7 @@ const DEFAULT: Project = {
   title: '',
   description: '',
   stack: [],
-  status: 'wip',
+  status: 'live',
   url: null,
   github_url: null,
   display_order: 0,
@@ -66,6 +67,7 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
     startTransition(async () => {
       const result = await deleteProject(project.id!);
       if (result.ok) router.push('/admin/projects');
+      else toast.error(result.error);
     });
   };
 
@@ -86,12 +88,14 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
         </h1>
       </div>
 
+      <p className="mb-6 rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] px-4 py-3 text-sm leading-relaxed text-[var(--color-ink-3)]">Active untuk project yang masih dikerjakan atau dirawat. Archived memindahkan project ke bagian arsip, dan bisa dikembalikan kapan saja.</p>
       <form action={formAction} className="space-y-5">
         <div>
-          <Label>title</Label>
+          <Label htmlFor="project-title">title</Label>
           <input
             type="text"
-            name="title"
+            id="project-title"
+              name="title"
             defaultValue={project.title}
             required
             maxLength={100}
@@ -101,9 +105,10 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
         </div>
 
         <div>
-          <Label>description</Label>
+          <Label htmlFor="project-description">description</Label>
           <textarea
-            name="description"
+            id="project-description"
+              name="description"
             defaultValue={project.description}
             required
             maxLength={500}
@@ -114,9 +119,10 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
 
         <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
           <div>
-            <Label>stack (comma-separated)</Label>
+            <Label htmlFor="project-stack">stack (comma-separated)</Label>
             <input
               type="text"
+              id="project-stack"
               name="stack"
               defaultValue={project.stack.join(', ')}
               placeholder="Next.js, Postgres"
@@ -124,21 +130,22 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
             />
           </div>
           <div>
-            <Label>status</Label>
+            <Label htmlFor="project-status">status</Label>
             <select
+              id="project-status"
               name="status"
-              defaultValue={project.status}
+              defaultValue={projectGroup(project.status) === 'archived' ? 'archived' : 'live'}
               className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 text-[13.5px] text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
             >
-              <option value="live">live</option>
-              <option value="wip">wip</option>
-              <option value="archived">archived</option>
+              <option value="live">Active</option>
+              <option value="archived">Archived</option>
             </select>
           </div>
           <div>
-            <Label>display order</Label>
+            <Label htmlFor="project-display_order">display order</Label>
             <input
               type="number"
+              id="project-display_order"
               name="display_order"
               defaultValue={project.display_order}
               step={10}
@@ -152,9 +159,10 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
 
         <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
           <div>
-            <Label>live URL (optional)</Label>
+            <Label htmlFor="project-url">project URL (optional)</Label>
             <input
-              type="text"
+              type="url"
+              id="project-url"
               name="url"
               defaultValue={project.url ?? ''}
               placeholder="https://..."
@@ -162,9 +170,10 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
             />
           </div>
           <div>
-            <Label>github URL (optional)</Label>
+            <Label htmlFor="project-github_url">github URL (optional)</Label>
             <input
-              type="text"
+              type="url"
+              id="project-github_url"
               name="github_url"
               defaultValue={project.github_url ?? ''}
               placeholder="https://github.com/..."
@@ -190,9 +199,9 @@ export function ProjectEditor({ project = DEFAULT }: { project?: Project }) {
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor: string }) {
   return (
-    <label className="mb-1.5 block font-mono text-[11.5px] uppercase tracking-wide text-[var(--color-ink-3)]">
+    <label htmlFor={htmlFor} className="mb-1.5 block font-mono text-[11.5px] uppercase tracking-wide text-[var(--color-ink-3)]">
       {children}
     </label>
   );
