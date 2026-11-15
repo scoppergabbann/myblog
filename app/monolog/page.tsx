@@ -8,9 +8,10 @@ import { siteConfig } from '@/lib/site-config';
 const description = 'Jurnal suara personal tentang proses berpikir, belajar, berefleksi, dan melatih cara berbicara.';
 
 export const metadata: Metadata = pageMetadata('/monolog', 'Monolog', description);
+export const dynamic = 'force-dynamic';
 
-export default function MonologPage() {
-  const episodes = getPublishedMonologEpisodes();
+export default async function MonologPage() {
+  const episodes = await getPublishedMonologEpisodes();
 
   return (
     <div className="page-fade mx-auto max-w-[720px] px-6 pb-20 pt-16 max-sm:pt-10">

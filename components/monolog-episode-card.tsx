@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { MonologAudioPlayer } from '@/components/monolog-audio-player';
-import { formatAudioDuration, monologCategoryLabel } from '@/lib/monolog';
+import { formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
 import { formatDate } from '@/lib/utils';
 import type { PublishedMonologEpisode } from '@/types/monolog';
 

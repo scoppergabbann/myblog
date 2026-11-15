@@ -1,47 +1,42 @@
 # Monolog
 
-Monolog memakai file konten lokal di `content/monolog/episodes.ts`. Hanya entri dengan `status: 'published'` yang tampil di `/monolog`, halaman detail, dan sitemap.
+Monolog dikelola melalui dashboard admin di `/admin/monolog`. Data episode berada di tabel Supabase `monolog_episodes`; file Voice Memos berada di bucket publik `monolog-audio`.
+
+## Aktivasi pertama
+
+Jalankan `supabase/migrations/019_monolog.sql` di SQL Editor Supabase. Migrasi tersebut:
+
+- membuat tabel episode dan aturan agar pengunjung hanya bisa membaca episode published;
+- membuat bucket publik `monolog-audio` dengan batas 50 MB;
+- membatasi upload bucket pada format `.m4a` yang dikenali sebagai audio MP4/M4A.
+
+Tidak ada environment variable atau dependency baru.
 
 ## Menambah episode
 
-1. Ekspor rekaman Voice Memos sebagai `.m4a`.
-2. Ubah nama file menjadi slug yang sederhana, misalnya `belajar-mendengar.m4a`.
-3. Taruh file di `public/audio/monolog/`. URL kontennya menjadi `/audio/monolog/belajar-mendengar.m4a`.
-4. Salin entri contoh di `content/monolog/episodes.ts`, lalu isi semua metadata.
-5. Biarkan `status: 'draft'` selama menyiapkan konten. Ubah menjadi `published` setelah audio, tanggal, dan durasi sudah benar.
-6. Jalankan `npm run check:monolog`, `npm run type-check`, dan `npm run build` sebelum deploy.
+1. Masuk ke `/admin`, lalu pilih menu `monolog`.
+2. Klik **Tambah episode**.
+3. Isi judul, slug, deskripsi, kategori, tanggal publikasi, dan tag.
+4. Klik **Upload .m4a** lalu pilih hasil ekspor dari iPhone Voice Memos.
+5. Durasi dibaca otomatis dari metadata audio. Jika browser tidak bisa membacanya, isi durasi dalam detik secara manual.
+6. Isi transkrip atau refleksi jika tersedia.
+7. Simpan sebagai Draft, atau pilih Published jika semua data sudah siap.
 
-Contoh entri siap terbit:
+Upload memakai signed upload URL yang hanya dapat dibuat oleh admin. File dikirim langsung dari browser ke Supabase Storage sehingga tidak melewati request body server Vercel.
 
-```ts
-{
-  id: 'monolog-001',
-  slug: 'belajar-mendengar',
-  title: 'Belajar Mendengar',
-  description: 'Catatan singkat tentang mendengar sebelum menjawab.',
-  category: 'karier',
-  audioUrl: '/audio/monolog/belajar-mendengar.m4a',
-  durationSeconds: 312,
-  publishedAt: '2026-11-15T08:00:00+07:00',
-  status: 'published',
-  transcript: null,
-  reflection: null,
-  tags: ['komunikasi'],
-}
-```
+## Perilaku CRUD
 
-Kategori yang tersedia: `menuju-nikah`, `karier`, `olahraga`, `hobi`, dan `random`.
+- Draft tidak muncul di halaman publik, detail, atau sitemap.
+- Publish dari tabel otomatis mengisi waktu publikasi saat masih kosong.
+- Episode tidak dapat dipublish sebelum memiliki audio dan durasi.
+- Mengganti audio lalu menyimpan akan menghapus file lama dari bucket.
+- Menghapus episode juga menghapus file audio yang tersimpan di bucket.
+- URL HTTPS `.m4a` eksternal tetap dapat dipakai melalui kolom URL audio.
 
-## Hosting audio
+## Kategori
 
-File lokal di `public/audio/monolog/` ikut ter-deploy bersama website dan cocok untuk MVP. Model konten juga menerima URL HTTPS langsung yang berakhir dengan `.m4a`, sehingga file dapat dipindahkan ke penyimpanan publik seperti Supabase Storage atau CDN tanpa mengubah komponen pemutar.
-
-Untuk file yang besar atau trafik yang meningkat, gunakan bucket publik/CDN agar ukuran deployment tetap kecil. Pastikan server audio mendukung byte-range request dan mengirim content type `audio/mp4` supaya seeking bekerja baik di Mobile Safari.
-
-## Catatan konten
-
-- `transcript`, `reflection`, dan `tags` bersifat opsional.
-- Bagian kosong tidak dirender.
-- Slug dan id harus unik.
-- Episode published wajib memiliki URL `.m4a`, tanggal publikasi valid, dan durasi lebih dari nol.
-- Entri `development-example` adalah draft dokumentasi dan tidak muncul di website publik.
+- `menuju-nikah`
+- `karier`
+- `olahraga`
+- `hobi`
+- `random`

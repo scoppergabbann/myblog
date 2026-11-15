@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { formatAudioDuration } from '@/lib/monolog';
+import { formatAudioDuration } from '@/lib/monolog-shared';
 
 type AudioState = 'loading' | 'ready' | 'playing' | 'paused' | 'error';
 

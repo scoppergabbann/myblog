@@ -3,20 +3,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/json-ld';
 import { MonologAudioPlayer } from '@/components/monolog-audio-player';
-import {
-  audioDurationIso,
-  formatAudioDuration,
-  getPublishedMonologEpisode,
-  getPublishedMonologEpisodes,
-  getRelatedMonologEpisodes,
-  monologCategoryLabel,
-} from '@/lib/monolog';
+import { getPublishedMonologEpisode, getPublishedMonologEpisodes, getRelatedMonologEpisodes } from '@/lib/monolog';
+import { audioDurationIso, formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
 import { siteConfig } from '@/lib/site-config';
 import { formatDate } from '@/lib/utils';
 
-export function generateStaticParams() {
-  return getPublishedMonologEpisodes().map((episode) => ({ slug: episode.slug }));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
@@ -24,7 +16,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const episode = getPublishedMonologEpisode(slug);
+  const episode = await getPublishedMonologEpisode(slug);
   if (!episode) notFound();
 
   const path = `/monolog/${encodeURIComponent(episode.slug)}`;
@@ -64,10 +56,10 @@ export default async function MonologEpisodePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const episode = getPublishedMonologEpisode(slug);
+  const episode = await getPublishedMonologEpisode(slug);
   if (!episode) notFound();
 
-  const related = getRelatedMonologEpisodes(episode);
+  const related = getRelatedMonologEpisodes(episode, await getPublishedMonologEpisodes());
   const audioUrl = episode.audioUrl.startsWith('https://')
     ? episode.audioUrl
     : `${siteConfig.url}${episode.audioUrl}`;

@@ -5,9 +5,10 @@ export const dynamic = 'force-dynamic';
 
 async function getStats() {
   const supabase = createSupabaseAdmin();
-  const [posts, projects, guestbook, comments, subs, views] = await Promise.all([
+  const [posts, projects, monolog, guestbook, comments, subs, views] = await Promise.all([
     supabase.from('posts').select('id, status', { count: 'exact', head: true }),
     supabase.from('projects').select('id', { count: 'exact', head: true }),
+    supabase.from('monolog_episodes').select('id', { count: 'exact', head: true }),
     supabase.from('guestbook').select('id, approved', { count: 'exact', head: true }),
     supabase.from('comments').select('id, approved', { count: 'exact', head: true }),
     supabase.from('subscribers').select('id, confirmed', { count: 'exact', head: true }),
@@ -34,6 +35,7 @@ async function getStats() {
   return {
     posts: posts.count ?? 0,
     projects: projects.count ?? 0,
+    monolog: monolog.count ?? 0,
     guestbook: guestbook.count ?? 0,
     guestbookPending: pendingGb.count ?? 0,
     comments: comments.count ?? 0,
@@ -48,6 +50,7 @@ export default async function AdminOverview() {
 
   const cards = [
     { label: 'posts', value: stats.posts, href: '/admin/posts' },
+    { label: 'monolog', value: stats.monolog, href: '/admin/monolog' },
     { label: 'projects', value: stats.projects, href: '/admin/projects' },
     {
       label: 'guestbook',
@@ -108,7 +111,8 @@ export default async function AdminOverview() {
         </h2>
         <div className="flex flex-wrap gap-2">
           {[
-            { label: 'new post', href: '/admin/posts' },
+            { label: 'new post', href: '/admin/posts/new' },
+            { label: 'new monolog', href: '/admin/monolog/new' },
             { label: 'view site →', href: '/' },
           ].map((s) => (
             <Link

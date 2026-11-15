@@ -7,23 +7,22 @@ export type MonologCategorySlug =
 
 export type MonologStatus = 'draft' | 'published';
 
-export type MonologEpisodeInput = {
-  id: string;
+export type MonologEpisodeRecord = {
+  id: number;
   slug: string;
   title: string;
   description: string;
   category: MonologCategorySlug;
-  audioUrl: string | null;
-  durationSeconds: number | null;
+  audioUrl: string;
+  audioPath: string | null;
+  durationSeconds: number;
   publishedAt: string | null;
   status: MonologStatus;
-  transcript?: string | null;
-  reflection?: string | null;
-  tags?: readonly string[];
-};
-
-export type MonologEpisodeRecord = Omit<MonologEpisodeInput, 'tags'> & {
+  transcript: string | null;
+  reflection: string | null;
   tags: string[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type PublishedMonologEpisode = MonologEpisodeRecord & {

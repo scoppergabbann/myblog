@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { MonologEpisodeCard } from '@/components/monolog-episode-card';
-import { monologCategories } from '@/lib/monolog';
+import { monologCategories } from '@/lib/monolog-shared';
 import type { MonologCategorySlug, PublishedMonologEpisode } from '@/types/monolog';
 
 type CategoryFilter = 'all' | MonologCategorySlug;

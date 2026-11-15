@@ -17,6 +17,7 @@ const nav = [
   { href: '/admin/home', label: 'home' },
   { href: '/admin/library', label: 'library' },
   { href: '/admin/maintenance', label: 'maintenance' },
+  { href: '/admin/monolog', label: 'monolog' },
   { href: '/admin/now', label: 'now' },
   { href: '/admin', label: 'overview', exact: true },
   { href: '/admin/posts', label: 'posts' },

@@ -39,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const w of writings) {
     for (const tag of w.tags ?? []) tags.add(tag.toLowerCase());
   }
-  const monologRoutes = getPublishedMonologEpisodes().map((episode) => ({
+  const monologRoutes = (await getPublishedMonologEpisodes()).map((episode) => ({
     url: `${siteConfig.url}/monolog/${encodeURIComponent(episode.slug)}`,
     lastModified: new Date(episode.publishedAt),
     changeFrequency: 'yearly' as const,
