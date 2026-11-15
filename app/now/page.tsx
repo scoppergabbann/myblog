@@ -9,6 +9,7 @@ import { getNowData } from '@/lib/content-queries';
 import { SpotifyEmbed } from '@/components/spotify-embed';
 import { auth, isAdmin } from '@/auth';
 import { StreamAdmin, StreamEntryActions } from '@/components/stream-admin';
+import { StreamPhotoGallery } from '@/components/stream-photo-gallery';
 
 export const metadata: Metadata = {
   ...pageMetadata('/now', 'Stream', 'Catatan tentang proyek, pembaruan, eksperimen, dan keseharian.'),
@@ -45,6 +46,7 @@ export default async function NowPage() {
                 <span className="sr-only">{streamCategories[entry.category]}</span>
               </div>
               <StreamBody content={entry.content} />
+              <StreamPhotoGallery photos={entry.photos} title={entry.title} />
               {adminView && <StreamEntryActions entry={entry} />}
             </article>
           </li>

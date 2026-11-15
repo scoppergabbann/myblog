@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // Each photo is uploaded separately; allow a 3 MB file plus multipart overhead.
+    serverActions: { bodySizeLimit: '4mb' },
+  },
   async redirects() {
     return [{
       source: '/:path*',

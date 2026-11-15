@@ -20,6 +20,18 @@ Tanggal menentukan urutan, bukan jadwal otomatis terbit. Catatan yang ditandai p
 
 ## Verifikasi
 
+### Foto dokumentasi
+
+Jalankan `supabase/migrations/018_stream_photos.sql` di SQL Editor Supabase untuk menambahkan kolom `photos` dan batas maksimum tiga lampiran per catatan. Aktifkan bucket gambar publik yang sama dengan upload blog (`NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`, default `bbs-images`). Entri tanpa foto tetap terbaca sebelum migrasi; penyimpanan lampiran menampilkan pesan migrasi jika kolom belum tersedia.
+
+Composer `/now` dan editor `/admin/now` mendukung maksimal tiga foto JPG, PNG, atau WebP, masing-masing maksimal 3 MB. Pilih beberapa foto sekaligus, tambahkan keterangan opsional, atau hapus foto untuk menggantinya. Simpan dan tutup dinonaktifkan selama upload. Keterangan menjadi caption dan teks alternatif gambar. Galeri publik memuat gambar secara lazy dan tautannya membuka foto asli di tab baru. RSS menyertakan foto dengan HTML yang di-escape.
+
+Server memeriksa sesi admin, ukuran, MIME, dan signature file sebelum upload. Server memeriksa jumlah dan struktur foto lagi saat menyimpan, dan constraint database membatasi tiga foto. Upload dilakukan satu per satu dengan batas request Server Action 4 MB untuk mengakomodasi satu file 3 MB beserta multipart overhead. Editor lama yang tidak mengirim properti `photos` tidak menghapus lampiran yang sudah tersimpan.
+
+Menghapus lampiran hanya melepasnya dari catatan setelah Simpan; objek di bucket tidak dihapus otomatis, untuk mempertahankan URL yang mungkin masih digunakan konten lain. File yang sudah diunggah tetapi form-nya dibatalkan juga tetap berada di bucket. Bucket publik berarti URL upload dapat diakses sebelum catatan dipublikasikan, sesuai mekanisme upload blog yang sudah ada.
+
+Uji tambahan: `node scripts/check-stream-photos.cjs` (batas jumlah/ukuran/format, otorisasi upload, signature, galeri, dan escaping RSS).
+
 - `npm run type-check`
 - `node scripts/check-stream-render.mjs`
 - `node scripts/check-stream-actions.cjs`

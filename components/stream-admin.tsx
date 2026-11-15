@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { saveStreamEntry, deleteStreamEntry } from '@/app/admin/(protected)/now/stream-actions';
 import { streamCategories, type StreamCategory, type StreamEntry, type StreamInput } from '@/lib/now-stream';
+import { StreamPhotoPicker } from '@/components/stream-photo-picker';
 import { activityPresets, applyActivityPreset, newStreamActivity } from '@/lib/stream-activity';
 
 type Editor = { kind: 'edit'; entry: StreamEntry | null } | { kind: 'delete'; entry: StreamEntry };
@@ -52,9 +53,11 @@ function ActivityDialog({ editor, close, done }: { editor: Editor; close: () => 
     title: editor.entry.title, category: editor.entry.category, project: editor.entry.project,
     project_url: editor.entry.project_url, content: editor.entry.content,
     published_on: editor.entry.published_on, published: editor.entry.published,
+    ...(editor.entry.photos === undefined ? {} : { photos: editor.entry.photos }),
   } : newStreamActivity());
   const [baseline] = useState(() => JSON.stringify(form));
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const deleting = editor.kind === 'delete';
   const dirty = !deleting && JSON.stringify(form) !== baseline;
@@ -73,21 +76,21 @@ function ActivityDialog({ editor, close, done }: { editor: Editor; close: () => 
   }, []);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !uploading) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  }, [dirty, uploading]);
 
   function requestClose() {
-    if (saving.current) return;
+    if (saving.current || uploading) return;
     if (!dirty || window.confirm('Buang perubahan yang belum disimpan?')) close();
   }
   function change<K extends keyof StreamInput>(key: K, value: StreamInput[K]) {
     setForm(previous => ({ ...previous, [key]: value }));
   }
   async function submit() {
-    if (saving.current) return;
+    if (saving.current || uploading) return;
     saving.current = true;
     setBusy(true); setError('');
     try {
@@ -114,10 +117,10 @@ function ActivityDialog({ editor, close, done }: { editor: Editor; close: () => 
           <h2 id="activity-dialog-title" className="text-xl font-semibold tracking-tight">{deleting ? 'Hapus aktivitas?' : editor.entry ? 'Edit aktivitas' : 'Lagi ngapain?'}</h2>
           {!deleting && <p className="mt-1 text-sm text-[var(--color-ink-3)]">Bagikan cerita kecil dari keseharianmu.</p>}
         </div>
-        <button type="button" disabled={busy} onClick={requestClose} aria-label="Tutup" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl hover:bg-[var(--color-paper-2)] disabled:opacity-50">×</button>
+        <button type="button" disabled={busy || uploading} onClick={requestClose} aria-label="Tutup" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl hover:bg-[var(--color-paper-2)] disabled:opacity-50">×</button>
       </div>
       {deleting ? <p id="activity-delete-description" className="mb-6 break-words text-sm leading-relaxed">“{editor.entry.title}” akan dihapus dari Stream dan RSS. Tindakan ini tidak dapat dibatalkan.</p> :
-        <fieldset disabled={busy} className="space-y-5">
+        <fieldset disabled={busy || uploading} className="space-y-5">
           <fieldset>
             <legend className="mb-2 text-sm font-medium">Aktivitas</legend>
             <div className="flex flex-wrap gap-2">
@@ -134,6 +137,7 @@ function ActivityDialog({ editor, close, done }: { editor: Editor; close: () => 
           <label className="block text-sm font-medium">Judul<input autoFocus required maxLength={160} value={form.title} onChange={event => change('title', event.target.value)} className="input-base mt-2" placeholder="Misalnya: Jogging pagi di taman" /></label>
           <label className="block text-sm font-medium">Cerita<textarea required rows={5} maxLength={20000} value={form.content} onChange={event => change('content', event.target.value)} className="input-base mt-2 resize-y font-normal" placeholder="Apa yang seru hari ini?" aria-describedby="activity-content-help" /></label>
           <p id="activity-content-help" className="!mt-2 text-xs text-[var(--color-ink-3)]">Bisa pakai Markdown untuk **tebal**, daftar, dan tautan.</p>
+          <StreamPhotoPicker photos={form.photos ?? []} onChange={photos => change('photos', photos)} onBusyChange={setUploading} disabled={busy} />
           <details className="rounded-xl border border-[var(--color-line)] p-3">
             <summary className="cursor-pointer text-sm text-[var(--color-ink-3)]">Tanggal & detail tambahan</summary>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -147,9 +151,9 @@ function ActivityDialog({ editor, close, done }: { editor: Editor; close: () => 
         </fieldset>}
       {error && <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
       <div className="mt-6 flex justify-end gap-2 border-t border-[var(--color-line)] pt-4">
-        <button type="button" autoFocus={deleting} disabled={busy} className={button} onClick={requestClose}>Batal</button>
-        <button type="submit" disabled={busy} className={`${button} border-transparent ${deleting ? 'bg-red-700 text-white hover:bg-red-800' : 'bg-[var(--color-ink)] text-[var(--color-paper)] hover:opacity-85 hover:bg-[var(--color-ink)]'}`}>
-          {busy ? 'Memproses...' : deleting ? 'Ya, hapus' : editor.entry ? 'Simpan perubahan' : 'Posting aktivitas'}
+        <button type="button" autoFocus={deleting} disabled={busy || uploading} className={button} onClick={requestClose}>Batal</button>
+        <button type="submit" disabled={busy || uploading} className={`${button} border-transparent ${deleting ? 'bg-red-700 text-white hover:bg-red-800' : 'bg-[var(--color-ink)] text-[var(--color-paper)] hover:opacity-85 hover:bg-[var(--color-ink)]'}`}>
+          {uploading ? 'Mengunggah foto...' : busy ? 'Memproses...' : deleting ? 'Ya, hapus' : editor.entry ? 'Simpan perubahan' : 'Posting aktivitas'}
         </button>
       </div>
     </form>

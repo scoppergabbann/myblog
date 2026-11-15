@@ -9,7 +9,8 @@ function load(file, imports) {
   vm.runInNewContext(code, { module, exports: module.exports, require: name => { if (!(name in imports)) throw Error(`Unexpected import: ${name}`); return imports[name]; }, URL, Date, Number });
   return module.exports;
 }
-const validation = load('lib/now-stream.ts', {});
+const photoRules = load('lib/stream-photos.ts', {});
+const validation = load('lib/now-stream.ts', { './stream-photos': photoRules });
 const activities = load('lib/stream-activity.ts', {});
 let admin = true, calls = [], response = { data: { id: 7 }, error: null }, invalidated = [];
 const query = new Proxy({}, { get: (_, method) => (...args) => {
@@ -53,14 +54,25 @@ const input = { title: ' Update ', category: 'release', project: 'Website', proj
   admin = true;
   assert.equal((await actions.saveStreamEntry(null, { ...input, title: '' })).ok, false);
   assert.equal(calls.length, 0);
+  const photos = [1, 2, 3].map(index => ({ url: `https://example.com/${index}.jpg`, alt: ` Foto ${index} ` }));
+  assert.equal((await actions.saveStreamEntry(null, { ...input, photos: [...photos, { url: 'https://example.com/4.jpg', alt: '' }] })).ok, false);
+  assert.equal(calls.length, 0, 'Four photos must be rejected before database access');
   assert.equal((await actions.saveStreamEntry(null, input)).ok, true);
   const inserted = calls.find(c => c[0] === 'insert')[1];
   assert.equal(inserted.title, 'Update');
   assert.equal(inserted.published, false);
+  assert.equal(Object.hasOwn(inserted, 'photos'), false, 'Older inputs must preserve stored photos');
   assert.deepEqual(invalidated, ['/now', '/now/rss.xml', '/admin/now']);
   calls = []; invalidated = [];
-  assert.equal((await actions.saveStreamEntry(7, { ...input, published: true })).ok, true);
+  assert.equal((await actions.saveStreamEntry(7, { ...input, published: true, photos })).ok, true);
+  assert.equal(calls.find(call => call[0] === 'update')[1].photos.length, 3);
+  assert.equal(calls.find(call => call[0] === 'update')[1].photos[0].alt, 'Foto 1');
   assert.ok(calls.some(c => c[0] === 'eq' && c[1] === 'id' && c[2] === 7));
+  calls = [];
+  assert.equal((await actions.saveStreamEntry(7, { ...input, photos: [] })).ok, true);
+  assert.equal(calls.find(call => call[0] === 'update')[1].photos.length, 0, 'Explicit empty photos removes attachments');
+  response = { data: null, error: { code: 'PGRST204', message: 'Could not find photos column' } };
+  assert.match((await actions.saveStreamEntry(null, { ...input, photos })).error, /018_stream_photos.sql/);
   response = { data: null, error: { code: 'PGRST205', message: 'missing' } };
   invalidated = [];
   const missing = await actions.saveStreamEntry(null, input);
