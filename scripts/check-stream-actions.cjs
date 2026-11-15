@@ -10,6 +10,7 @@ function load(file, imports) {
   return module.exports;
 }
 const validation = load('lib/now-stream.ts', {});
+const activities = load('lib/stream-activity.ts', {});
 let admin = true, calls = [], response = { data: { id: 7 }, error: null }, invalidated = [];
 const query = new Proxy({}, { get: (_, method) => (...args) => {
   calls.push([method, ...args]);
@@ -23,12 +24,30 @@ const actions = load('app/admin/(protected)/now/stream-actions.ts', {
 });
 const input = { title: ' Update ', category: 'release', project: 'Website', project_url: 'https://example.com', content: '**Released**', published_on: '2026-10-25', published: false };
 (async () => {
+  const activity = activities.newStreamActivity();
+  assert.equal(activity.published, true);
+  assert.equal(activity.category, 'life');
+  assert.match(activity.published_on, /^\d{4}-\d{2}-\d{2}$/);
+  for (const preset of activities.activityPresets) {
+    const selected = activities.applyActivityPreset(activity, preset.context);
+    assert.equal(selected.title, preset.label);
+    assert.equal(selected.project, preset.context);
+    assert.equal(validation.validateStream({ ...selected, content: 'Aktivitas hari ini.' }), null);
+  }
+  const jogging = activities.applyActivityPreset(activity, 'Olahraga · Jogging');
+  assert.equal(activities.applyActivityPreset(jogging, 'Ngafe').title, 'Ngafe');
+  const custom = { ...jogging, title: 'Pagi di taman', content: 'Lima kilometer.', project_url: 'https://example.com' };
+  const switched = activities.applyActivityPreset(custom, 'Wisata');
+  assert.equal(switched.title, custom.title);
+  assert.equal(switched.content, custom.content);
+  assert.equal(switched.project_url, '');
   assert.equal(validation.validateStream(input), null);
   for (const patch of [{ title: '' }, { category: 'unknown' }, { content: '' }, { project_url: 'javascript:alert(1)' }, { project_url: '//example.com' }, { published_on: '2026-02-30' }, { published_on: 'invalid' }, { published: 'true' }]) {
     assert.ok(validation.validateStream({ ...input, ...patch }), JSON.stringify(patch));
   }
   admin = false;
   await assert.rejects(actions.saveStreamEntry(null, input), /Unauthorized/);
+  await assert.rejects(actions.saveStreamEntry(7, input), /Unauthorized/);
   await assert.rejects(actions.deleteStreamEntry(7), /Unauthorized/);
   assert.equal(calls.length, 0);
   admin = true;

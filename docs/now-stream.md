@@ -10,6 +10,10 @@ Sebelum migrasi, halaman publik menggunakan data lama dalam tampilan timeline. A
 
 ## Kelola konten
 
+Admin yang sudah login dapat mengelola catatan langsung di `/now`. Klik tombol bulat **+** di kanan bawah untuk membuka composer, pilih Jogging, Tenis, Ngafe, Wisata, Riding, atau Lainnya, lalu isi cerita dan klik **Posting aktivitas**. Judul awal mengikuti pilihan aktivitas dan dapat diubah. Aktivitas baru langsung dipublikasikan; tanggal awal memakai zona waktu Asia/Jakarta. Pilihan aktivitas memakai kategori `life` dan konteks/proyek yang sudah tersedia (misalnya `Olahraga · Jogging`), sehingga tidak membutuhkan migrasi baru setelah migrasi 015.
+
+Tombol **Edit** dan **Hapus** tampil pada masing-masing catatan untuk admin, dengan konfirmasi sebelum menghapus. Form mempertahankan isian jika penyimpanan gagal dan meminta konfirmasi ketika perubahan yang belum tersimpan ditutup. Pengunjung biasa hanya melihat timeline publik. Halaman bersifat dinamis agar kontrol admin tidak masuk cache halaman publik; semua mutasi tetap memeriksa sesi admin di server. Draft tetap dikelola melalui dashboard.
+
 Buka `/admin/now`, klik **Tambah catatan**, isi judul, kategori, tanggal, dan isi Markdown. Isi proyek/URL bila perlu. Centang **Publikasikan di Stream dan RSS** untuk menampilkannya ke pengunjung; biarkan tidak dicentang untuk draft. Gunakan Edit untuk memperbarui atau mengubah status publikasi. Hapus memerlukan konfirmasi di baris terkait. Pengaturan Spotify berada di bagian Musik / Spotify.
 
 Tanggal menentukan urutan, bukan jadwal otomatis terbit. Catatan yang ditandai publik langsung tampil, termasuk bila tanggalnya di masa depan.

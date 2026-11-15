@@ -7,15 +7,19 @@ import { StreamIcon } from '@/components/stream-icon';
 import { StreamBody } from '@/components/stream-body';
 import { getNowData } from '@/lib/content-queries';
 import { SpotifyEmbed } from '@/components/spotify-embed';
+import { auth, isAdmin } from '@/auth';
+import { StreamAdmin, StreamEntryActions } from '@/components/stream-admin';
 
 export const metadata: Metadata = {
   ...pageMetadata('/now', 'Stream', 'Catatan tentang proyek, pembaruan, eksperimen, dan keseharian.'),
   alternates: { canonical: '/now', types: { 'application/rss+xml': '/now/rss.xml' } },
 };
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 export default async function NowPage() {
-  const [entries, now] = await Promise.all([getStreamEntries(), getNowData()]);
-  return (
+  const [entries, now, session] = await Promise.all([getStreamEntries(), getNowData(), auth()]);
+  const adminView = isAdmin(session);
+  const timeline = (
     <div className="page-fade mx-auto max-w-[760px] px-6 pb-20 pt-16 max-sm:pt-10">
       <header className="mb-9 pl-10 max-sm:pl-8">
         <h1 className="mb-5 text-[32px] font-semibold tracking-[-0.035em] text-[var(--color-ink)]">Stream</h1>
@@ -41,6 +45,7 @@ export default async function NowPage() {
                 <span className="sr-only">{streamCategories[entry.category]}</span>
               </div>
               <StreamBody content={entry.content} />
+              {adminView && <StreamEntryActions entry={entry} />}
             </article>
           </li>
         ))}
@@ -49,4 +54,5 @@ export default async function NowPage() {
       {now.spotifyEmbedUrl && <section aria-label="Sedang didengarkan" className="mt-4 pl-10 max-sm:pl-8"><h2 className="mb-4 text-sm text-[var(--color-ink-3)]">Sedang didengarkan</h2><SpotifyEmbed embedUrl={now.spotifyEmbedUrl} /></section>}
     </div>
   );
+  return adminView ? <StreamAdmin>{timeline}</StreamAdmin> : timeline;
 }
