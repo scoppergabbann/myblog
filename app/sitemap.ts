@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
 import { siteConfig } from '@/lib/site-config';
+import { getPublishedMonologEpisodes } from '@/lib/monolog';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '',
     '/about',
     '/writing',
+    '/monolog',
     '/projects',
     '/library',
     '/now',
@@ -37,7 +39,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const w of writings) {
     for (const tag of w.tags ?? []) tags.add(tag.toLowerCase());
   }
-  return [...staticRoutes, ...writingRoutes, ...[...tags].sort().map((tag) => ({
+  const monologRoutes = getPublishedMonologEpisodes().map((episode) => ({
+    url: `${siteConfig.url}/monolog/${encodeURIComponent(episode.slug)}`,
+    lastModified: new Date(episode.publishedAt),
+    changeFrequency: 'yearly' as const,
+    priority: 0.7,
+  }));
+  return [...staticRoutes, ...writingRoutes, ...monologRoutes, ...[...tags].sort().map((tag) => ({
     url: `${siteConfig.url}/writing/tag/${encodeURIComponent(tag)}`,
   }))];
 }

@@ -28,6 +28,7 @@ export const siteConfig = {
   },
   nav: [
     { href: '/writing', label: 'writing' },
+    { href: '/monolog', label: 'monolog' },
     { href: '/projects', label: 'projects' },
     { href: '/library', label: 'library' },
     { href: '/now', label: 'now' },

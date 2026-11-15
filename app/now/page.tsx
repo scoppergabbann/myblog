@@ -10,6 +10,8 @@ import { SpotifyEmbed } from '@/components/spotify-embed';
 import { auth, isAdmin } from '@/auth';
 import { StreamAdmin, StreamEntryActions } from '@/components/stream-admin';
 import { StreamPhotoGallery } from '@/components/stream-photo-gallery';
+import { StreamReactions } from '@/components/stream-reactions';
+import { getStreamReactionStates } from '@/lib/stream-reaction-queries';
 
 export const metadata: Metadata = {
   ...pageMetadata('/now', 'Stream', 'Catatan tentang proyek, pembaruan, eksperimen, dan keseharian.'),
@@ -20,6 +22,7 @@ export const revalidate = 0;
 export default async function NowPage() {
   const [entries, now, session] = await Promise.all([getStreamEntries(), getNowData(), auth()]);
   const adminView = isAdmin(session);
+  const reactionStates = await getStreamReactionStates(entries.map(entry => entry.id));
   const timeline = (
     <div className="page-fade mx-auto max-w-[760px] px-6 pb-20 pt-16 max-sm:pt-10">
       <header className="mb-9 pl-10 max-sm:pl-8">
@@ -47,6 +50,7 @@ export default async function NowPage() {
               </div>
               <StreamBody content={entry.content} />
               <StreamPhotoGallery photos={entry.photos} title={entry.title} />
+              {reactionStates[entry.id] && <StreamReactions entryId={entry.id} title={entry.title} initial={reactionStates[entry.id]} />}
               {adminView && <StreamEntryActions entry={entry} />}
             </article>
           </li>

@@ -593,3 +593,28 @@ input:focus, textarea:focus, select:focus {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+
+.stream-reaction-button:hover .stream-reaction-icon {
+  animation: reactionWiggle 500ms ease-in-out;
+}
+.stream-reaction-burst > span {
+  position: absolute;
+  left: 18px;
+  top: 6px;
+  color: #e85a80;
+  font-size: 14px;
+  opacity: 0;
+  animation: streamReactionFloat 850ms ease-out both;
+  --reaction-drift: -22px;
+}
+.stream-reaction-burst > span:nth-child(2) { --reaction-drift: 2px; animation-delay: 60ms; font-size: 11px; }
+.stream-reaction-burst > span:nth-child(3) { --reaction-drift: 24px; animation-delay: 100ms; font-size: 13px; }
+@keyframes streamReactionFloat {
+  0% { opacity: 0; transform: translate(0, 0) scale(.5) rotate(-12deg); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--reaction-drift), -48px) scale(1.1) rotate(18deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stream-reaction-button:hover .stream-reaction-icon { animation: none; }
+  .stream-reaction-burst { display: none; }
+}

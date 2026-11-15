@@ -20,6 +20,14 @@ Tanggal menentukan urutan, bukan jadwal otomatis terbit. Catatan yang ditandai p
 
 ## Verifikasi
 
+### Reaksi positif dari pengunjung
+
+Setiap catatan publik di `/now` memiliki empat tombol berupa ikon dan angka: hati, dua botol bersulang, api, dan tepuk tangan. Tidak ada tulisan Love, termasuk pada tooltip dan label aksesibilitas. Pengunjung dapat memilih lebih dari satu jenis, tanpa login. Klik menambah reaksi; klik lagi membatalkan jenis itu saja. Ikon bergoyang dan emoji kecil melayang saat dipilih, dengan dukungan reduced motion.
+
+Reaksi memakai tabel `reactions` yang sudah ada. Hati mempertahankan pasangan slug `/now#update-ID` / emoji `love` agar data lama tetap tampil. Api memakai slug yang sama dan emoji `fire`. Bersulang dan tepuk tangan memakai suffix slug `:cheers` dan `:clap`, masing-masing memakai nilai vote positif `love` yang sudah didukung enum database. Jenis baru tetap terpisah dari hati dan artikel, tanpa migrasi baru.
+
+Identitas anonim disimpan dalam cookie HttpOnly selama setahun dan di-hash sebelum disimpan. Satu browser dapat memberi satu reaksi per jenis per catatan; browser berbeda dalam jaringan yang sama dihitung terpisah. Pembatasan 60 perubahan per jam per hash IP memakai rate limiter dalam memori aplikasi. Server hanya menerima empat jenis positif pada catatan yang masih dipublikasikan, memakai mutasi idempotent dan count exact. Data identitas tidak dikirim ke komponen klien. Verifikasi: `node scripts/check-stream-reactions.cjs`.
+
 ### Foto dokumentasi
 
 Jalankan `supabase/migrations/018_stream_photos.sql` di SQL Editor Supabase untuk menambahkan kolom `photos` dan batas maksimum tiga lampiran per catatan. Aktifkan bucket gambar publik yang sama dengan upload blog (`NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`, default `bbs-images`). Entri tanpa foto tetap terbaca sebelum migrasi; penyimpanan lampiran menampilkan pesan migrasi jika kolom belum tersedia.
