@@ -1,8 +1,7 @@
 'use client';
 
-import { useRef, useState, type ChangeEvent } from 'react';
-import { createSupabaseBrowser } from '@/lib/supabase/browser';
-import { prepareMonologAudioUpload } from './actions';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { discardMonologAudio, prepareMonologAudioUpload } from './actions';
 
 function readDuration(file: File): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -24,6 +23,46 @@ function readDuration(file: File): Promise<number> {
   });
 }
 
+function uploadWithProgress(
+  signedUrl: string,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', signedUrl);
+    xhr.setRequestHeader('x-upsert', 'false');
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (anonKey) {
+      xhr.setRequestHeader('apikey', anonKey);
+      xhr.setRequestHeader('Authorization', `Bearer ${anonKey}`);
+    }
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onerror = () => reject(new Error('Koneksi terputus saat mengunggah audio.'));
+    xhr.onabort = () => reject(new Error('Upload audio dibatalkan.'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(100);
+        resolve();
+        return;
+      }
+      try {
+        const payload = JSON.parse(xhr.responseText) as { message?: string; error?: string };
+        reject(new Error(payload.message ?? payload.error ?? `Upload gagal (${xhr.status}).`));
+      } catch {
+        reject(new Error(`Upload gagal (${xhr.status}).`));
+      }
+    };
+
+    const body = new FormData();
+    body.append('cacheControl', '31536000');
+    body.append('', file);
+    xhr.send(body);
+  });
+}
+
 export function MonologAudioUpload({
   initialUrl,
   initialPath,
@@ -34,17 +73,36 @@ export function MonologAudioUpload({
   initialDuration: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const initialPathRef = useRef(initialPath ?? '');
+  const activePathRef = useRef(initialPath ?? '');
   const [audioUrl, setAudioUrl] = useState(initialUrl);
   const [audioPath, setAudioPath] = useState(initialPath ?? '');
   const [duration, setDuration] = useState(initialDuration);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+
+  useEffect(() => () => {
+    const path = activePathRef.current;
+    if (path && path !== initialPathRef.current) void discardMonologAudio(path);
+  }, []);
+
+  function setCurrentAudioPath(path: string) {
+    activePathRef.current = path;
+    setAudioPath(path);
+  }
+
+  function discardPendingPath() {
+    const path = activePathRef.current;
+    if (path && path !== initialPathRef.current) void discardMonologAudio(path);
+  }
 
   async function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadProgress(0);
     setError(null);
     setNote(null);
 
@@ -67,22 +125,21 @@ export function MonologAudioUpload({
       return;
     }
 
-    const supabase = createSupabaseBrowser();
-    const { error: uploadError } = await supabase.storage
-      .from(signed.bucket)
-      .uploadToSignedUrl(signed.path, signed.token, file, {
-        contentType: 'audio/mp4',
-        cacheControl: '31536000',
-      });
-
-    if (uploadError) setError(uploadError.message);
-    else {
+    try {
+      await uploadWithProgress(signed.signedUrl, file, setUploadProgress);
+      const previousPath = activePathRef.current;
+      if (previousPath && previousPath !== initialPathRef.current && previousPath !== signed.path) {
+        void discardMonologAudio(previousPath);
+      }
       setAudioUrl(signed.publicUrl);
-      setAudioPath(signed.path);
+      setCurrentAudioPath(signed.path);
       if (detectedDuration > 0) setDuration(detectedDuration);
       setNote(detectedDuration > 0
         ? `Upload selesai. Durasi terdeteksi ${formatDuration(detectedDuration)}.`
         : 'Upload selesai. Isi durasi audio secara manual.');
+    } catch (uploadError) {
+      void discardMonologAudio(signed.path);
+      setError(uploadError instanceof Error ? uploadError.message : 'Upload audio gagal.');
     }
 
     setUploading(false);
@@ -102,7 +159,7 @@ export function MonologAudioUpload({
           onClick={() => inputRef.current?.click()}
           className="inline-flex min-h-10 items-center rounded-lg border border-[var(--color-line-2)] bg-[var(--color-paper)] px-3 py-2 text-xs text-[var(--color-ink-2)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-wait disabled:opacity-50"
         >
-          {uploading ? 'Mengunggah…' : audioUrl ? 'Ganti audio' : 'Upload .m4a'}
+          {uploading ? `Mengunggah ${uploadProgress}%` : audioUrl ? 'Ganti audio' : 'Upload .m4a'}
         </button>
         <input
           ref={inputRef}
@@ -112,6 +169,22 @@ export function MonologAudioUpload({
           onChange={(event) => void onFileChange(event)}
         />
       </div>
+
+      {uploading && (
+        <div
+          role="progressbar"
+          aria-label="Progress upload audio"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={uploadProgress}
+          className="h-1.5 overflow-hidden rounded-full bg-[var(--color-line)]"
+        >
+          <div
+            className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-150"
+            style={{ width: `${uploadProgress}%` }}
+          />
+        </div>
+      )}
 
       <div>
         <label htmlFor="monolog-audio-url" className="mb-1.5 block font-mono text-[11px] uppercase tracking-wide text-[var(--color-ink-3)]">
@@ -123,8 +196,9 @@ export function MonologAudioUpload({
           type="text"
           value={audioUrl}
           onChange={(event) => {
+            discardPendingPath();
             setAudioUrl(event.currentTarget.value);
-            setAudioPath('');
+            setCurrentAudioPath('');
           }}
           placeholder="Upload file atau tempel URL HTTPS .m4a"
           className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 font-mono text-xs text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"

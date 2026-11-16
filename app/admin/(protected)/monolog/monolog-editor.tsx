@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState, useEffect, useTransition } from 'react';
+import { useActionState, useEffect, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/admin/toast';
-import { monologCategories } from '@/lib/monolog-shared';
+import { monologCategories, slugifyMonologTitle } from '@/lib/monolog-shared';
 import type { MonologCategorySlug, MonologStatus } from '@/types/monolog';
 import { MonologAudioUpload } from './audio-upload';
 import { createMonolog, deleteMonolog, updateMonolog, type MonologFormState } from './actions';
@@ -31,8 +31,17 @@ const DEFAULT_EPISODE: AdminMonologEpisode = {
   duration_seconds: 0, published_at: null, status: 'draft', transcript: null, reflection: null, tags: [],
 };
 
-export function MonologEditor({ episode = DEFAULT_EPISODE }: { episode?: AdminMonologEpisode }) {
+export function MonologEditor({
+  episode = DEFAULT_EPISODE,
+  previewToken,
+}: {
+  episode?: AdminMonologEpisode;
+  previewToken?: string;
+}) {
   const isNew = !episode.id;
+  const [title, setTitle] = useState(episode.title);
+  const [slug, setSlug] = useState(episode.slug);
+  const [slugIsManual, setSlugIsManual] = useState(!isNew);
   const action = isNew
     ? createMonolog
     : (updateMonolog.bind(null, episode.id!) as typeof createMonolog);
@@ -75,20 +84,61 @@ export function MonologEditor({ episode = DEFAULT_EPISODE }: { episode?: AdminMo
           </h1>
           <p className="mt-1 text-sm text-[var(--color-ink-3)]">Upload rekaman, lengkapi metadata, lalu publish saat siap.</p>
         </div>
-        {!isNew && episode.status === 'published' && (
-          <Link href={`/monolog/${episode.slug}`} target="_blank" className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
-            Lihat publik ↗
-          </Link>
+        {!isNew && (
+          <div className="flex flex-wrap items-center gap-2">
+            {episode.status === 'draft' && previewToken && (
+              <Link href={`/monolog/${episode.slug}?preview=${encodeURIComponent(previewToken)}`} target="_blank" className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+                Preview draft ↗
+              </Link>
+            )}
+            {episode.status === 'published' && (
+              <Link href={`/monolog/${episode.slug}`} target="_blank" className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
+                Lihat publik ↗
+              </Link>
+            )}
+          </div>
         )}
       </div>
 
       <form action={formAction} className="space-y-5">
         <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
           <Field label="Judul" htmlFor="monolog-title">
-            <input id="monolog-title" name="title" required maxLength={180} defaultValue={episode.title} autoFocus={isNew} className={inputClass} />
+            <input
+              id="monolog-title"
+              name="title"
+              required
+              maxLength={180}
+              value={title}
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setTitle(value);
+                if (!slugIsManual) setSlug(slugifyMonologTitle(value));
+              }}
+              autoFocus={isNew}
+              className={inputClass}
+            />
           </Field>
           <Field label="Slug" htmlFor="monolog-slug">
-            <input id="monolog-slug" name="slug" required maxLength={100} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" defaultValue={episode.slug} placeholder="judul-episode" className={`${inputClass} font-mono text-sm`} />
+            <input
+              id="monolog-slug"
+              name="slug"
+              required
+              maxLength={100}
+              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+              value={slug}
+              onChange={(event) => {
+                setSlug(event.currentTarget.value);
+                setSlugIsManual(true);
+              }}
+              placeholder="judul-episode"
+              aria-describedby="monolog-slug-help"
+              className={`${inputClass} font-mono text-sm`}
+            />
+            <p id="monolog-slug-help" className="mt-1 text-[11px] text-[var(--color-ink-4)]">
+              {isNew
+                ? 'Dibuat otomatis dari judul, tetapi tetap bisa diubah.'
+                : 'Tidak ikut berubah saat judul diedit agar tautan lama tetap aman.'}
+            </p>
           </Field>
         </div>
 

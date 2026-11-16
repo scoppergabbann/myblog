@@ -21,7 +21,7 @@ export type MonologActionResult =
   | { ok: false; error: string };
 
 export type MonologUploadResult =
-  | { ok: true; bucket: string; path: string; token: string; publicUrl: string }
+  | { ok: true; bucket: string; path: string; token: string; signedUrl: string; publicUrl: string }
   | { ok: false; error: string };
 
 async function requireAdmin() {
@@ -121,6 +121,68 @@ async function removeAudio(path: string | null) {
   if (!path || !AUDIO_PATH_PATTERN.test(path)) return;
   const { error } = await createSupabaseAdmin().storage.from(AUDIO_BUCKET).remove([path]);
   if (error) console.error('[monolog.audio.remove]', error);
+}
+
+async function referencedAudioPaths(): Promise<Set<string>> {
+  const { data, error } = await createSupabaseAdmin()
+    .from('monolog_episodes')
+    .select('audio_path')
+    .not('audio_path', 'is', null);
+  if (error) throw error;
+  return new Set((data ?? []).flatMap((row) => typeof row.audio_path === 'string' ? [row.audio_path] : []));
+}
+
+async function cleanupOrphanedMonologAudio() {
+  try {
+    const db = createSupabaseAdmin();
+    const referenced = await referencedAudioPaths();
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const { data: years, error: yearsError } = await db.storage.from(AUDIO_BUCKET).list('', { limit: 100 });
+    if (yearsError) throw yearsError;
+
+    const stalePaths: string[] = [];
+    for (const year of years ?? []) {
+      if (!/^\d{4}$/.test(year.name) || year.id) continue;
+      const { data: months, error: monthsError } = await db.storage.from(AUDIO_BUCKET).list(year.name, { limit: 100 });
+      if (monthsError) throw monthsError;
+      for (const month of months ?? []) {
+        if (!/^\d{2}$/.test(month.name) || month.id) continue;
+        const prefix = `${year.name}/${month.name}`;
+        const { data: files, error: filesError } = await db.storage.from(AUDIO_BUCKET).list(prefix, { limit: 1000 });
+        if (filesError) throw filesError;
+        for (const file of files ?? []) {
+          const path = `${prefix}/${file.name}`;
+          const createdAt = Date.parse(file.created_at ?? file.updated_at ?? '');
+          if (AUDIO_PATH_PATTERN.test(path) && !referenced.has(path) && Number.isFinite(createdAt) && createdAt < cutoff) {
+            stalePaths.push(path);
+          }
+        }
+      }
+    }
+
+    for (let index = 0; index < stalePaths.length; index += 100) {
+      const { error } = await db.storage.from(AUDIO_BUCKET).remove(stalePaths.slice(index, index + 100));
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error('[monolog.audio.cleanup]', error);
+  }
+}
+
+export async function discardMonologAudio(path: string): Promise<MonologActionResult & { retained?: boolean }> {
+  await requireAdmin();
+  if (!AUDIO_PATH_PATTERN.test(path)) return { ok: false, error: 'Path audio tidak valid.' };
+
+  const { data, error } = await createSupabaseAdmin()
+    .from('monolog_episodes')
+    .select('id')
+    .eq('audio_path', path)
+    .limit(1);
+  if (error) return { ok: false, error: databaseError(error.code, error.message) };
+  if ((data?.length ?? 0) > 0) return { ok: true, retained: true };
+
+  await removeAudio(path);
+  return { ok: true, retained: false };
 }
 
 export async function createMonolog(
@@ -236,6 +298,8 @@ export async function prepareMonologAudioUpload(input: {
   if (input.size > MAX_AUDIO_SIZE) return { ok: false, error: 'Ukuran audio maksimal 50 MB.' };
   if (!ALLOWED_AUDIO_TYPES.has(input.type.toLowerCase())) return { ok: false, error: 'Tipe file audio tidak didukung.' };
 
+  await cleanupOrphanedMonologAudio();
+
   const now = new Date();
   const folder = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
   const path = `${folder}/${randomBytes(16).toString('hex')}.m4a`;
@@ -248,5 +312,12 @@ export async function prepareMonologAudioUpload(input: {
     return { ok: false, error: message };
   }
   const { data: publicData } = db.storage.from(AUDIO_BUCKET).getPublicUrl(path);
-  return { ok: true, bucket: AUDIO_BUCKET, path, token: data.token, publicUrl: publicData.publicUrl };
+  return {
+    ok: true,
+    bucket: AUDIO_BUCKET,
+    path,
+    token: data.token,
+    signedUrl: data.signedUrl,
+    publicUrl: publicData.publicUrl,
+  };
 }

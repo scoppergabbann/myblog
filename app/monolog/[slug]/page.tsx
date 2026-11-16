@@ -3,20 +3,28 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/json-ld';
 import { MonologAudioPlayer } from '@/components/monolog-audio-player';
-import { getPublishedMonologEpisode, getPublishedMonologEpisodes, getRelatedMonologEpisodes } from '@/lib/monolog';
+import { getMonologEpisodeForPreview, getPublishedMonologEpisode, getPublishedMonologEpisodes, getRelatedMonologEpisodes } from '@/lib/monolog';
 import { audioDurationIso, formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
+import { verifyDraftToken } from '@/lib/draft-token';
 import { siteConfig } from '@/lib/site-config';
 import { formatDate } from '@/lib/utils';
+import type { MonologEpisodeRecord, PublishedMonologEpisode } from '@/types/monolog';
 
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const episode = await getPublishedMonologEpisode(slug);
+  const { preview } = await searchParams;
+  const isPreview = Boolean(preview && verifyDraftToken(`monolog:${slug}`, preview));
+  const episode = isPreview
+    ? await getMonologEpisodeForPreview(slug)
+    : await getPublishedMonologEpisode(slug);
   if (!episode) notFound();
 
   const path = `/monolog/${encodeURIComponent(episode.slug)}`;
@@ -36,7 +44,7 @@ export async function generateMetadata({
       url: `${siteConfig.url}${path}`,
       siteName: siteConfig.name,
       locale: siteConfig.locale,
-      publishedTime: episode.publishedAt,
+      publishedTime: episode.publishedAt ?? undefined,
       tags: episode.tags,
       images: [{ url: image, width: 1200, height: 630, alt: episode.title }],
     },
@@ -47,19 +55,28 @@ export async function generateMetadata({
       images: [image],
     },
     other: { 'og:image:secure_url': image },
+    robots: isPreview ? { index: false, follow: false } : undefined,
   };
 }
 
 export default async function MonologEpisodePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }) {
   const { slug } = await params;
-  const episode = await getPublishedMonologEpisode(slug);
+  const { preview } = await searchParams;
+  const isPreview = Boolean(preview && verifyDraftToken(`monolog:${slug}`, preview));
+  const episode: MonologEpisodeRecord | null = isPreview
+    ? await getMonologEpisodeForPreview(slug)
+    : await getPublishedMonologEpisode(slug);
   if (!episode) notFound();
 
-  const related = getRelatedMonologEpisodes(episode, await getPublishedMonologEpisodes());
+  const related = isPreview
+    ? []
+    : getRelatedMonologEpisodes(episode as PublishedMonologEpisode, await getPublishedMonologEpisodes());
   const audioUrl = episode.audioUrl.startsWith('https://')
     ? episode.audioUrl
     : `${siteConfig.url}${episode.audioUrl}`;
@@ -67,7 +84,7 @@ export default async function MonologEpisodePage({
 
   return (
     <div className="page-fade mx-auto max-w-[720px] px-6 pb-20 pt-12 max-sm:pt-8">
-      <JsonLd data={{
+      {!isPreview && <JsonLd data={{
         '@context': 'https://schema.org',
         '@type': 'AudioObject',
         name: episode.title,
@@ -81,8 +98,8 @@ export default async function MonologEpisodePage({
         author: { '@type': 'Person', name: siteConfig.author.name, url: siteConfig.url },
         keywords: episode.tags.join(', '),
         ...(episode.transcript ? { transcript: episode.transcript } : {}),
-      }} />
-      <JsonLd data={{
+      }} />}
+      {!isPreview && <JsonLd data={{
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         itemListElement: [
@@ -90,7 +107,13 @@ export default async function MonologEpisodePage({
           { '@type': 'ListItem', position: 2, name: 'Monolog', item: `${siteConfig.url}/monolog` },
           { '@type': 'ListItem', position: 3, name: episode.title, item: episodeUrl },
         ],
-      }} />
+      }} />}
+
+      {isPreview && (
+        <div role="status" className="mb-7 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          Preview draft — halaman ini hanya dapat dibuka melalui tautan rahasia dari dashboard admin.
+        </div>
+      )}
 
       <nav aria-label="Breadcrumb" className="mb-7 flex flex-wrap items-center gap-2 text-[12px] text-[var(--color-ink-4)]">
         <Link href="/">Beranda</Link><span aria-hidden="true">/</span>
@@ -105,7 +128,11 @@ export default async function MonologEpisodePage({
               {monologCategoryLabel(episode.category)}
             </span>
             <span aria-hidden="true">·</span>
-            <time dateTime={episode.publishedAt}>{formatDate(episode.publishedAt)}</time>
+            {episode.publishedAt ? (
+              <time dateTime={episode.publishedAt}>{formatDate(episode.publishedAt)}</time>
+            ) : (
+              <span>Belum dipublikasikan</span>
+            )}
             <span aria-hidden="true">·</span>
             <span>{formatAudioDuration(episode.durationSeconds)}</span>
           </div>
@@ -117,11 +144,17 @@ export default async function MonologEpisodePage({
           </p>
         </header>
 
-        <MonologAudioPlayer
-          src={episode.audioUrl}
-          title={episode.title}
-          durationSeconds={episode.durationSeconds}
-        />
+        {episode.audioUrl ? (
+          <MonologAudioPlayer
+            src={episode.audioUrl}
+            title={episode.title}
+            durationSeconds={episode.durationSeconds}
+          />
+        ) : (
+          <div className="rounded-xl border border-dashed border-[var(--color-line-2)] px-5 py-8 text-center text-sm text-[var(--color-ink-4)]">
+            Audio belum diunggah.
+          </div>
+        )}
 
         {episode.transcript && (
           <TextSection title="Transkrip" content={episode.transcript} />

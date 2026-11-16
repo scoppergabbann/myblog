@@ -90,6 +90,23 @@ export async function getPublishedMonologEpisode(slug: string): Promise<Publishe
   return isPublished(episode) ? episode : null;
 }
 
+export async function getMonologEpisodeForPreview(slug: string): Promise<MonologEpisodeRecord | null> {
+  const { createSupabaseAdmin } = await import('@/lib/supabase/admin');
+  const { data, error } = await createSupabaseAdmin()
+    .from('monolog_episodes')
+    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, created_at, updated_at')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (error) {
+    if (migrationMissing(error.code)) return null;
+    console.error('[monolog.preview.detail]', error);
+    throw new Error('Preview Monolog sementara tidak tersedia.');
+  }
+
+  return data ? mapEpisode(data as MonologRow) : null;
+}
+
 export function getRelatedMonologEpisodes(
   episode: PublishedMonologEpisode,
   episodes: PublishedMonologEpisode[],

@@ -16,6 +16,17 @@ export function monologCategoryLabel(category: MonologCategorySlug): string {
   return categoryLabels.get(category) ?? category;
 }
 
+export function slugifyMonologTitle(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 100)
+    .replace(/-+$/g, '');
+}
+
 export function formatAudioDuration(totalSeconds: number): string {
   const seconds = Math.max(0, Math.floor(totalSeconds));
   const minutes = Math.floor(seconds / 60);

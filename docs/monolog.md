@@ -16,9 +16,9 @@ Tidak ada environment variable atau dependency baru.
 
 1. Masuk ke `/admin`, lalu pilih menu `monolog`.
 2. Klik **Tambah episode**.
-3. Isi judul, slug, deskripsi, kategori, tanggal publikasi, dan tag.
+3. Isi judul; slug dibuat otomatis dan masih dapat diedit. Lengkapi deskripsi, kategori, tanggal publikasi, dan tag.
 4. Klik **Upload .m4a** lalu pilih hasil ekspor dari iPhone Voice Memos.
-5. Durasi dibaca otomatis dari metadata audio. Jika browser tidak bisa membacanya, isi durasi dalam detik secara manual.
+5. Progress upload tampil dalam persen. Durasi dibaca otomatis dari metadata audio; jika browser tidak bisa membacanya, isi durasi dalam detik secara manual.
 6. Isi transkrip atau refleksi jika tersedia.
 7. Simpan sebagai Draft, atau pilih Published jika semua data sudah siap.
 
@@ -27,10 +27,12 @@ Upload memakai signed upload URL yang hanya dapat dibuat oleh admin. File dikiri
 ## Perilaku CRUD
 
 - Draft tidak muncul di halaman publik, detail, atau sitemap.
+- Draft yang sudah disimpan dapat dipreview lewat tautan rahasia dari halaman edit admin dan diberi instruksi `noindex`.
 - Publish dari tabel otomatis mengisi waktu publikasi saat masih kosong.
 - Episode tidak dapat dipublish sebelum memiliki audio dan durasi.
 - Mengganti audio lalu menyimpan akan menghapus file lama dari bucket.
 - Menghapus episode juga menghapus file audio yang tersimpan di bucket.
+- Upload yang dibatalkan atau diganti sebelum disimpan dibersihkan otomatis. File yatim yang lebih lama dari 24 jam juga dibersihkan saat admin memulai upload berikutnya.
 - URL HTTPS `.m4a` eksternal tetap dapat dipakai melalui kolom URL audio.
 
 ## Kategori

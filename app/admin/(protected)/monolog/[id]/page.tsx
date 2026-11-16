@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
+import { makeDraftToken } from '@/lib/draft-token';
 import { MonologEditor, type AdminMonologEpisode } from '../monolog-editor';
 
 export const dynamic = 'force-dynamic';
@@ -13,5 +14,6 @@ export default async function EditMonologPage({ params }: { params: Promise<{ id
     .eq('id', id)
     .maybeSingle();
   if (error || !data) notFound();
-  return <MonologEditor episode={data as AdminMonologEpisode} />;
+  const previewToken = makeDraftToken(`monolog:${data.slug}`);
+  return <MonologEditor episode={data as AdminMonologEpisode} previewToken={previewToken} />;
 }
