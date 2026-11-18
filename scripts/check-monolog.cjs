@@ -107,6 +107,9 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   const reactionQueries = fs.readFileSync(path.join(root, 'lib/monolog-reaction-queries.ts'), 'utf8');
   const audioPlayer = fs.readFileSync(path.join(root, 'components/monolog-audio-player.tsx'), 'utf8');
   const globalCss = fs.readFileSync(path.join(root, 'app/globals.css'), 'utf8');
+  const listUi = fs.readFileSync(path.join(root, 'components/monolog-list.tsx'), 'utf8');
+  const cardUi = fs.readFileSync(path.join(root, 'components/monolog-episode-card.tsx'), 'utf8');
+  const indexPage = fs.readFileSync(path.join(root, 'app/monolog/page.tsx'), 'utf8');
   const adminLayout = fs.readFileSync(path.join(root, 'app/admin/(protected)/layout.tsx'), 'utf8');
   assert.match(migration, /create table if not exists public\.monolog_episodes/);
   assert.match(migration, /using \(status = 'published'\)/, 'public policy must hide drafts');
@@ -131,6 +134,11 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(audioPlayer, /passed = progress > 0/, 'waveform should visualize elapsed progress');
   assert.match(globalCss, /@keyframes monologWaveformPulse/, 'waveform animation must be defined');
   assert.match(globalCss, /prefers-reduced-motion:[\s\S]*monolog-player\.is-playing/, 'equalizer must respect reduced motion');
+  assert.match(indexPage, /Koleksi suara untuk pikiran yang perlu didengar/, 'index should present an audio-library hero');
+  assert.match(listUi, /type="search"/, 'audio library should be searchable');
+  assert.match(listUi, /episode\.title, episode\.description, \.\.\.episode\.tags/, 'search should cover useful episode metadata');
+  assert.match(cardUi, /variant="compact"/, 'library rows should use the compact audio player');
+  assert.match(globalCss, /\.monolog-cover-disc/, 'episode rows should have collection artwork');
 
   const runtime = require('react/jsx-runtime');
   const icons = loadTypeScript(path.join(root, 'components/stream-reaction-icon.tsx'), {

@@ -17,10 +17,12 @@ export function MonologAudioPlayer({
   src,
   title,
   durationSeconds,
+  variant = 'default',
 }: {
   src: string;
   title: string;
   durationSeconds: number;
+  variant?: 'default' | 'compact';
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const playerId = useId();
@@ -82,7 +84,7 @@ export function MonologAudioPlayer({
         : 'Siap diputar';
 
   return (
-    <div className={`monolog-player rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)]/45 p-4 ${isPlaying ? 'is-playing' : ''}`}>
+    <div className={`monolog-player ${variant === 'compact' ? 'rounded-xl bg-[var(--color-paper-2)]/55 px-3 py-2.5' : 'rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)]/45 p-4'} ${isPlaying ? 'is-playing' : ''}`}>
       <audio
         ref={audioRef}
         preload="metadata"
@@ -113,7 +115,7 @@ export function MonologAudioPlayer({
           onClick={() => void togglePlayback()}
           disabled={state === 'error'}
           aria-label={`${isPlaying ? 'Jeda' : 'Putar'} ${title}`}
-          className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40 ${isPlaying ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white shadow-[0_6px_20px_color-mix(in_srgb,var(--color-accent)_24%,transparent)]' : 'border-[var(--color-line-2)] bg-[var(--color-paper)] text-[var(--color-ink)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'}`}
+          className={`inline-flex shrink-0 items-center justify-center rounded-full border transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40 ${variant === 'compact' ? 'h-10 w-10' : 'h-12 w-12'} ${isPlaying ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white shadow-[0_6px_20px_color-mix(in_srgb,var(--color-accent)_24%,transparent)]' : 'border-[var(--color-line-2)] bg-[var(--color-paper)] text-[var(--color-ink)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'}`}
         >
           {isPlaying ? <PauseIcon /> : <PlayIcon />}
         </button>

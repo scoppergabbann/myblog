@@ -35,6 +35,20 @@
   --color-accent-soft: rgba(217, 122, 77, 0.1);
 }
 
+:root {
+  --monolog-hero: #1b1815;
+  --monolog-hero-2: #34241d;
+  --monolog-hero-text: #fbf6ed;
+  --monolog-hero-muted: rgba(251, 246, 237, 0.62);
+}
+
+:root[data-theme="dark"] {
+  --monolog-hero: #1b1714;
+  --monolog-hero-2: #2b1d18;
+  --monolog-hero-text: #f7f0e5;
+  --monolog-hero-muted: rgba(247, 240, 229, 0.6);
+}
+
 /* Base styles */
 * {
   box-sizing: border-box;
@@ -55,6 +69,81 @@ body {
   font-feature-settings: "ss01", "cv11";
   transition: background 220ms cubic-bezier(0.2, 0, 0, 1),
               color 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.monolog-library-hero {
+  background:
+    radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--color-accent) 32%, transparent), transparent 32%),
+    linear-gradient(135deg, var(--monolog-hero), var(--monolog-hero-2));
+  box-shadow: 0 24px 70px rgba(20, 13, 9, 0.13);
+}
+
+.monolog-library-orbit {
+  position: absolute;
+  right: -95px;
+  top: 50%;
+  width: 330px;
+  height: 330px;
+  transform: translateY(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 38px rgba(255, 255, 255, 0.035),
+    0 0 0 76px rgba(255, 255, 255, 0.025);
+}
+
+.monolog-library-orbit::after {
+  content: "";
+  position: absolute;
+  inset: 42%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 32px color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+
+@media (max-width: 639px) {
+  .monolog-library-orbit {
+    right: -150px;
+    top: 58%;
+    opacity: 0.58;
+  }
+}
+
+.monolog-cover {
+  background: linear-gradient(145deg, #28211d, #9a3f20);
+  box-shadow: 0 12px 30px rgba(42, 25, 18, 0.14);
+  transition: transform 240ms ease, box-shadow 240ms ease;
+}
+
+.monolog-cover:hover {
+  transform: translateY(-2px) rotate(-0.6deg);
+  box-shadow: 0 16px 38px rgba(42, 25, 18, 0.2);
+}
+
+.monolog-cover-disc {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 64%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+  background: repeating-radial-gradient(circle, transparent 0 6px, rgba(255, 255, 255, 0.09) 7px 8px);
+}
+
+.monolog-cover-disc::after {
+  content: "";
+  position: absolute;
+  inset: 38%;
+  border-radius: 999px;
+  background: #f0b78d;
+  box-shadow: 0 0 18px rgba(240, 183, 141, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .monolog-cover { transition: none; }
+  .monolog-cover:hover { transform: none; }
 }
 
 ::selection {

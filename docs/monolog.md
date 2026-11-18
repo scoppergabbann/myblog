@@ -2,6 +2,8 @@
 
 Monolog dikelola melalui dashboard admin di `/admin/monolog`. Data episode berada di tabel Supabase `monolog_episodes`; file Voice Memos berada di bucket publik `monolog-audio`.
 
+Halaman publik `/monolog` disajikan sebagai perpustakaan audio dengan pencarian judul/deskripsi/tag, filter kategori berbentuk tab, artwork koleksi, statistik, dan player compact per episode.
+
 ## Aktivasi pertama
 
 Jalankan `supabase/migrations/019_monolog.sql` di SQL Editor Supabase. Migrasi tersebut:
