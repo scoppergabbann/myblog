@@ -157,6 +157,8 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(listPage, /reactionStatesBySlug/, 'the public library must receive reaction states');
   assert.match(episodeCard, /<MonologReactions/, 'reaction controls must be available directly on each library card');
   assert.match(reactionUiSource, /monolog-celebration/, 'a saved positive reaction must trigger the celebration overlay');
+  assert.match(reactionUiSource, /bg-black\/80/, 'celebration needs an opaque utility fallback for the backdrop');
+  assert.match(reactionUiSource, /bg-\[#1b1815\]/, 'celebration needs a solid panel even when runtime animation styles fail');
   assert.match(audioPlayer, /WAVEFORM_BARS/, 'audio player should render a waveform timeline');
   assert.match(audioPlayer, /isPlaying \? 'is-playing'/, 'equalizer animation must follow playback state');
   assert.match(audioPlayer, /passed = progress > 0/, 'waveform should visualize elapsed progress');
