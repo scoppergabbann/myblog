@@ -65,6 +65,11 @@ const category = { name: 'Books', emoji: '', description: null, is_hidden: false
     return builder;
   } };
   const library = load('lib/library.ts', { './supabase/public': { createSupabasePublic: () => readDB } });
+  const prioritized = library.sortLibraryCategories([
+    { id: 1, name: 'Mobil' }, { id: 2, name: 'Beans' },
+    { id: 3, name: 'Buku' }, { id: 4, name: 'Gunung' }, { id: 5, name: 'Film' },
+  ]);
+  assert.equal(JSON.stringify(prioritized.map(category => category.name)), JSON.stringify(['Buku', 'Gunung', 'Beans', 'Mobil', 'Film']));
   await library.getLibraryData();
   for (const table of ['library_items', 'library_categories']) assert.equal(JSON.stringify(queryOrders[table]), JSON.stringify([['display_order', false], ['created_at', false], ['id', false]]));
   const adminPage = load('app/admin/(protected)/library/page.tsx', { '@/lib/supabase/admin': { createSupabaseAdmin: () => readDB }, './library-admin-editor': { LibraryAdminEditor: () => null } });

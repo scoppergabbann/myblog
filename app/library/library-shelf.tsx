@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import type { LibraryData, LibraryCategory, LibraryItem, LibraryPhoto } from '@/lib/library';
-import { getCoverUrl } from '@/lib/library';
+import { getCoverUrl, LIBRARY_CATEGORY_PRIORITY } from '@/lib/library';
 import { getLibraryItemSubtitle, isLibraryKind, libraryForms } from '@/lib/library-fields';
 import { LibraryItemDetails, LibraryItemNotes } from '@/components/library-item-details';
 
@@ -27,6 +27,10 @@ function LibraryImage({ src, alt, sizes, className, eager = false }: {
 
 export function LibraryShelf({ data }: { data: LibraryData }) {
   const { categories, itemsByCategory } = data;
+  const priorityCategories = LIBRARY_CATEGORY_PRIORITY
+    .map((name) => categories.find((category) => category.name.trim().toLocaleLowerCase('id-ID') === name))
+    .filter((category): category is LibraryCategory => Boolean(category));
+  const priorityIds = new Set(priorityCategories.map((category) => category.id));
   const sectionRefs = useRef<Record<number, HTMLElement | null>>({});
   const [activeId, setActiveId] = useState(categories[0]?.id ?? 0);
   const [selected, setSelected] = useState<LibraryItem | null>(null);
@@ -89,6 +93,44 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
 
   return (
     <>
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-accent)]">browse collection</p>
+          <h2 className="text-[28px] font-medium tracking-[-0.035em] text-[var(--color-ink)]">Rak koleksi</h2>
+        </div>
+        <p className="max-w-[420px] text-[13.5px] leading-relaxed text-[var(--color-ink-3)]">
+          Mulai dari tiga rak utama, lalu jelajahi koleksi lainnya.
+        </p>
+      </div>
+
+      {priorityCategories.length > 0 && (
+        <nav aria-label="Rak utama" className="mb-9 grid gap-3 sm:grid-cols-3">
+          {priorityCategories.map((category, index) => {
+            const itemCount = (itemsByCategory[category.id] ?? []).length;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => scrollTo(category.id)}
+                className="group flex min-h-[112px] items-end justify-between overflow-hidden rounded-[16px] border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--color-accent)_35%,transparent)] hover:shadow-md"
+              >
+                <div>
+                  <span className="mb-3 block font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ink-4)]">
+                    rak utama {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="block text-[17px] font-medium text-[var(--color-ink)]">
+                    <span className="mr-2" aria-hidden="true">{category.emoji}</span>{category.name}
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] text-[var(--color-ink-4)] transition-colors group-hover:text-[var(--color-accent)]">
+                  {itemCount} item ↘
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
       {/* Sticky tabs */}
       <div className="sticky top-[57px] z-20 -mx-6 mb-10 border-b border-[var(--color-line)] bg-[color-mix(in_srgb,var(--color-paper)_90%,transparent)] px-6 backdrop-blur-md">
         <div className="scrollbar-none flex gap-1 overflow-x-auto pb-px">
@@ -105,6 +147,9 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
             >
               <span>{cat.emoji}</span>
               <span>{cat.name}</span>
+              {priorityIds.has(cat.id) && (
+                <span className="h-1 w-1 rounded-full bg-[var(--color-accent)]" aria-label="Rak utama" />
+              )}
               {cat.is_hidden && (
                 <span className="rounded border border-[var(--color-line)] px-1 py-0.5 font-mono text-[9px] uppercase text-[var(--color-ink-4)]">
                   hidden
@@ -136,6 +181,11 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
                 <span className="font-mono text-[12px] text-[var(--color-ink-4)]">
                   {items.length} item
                 </span>
+                {priorityIds.has(cat.id) && (
+                  <span className="rounded-full bg-[var(--color-accent-soft)] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--color-accent)]">
+                    rak utama
+                  </span>
+                )}
                 {cat.is_hidden && (
                   <span className="rounded border border-[var(--color-line)] px-1.5 py-0.5 font-mono text-[9.5px] uppercase text-[var(--color-ink-4)]">
                     hidden · admin only

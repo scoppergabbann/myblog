@@ -20,22 +20,39 @@ export default async function LibraryPage() {
       ? { includeHidden: true, client: createSupabaseAdmin() }
       : undefined
   );
+  const totalItems = Object.values(data.itemsByCategory).flat().length;
+  const visibleCategoryCount = data.categories.filter((category) => !category.is_hidden).length;
   return (
-    <div className="page-fade mx-auto max-w-[1080px] px-6 py-14">
-      <div className="mb-10 max-w-[560px]">
-        <p className="mb-2 font-mono text-[11.5px] text-[var(--color-ink-3)]">~/library</p>
-        <h1 className="mb-3 text-[36px] font-medium tracking-[-0.035em] text-[var(--color-ink)] max-sm:text-[28px]">
-          Library
-        </h1>
-        <p className="text-[15.5px] leading-[1.65] text-[var(--color-ink-3)]">
-          Kumpulan hal-hal yang pernah saya baca, teguk, dan kagumi.
-        </p>
-        <div className="mt-6 flex items-center gap-2 font-mono text-xs text-[var(--color-ink-3)]">
-          <span className="dot-live h-[5px] w-[5px] rounded-full" />
-          terakhir diperbarui {formatDate(data.updated, true)}
+    <div className="page-fade mx-auto max-w-[1040px] px-6 pb-24 pt-12 max-sm:pt-7">
+      <header className="collection-library-hero relative mb-12 overflow-hidden rounded-[28px] px-7 py-8 sm:px-10 sm:py-10">
+        <div className="collection-library-orbit" aria-hidden="true" />
+        <div className="relative z-10 max-w-[650px]">
+          <p className="mb-5 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--monolog-hero-muted)]">
+            <span className="h-px w-7 bg-current" /> bbs/ personal library
+          </p>
+          <h1 className="max-w-[590px] text-[42px] font-medium leading-[1.06] tracking-[-0.045em] text-[var(--monolog-hero-text)] max-sm:text-[34px]">
+            Koleksi hal-hal yang layak disimpan.
+          </h1>
+          <p className="mt-5 max-w-[590px] text-[15.5px] leading-[1.8] text-[var(--monolog-hero-muted)]">
+            Buku yang meninggalkan bekas, gunung yang pernah didaki, beans yang pernah diseduh—beserta hal-hal kecil yang layak diingat.
+          </p>
+          <dl className="mt-8 flex flex-wrap gap-x-8 gap-y-4 border-t border-white/10 pt-5">
+            <LibraryStat label="koleksi" value={String(totalItems).padStart(2, '0')} />
+            <LibraryStat label="rak kategori" value={String(visibleCategoryCount).padStart(2, '0')} />
+            <LibraryStat label="diperbarui" value={formatDate(data.updated, true)} />
+          </dl>
         </div>
-      </div>
+      </header>
       <LibraryShelf data={data} />
+    </div>
+  );
+}
+
+function LibraryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--monolog-hero-muted)]">{label}</dt>
+      <dd className="mt-1 text-[15px] font-medium text-[var(--monolog-hero-text)]">{value}</dd>
     </div>
   );
 }

@@ -56,7 +56,7 @@ let stateIndex = 0;
 const fakeWindow = { location: { hash: '#item-19' }, addEventListener: (name, handler) => { events[name] = handler; }, removeEventListener() {} };
 const shelf = load('app/library/library-shelf.tsx', {
   react: { ...React, useRef: () => ({ current: {} }), useState: initial => { const index = stateIndex++; return [initial, value => { if (index === 1) selectedItems.push(value); }]; }, useEffect: effect => effects.push(effect) },
-  'next/image': () => null, '@/lib/library': { getCoverUrl: () => null },
+  'next/image': () => null, '@/lib/library': { getCoverUrl: () => null, LIBRARY_CATEGORY_PRIORITY: ['buku', 'gunung', 'beans'] },
   '@/lib/library-fields': fields, '@/components/library-item-details': detailPublic,
 }, '', { window: fakeWindow });
 const visibleItems = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, category_id: 1, name: 'Item ' + (i + 1), photos: [] }));

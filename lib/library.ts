@@ -45,6 +45,24 @@ export type LibraryData = {
   updated: string;
 };
 
+export const LIBRARY_CATEGORY_PRIORITY = ['buku', 'gunung', 'beans'] as const;
+
+export function getLibraryCategoryPriority(name: string): number {
+  const normalizedName = name.trim().toLocaleLowerCase('id-ID');
+  const priority = LIBRARY_CATEGORY_PRIORITY.indexOf(
+    normalizedName as (typeof LIBRARY_CATEGORY_PRIORITY)[number]
+  );
+  return priority === -1 ? LIBRARY_CATEGORY_PRIORITY.length : priority;
+}
+
+export function sortLibraryCategories(categories: LibraryCategory[]): LibraryCategory[] {
+  return [...categories].sort((left, right) => {
+    const priorityDifference =
+      getLibraryCategoryPriority(left.name) - getLibraryCategoryPriority(right.name);
+    return priorityDifference || 0;
+  });
+}
+
 // =============================================================================
 // Helper: get cover URL
 // =============================================================================
@@ -93,7 +111,11 @@ export async function getLibraryData({
     throw new Error('Library temporarily unavailable');
   }
 
-  const categories = (categoriesResult.data ?? []) as LibraryCategory[];
+  // Keep the database order for regular shelves, while consistently placing
+  // the three signature collections at the front of the public experience.
+  const categories = sortLibraryCategories(
+    (categoriesResult.data ?? []) as LibraryCategory[]
+  );
   const rawItems = (itemsResult.data ?? []) as LibraryItem[];
   const visibleCategoryIds = new Set(categories.map((category) => category.id));
 
