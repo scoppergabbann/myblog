@@ -6,11 +6,11 @@ import { formatAudioDuration } from '@/lib/monolog-shared';
 
 type AudioState = 'loading' | 'ready' | 'playing' | 'paused' | 'error';
 
-const EQUALIZER_BARS = [
-  0.28, 0.48, 0.7, 0.42, 0.82, 0.56, 0.34, 0.74,
-  0.94, 0.62, 0.4, 0.78, 0.52, 0.88, 0.66, 0.36,
-  0.58, 0.84, 0.46, 0.72, 0.98, 0.54, 0.32, 0.68,
-  0.86, 0.44, 0.76, 0.6, 0.9, 0.5, 0.7, 0.38,
+const WAVEFORM_BARS = [
+  0.24, 0.38, 0.58, 0.42, 0.72, 0.5, 0.32, 0.64, 0.84, 0.56, 0.36,
+  0.68, 0.46, 0.78, 0.6, 0.3, 0.52, 0.74, 0.4, 0.66, 0.9, 0.48,
+  0.28, 0.62, 0.76, 0.42, 0.7, 0.54, 0.82, 0.44, 0.64, 0.34, 0.72,
+  0.5, 0.86, 0.58, 0.38, 0.68, 0.46, 0.76, 0.56, 0.32, 0.6, 0.4,
 ];
 
 export function MonologAudioPlayer({
@@ -71,6 +71,8 @@ export function MonologAudioPlayer({
 
   const isPlaying = state === 'playing';
   const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : durationSeconds;
+  const progress = safeDuration > 0 ? Math.min(1, Math.max(0, elapsed / safeDuration)) : 0;
+  const playhead = Math.min(WAVEFORM_BARS.length - 1, Math.floor(progress * WAVEFORM_BARS.length));
   const statusText = state === 'error'
     ? 'Audio tidak dapat dimuat.'
     : state === 'loading'
@@ -80,7 +82,7 @@ export function MonologAudioPlayer({
         : 'Siap diputar';
 
   return (
-    <div className={`monolog-player rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)]/45 p-3.5 ${isPlaying ? 'is-playing' : ''}`}>
+    <div className={`monolog-player rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)]/45 p-4 ${isPlaying ? 'is-playing' : ''}`}>
       <audio
         ref={audioRef}
         preload="metadata"
@@ -105,54 +107,50 @@ export function MonologAudioPlayer({
         Browser Anda tidak mendukung pemutar audio HTML.
       </audio>
 
-      <div className="mb-3 overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)]/65 px-3 py-2.5" aria-hidden="true">
-        <div className="mb-2 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--color-ink-4)]">
-          <span>audio pulse</span>
-          <span className="flex items-center gap-1.5">
-            <span className={`h-1.5 w-1.5 rounded-full ${isPlaying ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-line-2)]'}`} />
-            {isPlaying ? 'live' : 'standby'}
-          </span>
-        </div>
-        <div className="monolog-equalizer flex h-8 items-end gap-[3px]">
-          {EQUALIZER_BARS.map((height, index) => (
-            <span
-              key={index}
-              className="monolog-equalizer-bar min-w-[2px] flex-1 rounded-full"
-              style={{
-                '--eq-rest': height,
-                '--eq-delay': `${-(index % 7) * 73}ms`,
-                '--eq-duration': `${420 + (index % 6) * 64}ms`,
-              } as React.CSSProperties}
-            />
-          ))}
-        </div>
-      </div>
-
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => void togglePlayback()}
           disabled={state === 'error'}
           aria-label={`${isPlaying ? 'Jeda' : 'Putar'} ${title}`}
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--color-line-2)] bg-[var(--color-paper)] text-[var(--color-ink)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+          className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40 ${isPlaying ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white shadow-[0_6px_20px_color-mix(in_srgb,var(--color-accent)_24%,transparent)]' : 'border-[var(--color-line-2)] bg-[var(--color-paper)] text-[var(--color-ink)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'}`}
         >
           {isPlaying ? <PauseIcon /> : <PlayIcon />}
         </button>
 
         <div className="min-w-0 flex-1">
-          <input
-            type="range"
-            min={0}
-            max={safeDuration}
-            step={0.1}
-            value={Math.min(elapsed, safeDuration)}
-            onChange={(event) => seek(Number(event.currentTarget.value))}
-            disabled={state === 'error' || safeDuration <= 0}
-            aria-label={`Posisi pemutaran ${title}`}
-            aria-valuetext={`${formatAudioDuration(elapsed)} dari ${formatAudioDuration(safeDuration)}`}
-            className="h-6 w-full cursor-pointer [accent-color:var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-not-allowed"
-          />
-          <div className="mt-0.5 flex items-center justify-between gap-3 font-mono text-[11px] text-[var(--color-ink-4)]">
+          <div className="relative h-10 overflow-hidden rounded-md focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-accent)]">
+            <div className="monolog-waveform pointer-events-none flex h-full items-center gap-[2px]" aria-hidden="true">
+              {WAVEFORM_BARS.map((height, index) => {
+                const passed = progress > 0 && index <= playhead;
+                const head = progress > 0 && index === playhead;
+                return (
+                  <span
+                    key={index}
+                    className={`monolog-waveform-bar min-w-[2px] flex-1 rounded-full ${passed ? 'is-past' : ''} ${head ? 'is-head' : ''}`}
+                    style={{
+                      height: `${Math.round(height * 100)}%`,
+                      '--wave-delay': `${-(index % 7) * 61}ms`,
+                      '--wave-duration': `${620 + (index % 5) * 74}ms`,
+                    } as React.CSSProperties}
+                  />
+                );
+              })}
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={safeDuration}
+              step={0.1}
+              value={Math.min(elapsed, safeDuration)}
+              onChange={(event) => seek(Number(event.currentTarget.value))}
+              disabled={state === 'error' || safeDuration <= 0}
+              aria-label={`Posisi pemutaran ${title}`}
+              aria-valuetext={`${formatAudioDuration(elapsed)} dari ${formatAudioDuration(safeDuration)}`}
+              className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0 disabled:cursor-not-allowed"
+            />
+          </div>
+          <div className="mt-1.5 flex items-center justify-between gap-3 font-mono text-[11px] text-[var(--color-ink-4)]">
             <span>{formatAudioDuration(elapsed)} / {formatAudioDuration(safeDuration)}</span>
             <span aria-live="polite" className={state === 'error' ? 'text-[var(--color-accent)]' : ''}>
               {statusText}

@@ -445,33 +445,37 @@ body {
   animation: reactionFloater 900ms ease-out forwards;
 }
 
-/* Monolog player: animated pulse that follows play/pause without intercepting audio. */
-.monolog-equalizer-bar {
-  height: 100%;
-  opacity: 0.34;
-  transform: scaleY(calc(var(--eq-rest) * 0.46));
-  transform-origin: center bottom;
-  background: linear-gradient(to top, var(--color-accent), color-mix(in srgb, var(--color-accent) 52%, var(--color-ink)));
-  transition: opacity 220ms ease, transform 320ms ease;
+/* Monolog player: the waveform doubles as the seek timeline. */
+.monolog-waveform-bar {
+  max-width: 5px;
+  min-height: 4px;
+  opacity: 0.6;
+  background: var(--color-line-2);
+  transform-origin: center;
+  transition: background-color 160ms ease, opacity 160ms ease, filter 160ms ease;
 }
 
-.monolog-player.is-playing .monolog-equalizer-bar {
-  opacity: 0.82;
-  animation: monologEqualizerPulse var(--eq-duration) ease-in-out var(--eq-delay) infinite alternate;
+.monolog-waveform-bar.is-past {
+  opacity: 0.88;
+  background: color-mix(in srgb, var(--color-accent) 82%, var(--color-ink));
 }
 
-@keyframes monologEqualizerPulse {
-  0% { transform: scaleY(0.18); }
-  45% { transform: scaleY(var(--eq-rest)); }
-  100% { transform: scaleY(1); }
+.monolog-waveform-bar.is-head {
+  opacity: 1;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-accent) 55%, transparent));
+}
+
+.monolog-player.is-playing .monolog-waveform-bar {
+  animation: monologWaveformPulse var(--wave-duration) ease-in-out var(--wave-delay) infinite alternate;
+}
+
+@keyframes monologWaveformPulse {
+  from { transform: scaleY(0.78); }
+  to { transform: scaleY(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .monolog-player.is-playing .monolog-equalizer-bar {
-    animation: none;
-    opacity: 0.72;
-    transform: scaleY(var(--eq-rest));
-  }
+  .monolog-player.is-playing .monolog-waveform-bar { animation: none; }
 }
 
 /* Live dot pulse */

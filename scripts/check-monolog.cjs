@@ -126,9 +126,10 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(reactionActions, /getStreamVisitorHash\(true\)/, 'anonymous reactions need a stable browser identity');
   assert.match(reactionActions, /onConflict: 'slug,emoji,ip_hash'/, 'reaction retries must be idempotent');
   assert.match(reactionQueries, /monologReactionTarget/, 'reaction counts must use the isolated monolog namespace');
-  assert.match(audioPlayer, /EQUALIZER_BARS/, 'audio player should render a visual equalizer');
+  assert.match(audioPlayer, /WAVEFORM_BARS/, 'audio player should render a waveform timeline');
   assert.match(audioPlayer, /isPlaying \? 'is-playing'/, 'equalizer animation must follow playback state');
-  assert.match(globalCss, /@keyframes monologEqualizerPulse/, 'equalizer animation must be defined');
+  assert.match(audioPlayer, /passed = progress > 0/, 'waveform should visualize elapsed progress');
+  assert.match(globalCss, /@keyframes monologWaveformPulse/, 'waveform animation must be defined');
   assert.match(globalCss, /prefers-reduced-motion:[\s\S]*monolog-player\.is-playing/, 'equalizer must respect reduced motion');
 
   const runtime = require('react/jsx-runtime');

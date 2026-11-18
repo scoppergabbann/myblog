@@ -29,7 +29,7 @@ Upload memakai signed upload URL yang hanya dapat dibuat oleh admin. File dikiri
 - Draft tidak muncul di halaman publik, detail, atau sitemap.
 - Setiap episode published memiliki empat reaction positif anonim: Suka, Bersulang, Semangat, dan Keren.
 - Reaction dibatasi satu per jenis per browser dan dapat dibatalkan dengan mengeklik pilihan yang sama.
-- Pemutar menampilkan equalizer visual yang bergerak saat audio diputar, berhenti saat pause, dan menghormati pengaturan reduced motion perangkat.
+- Timeline pemutar berbentuk waveform minimal: bagian yang sudah diputar berubah warna, bergerak halus saat play, berhenti saat pause, dan menghormati pengaturan reduced motion perangkat.
 - Draft yang sudah disimpan dapat dipreview lewat tautan rahasia dari halaman edit admin dan diberi instruksi `noindex`.
 - Publish dari tabel otomatis mengisi waktu publikasi saat masih kosong.
 - Episode tidak dapat dipublish sebelum memiliki audio dan durasi.
