@@ -23,7 +23,7 @@ export default async function LibraryPage() {
   const totalItems = Object.values(data.itemsByCategory).flat().length;
   const visibleCategoryCount = data.categories.filter((category) => !category.is_hidden).length;
   return (
-    <div className="page-fade mx-auto max-w-[1040px] px-6 pb-24 pt-12 max-sm:pt-7">
+    <div className="library-theme page-fade mx-auto max-w-[1040px] px-6 pb-24 pt-12 max-sm:pt-7">
       <header className="collection-library-hero relative mb-12 overflow-hidden rounded-[28px] px-7 py-8 sm:px-10 sm:py-10">
         <div className="collection-library-orbit" aria-hidden="true" />
         <div className="relative z-10 max-w-[650px]">

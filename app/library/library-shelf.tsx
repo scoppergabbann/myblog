@@ -112,7 +112,7 @@ export function LibraryShelf({ data }: { data: LibraryData }) {
                 key={category.id}
                 type="button"
                 onClick={() => scrollTo(category.id)}
-                className="group flex min-h-[112px] items-end justify-between overflow-hidden rounded-[16px] border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--color-accent)_35%,transparent)] hover:shadow-md"
+                className="group flex min-h-[112px] items-end justify-between overflow-hidden rounded-[16px] border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4 text-left transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--color-accent)_35%,transparent)]"
               >
                 <div>
                   <span className="mb-3 block font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--color-ink-4)]">
@@ -358,7 +358,7 @@ function LibraryCard({ item, onClick }: { item: LibraryItem; onClick: () => void
 
   return (
     <button type="button" onClick={onClick} className="group text-left">
-      <div className="overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-[var(--color-paper)] transition-all duration-200 hover:border-[color-mix(in_srgb,var(--color-accent)_30%,transparent)] hover:shadow-md">
+      <div className="overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-[var(--color-paper)] transition-colors duration-200 hover:border-[color-mix(in_srgb,var(--color-accent)_30%,transparent)]">
         {/* Cover */}
         <div className="relative w-full overflow-hidden bg-[var(--color-paper-2)]" style={{ aspectRatio: '4/3' }}>
           {coverUrl ? (

@@ -71,12 +71,30 @@ body {
               color 220ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.collection-library-hero,
 .monolog-library-hero {
   background:
     radial-gradient(circle at 84% 18%, color-mix(in srgb, var(--color-accent) 32%, transparent), transparent 32%),
     linear-gradient(135deg, var(--monolog-hero), var(--monolog-hero-2));
   box-shadow: 0 24px 70px rgba(20, 13, 9, 0.13);
+}
+
+.library-theme {
+  --color-accent: #397a55;
+  --color-accent-soft: rgba(57, 122, 85, 0.11);
+}
+
+:root[data-theme="dark"] .library-theme {
+  --color-accent: #69ad82;
+  --color-accent-soft: rgba(105, 173, 130, 0.12);
+}
+
+.collection-library-hero {
+  /* Solid fallback keeps the light text readable when gradients are unavailable. */
+  background-color: #14251c;
+  background-image:
+    radial-gradient(circle at 84% 18%, rgba(79, 148, 103, 0.36), transparent 33%),
+    linear-gradient(135deg, #101b15, #244634);
+  box-shadow: none;
 }
 
 .collection-library-orbit,

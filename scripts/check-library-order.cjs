@@ -70,6 +70,12 @@ const category = { name: 'Books', emoji: '', description: null, is_hidden: false
     { id: 3, name: 'Buku' }, { id: 4, name: 'Gunung' }, { id: 5, name: 'Film' },
   ]);
   assert.equal(JSON.stringify(prioritized.map(category => category.name)), JSON.stringify(['Buku', 'Gunung', 'Beans', 'Mobil', 'Film']));
+  const libraryPageSource = fs.readFileSync('app/library/page.tsx', 'utf8');
+  const libraryShelfSource = fs.readFileSync('app/library/library-shelf.tsx', 'utf8');
+  const globalStyles = fs.readFileSync('app/globals.css', 'utf8');
+  assert.match(libraryPageSource, /library-theme/);
+  assert.match(globalStyles, /\.collection-library-hero\s*\{[\s\S]*background-color:\s*#14251c/);
+  assert.doesNotMatch(libraryShelfSource, /hover:shadow/);
   await library.getLibraryData();
   for (const table of ['library_items', 'library_categories']) assert.equal(JSON.stringify(queryOrders[table]), JSON.stringify([['display_order', false], ['created_at', false], ['id', false]]));
   const adminPage = load('app/admin/(protected)/library/page.tsx', { '@/lib/supabase/admin': { createSupabaseAdmin: () => readDB }, './library-admin-editor': { LibraryAdminEditor: () => null } });
