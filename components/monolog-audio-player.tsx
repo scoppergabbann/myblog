@@ -6,6 +6,13 @@ import { formatAudioDuration } from '@/lib/monolog-shared';
 
 type AudioState = 'loading' | 'ready' | 'playing' | 'paused' | 'error';
 
+const EQUALIZER_BARS = [
+  0.28, 0.48, 0.7, 0.42, 0.82, 0.56, 0.34, 0.74,
+  0.94, 0.62, 0.4, 0.78, 0.52, 0.88, 0.66, 0.36,
+  0.58, 0.84, 0.46, 0.72, 0.98, 0.54, 0.32, 0.68,
+  0.86, 0.44, 0.76, 0.6, 0.9, 0.5, 0.7, 0.38,
+];
+
 export function MonologAudioPlayer({
   src,
   title,
@@ -73,7 +80,7 @@ export function MonologAudioPlayer({
         : 'Siap diputar';
 
   return (
-    <div className="rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)]/45 p-3.5">
+    <div className={`monolog-player rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)]/45 p-3.5 ${isPlaying ? 'is-playing' : ''}`}>
       <audio
         ref={audioRef}
         preload="metadata"
@@ -97,6 +104,29 @@ export function MonologAudioPlayer({
       >
         Browser Anda tidak mendukung pemutar audio HTML.
       </audio>
+
+      <div className="mb-3 overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)]/65 px-3 py-2.5" aria-hidden="true">
+        <div className="mb-2 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--color-ink-4)]">
+          <span>audio pulse</span>
+          <span className="flex items-center gap-1.5">
+            <span className={`h-1.5 w-1.5 rounded-full ${isPlaying ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-line-2)]'}`} />
+            {isPlaying ? 'live' : 'standby'}
+          </span>
+        </div>
+        <div className="monolog-equalizer flex h-8 items-end gap-[3px]">
+          {EQUALIZER_BARS.map((height, index) => (
+            <span
+              key={index}
+              className="monolog-equalizer-bar min-w-[2px] flex-1 rounded-full"
+              style={{
+                '--eq-rest': height,
+                '--eq-delay': `${-(index % 7) * 73}ms`,
+                '--eq-duration': `${420 + (index % 6) * 64}ms`,
+              } as React.CSSProperties}
+            />
+          ))}
+        </div>
+      </div>
 
       <div className="flex items-center gap-3">
         <button

@@ -445,6 +445,35 @@ body {
   animation: reactionFloater 900ms ease-out forwards;
 }
 
+/* Monolog player: animated pulse that follows play/pause without intercepting audio. */
+.monolog-equalizer-bar {
+  height: 100%;
+  opacity: 0.34;
+  transform: scaleY(calc(var(--eq-rest) * 0.46));
+  transform-origin: center bottom;
+  background: linear-gradient(to top, var(--color-accent), color-mix(in srgb, var(--color-accent) 52%, var(--color-ink)));
+  transition: opacity 220ms ease, transform 320ms ease;
+}
+
+.monolog-player.is-playing .monolog-equalizer-bar {
+  opacity: 0.82;
+  animation: monologEqualizerPulse var(--eq-duration) ease-in-out var(--eq-delay) infinite alternate;
+}
+
+@keyframes monologEqualizerPulse {
+  0% { transform: scaleY(0.18); }
+  45% { transform: scaleY(var(--eq-rest)); }
+  100% { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .monolog-player.is-playing .monolog-equalizer-bar {
+    animation: none;
+    opacity: 0.72;
+    transform: scaleY(var(--eq-rest));
+  }
+}
+
 /* Live dot pulse */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }

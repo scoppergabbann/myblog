@@ -105,6 +105,8 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   const detail = fs.readFileSync(path.join(root, 'app/monolog/[slug]/page.tsx'), 'utf8');
   const reactionActions = fs.readFileSync(path.join(root, 'app/monolog/[slug]/reaction-actions.ts'), 'utf8');
   const reactionQueries = fs.readFileSync(path.join(root, 'lib/monolog-reaction-queries.ts'), 'utf8');
+  const audioPlayer = fs.readFileSync(path.join(root, 'components/monolog-audio-player.tsx'), 'utf8');
+  const globalCss = fs.readFileSync(path.join(root, 'app/globals.css'), 'utf8');
   const adminLayout = fs.readFileSync(path.join(root, 'app/admin/(protected)/layout.tsx'), 'utf8');
   assert.match(migration, /create table if not exists public\.monolog_episodes/);
   assert.match(migration, /using \(status = 'published'\)/, 'public policy must hide drafts');
@@ -124,6 +126,10 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(reactionActions, /getStreamVisitorHash\(true\)/, 'anonymous reactions need a stable browser identity');
   assert.match(reactionActions, /onConflict: 'slug,emoji,ip_hash'/, 'reaction retries must be idempotent');
   assert.match(reactionQueries, /monologReactionTarget/, 'reaction counts must use the isolated monolog namespace');
+  assert.match(audioPlayer, /EQUALIZER_BARS/, 'audio player should render a visual equalizer');
+  assert.match(audioPlayer, /isPlaying \? 'is-playing'/, 'equalizer animation must follow playback state');
+  assert.match(globalCss, /@keyframes monologEqualizerPulse/, 'equalizer animation must be defined');
+  assert.match(globalCss, /prefers-reduced-motion:[\s\S]*monolog-player\.is-playing/, 'equalizer must respect reduced motion');
 
   const runtime = require('react/jsx-runtime');
   const icons = loadTypeScript(path.join(root, 'components/stream-reaction-icon.tsx'), {
