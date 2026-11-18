@@ -27,6 +27,8 @@ Upload memakai signed upload URL yang hanya dapat dibuat oleh admin. File dikiri
 ## Perilaku CRUD
 
 - Draft tidak muncul di halaman publik, detail, atau sitemap.
+- Setiap episode published memiliki empat reaction positif anonim: Suka, Bersulang, Semangat, dan Keren.
+- Reaction dibatasi satu per jenis per browser dan dapat dibatalkan dengan mengeklik pilihan yang sama.
 - Draft yang sudah disimpan dapat dipreview lewat tautan rahasia dari halaman edit admin dan diberi instruksi `noindex`.
 - Publish dari tabel otomatis mengisi waktu publikasi saat masih kosong.
 - Episode tidak dapat dipublish sebelum memiliki audio dan durasi.

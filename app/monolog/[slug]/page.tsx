@@ -3,7 +3,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/json-ld';
 import { MonologAudioPlayer } from '@/components/monolog-audio-player';
+import { MonologReactions } from '@/components/monolog-reactions';
 import { getMonologEpisodeForPreview, getPublishedMonologEpisode, getPublishedMonologEpisodes, getRelatedMonologEpisodes } from '@/lib/monolog';
+import { getMonologReactionStates } from '@/lib/monolog-reaction-queries';
 import { audioDurationIso, formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
 import { verifyDraftToken } from '@/lib/draft-token';
 import { siteConfig } from '@/lib/site-config';
@@ -77,6 +79,7 @@ export default async function MonologEpisodePage({
   const related = isPreview
     ? []
     : getRelatedMonologEpisodes(episode as PublishedMonologEpisode, await getPublishedMonologEpisodes());
+  const reactionStates = isPreview ? null : await getMonologReactionStates(episode.slug);
   const audioUrl = episode.audioUrl.startsWith('https://')
     ? episode.audioUrl
     : `${siteConfig.url}${episode.audioUrl}`;
@@ -172,6 +175,10 @@ export default async function MonologEpisodePage({
               </li>
             ))}
           </ul>
+        )}
+
+        {reactionStates && (
+          <MonologReactions slug={episode.slug} title={episode.title} initial={reactionStates} />
         )}
       </article>
 

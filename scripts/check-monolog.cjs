@@ -6,7 +6,12 @@ const ts = require('typescript');
 function loadTypeScript(file, mocks = {}) {
   const source = fs.readFileSync(file, 'utf8');
   const code = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+      esModuleInterop: true,
+      jsx: ts.JsxEmit.ReactJSX,
+    },
     fileName: file,
   }).outputText;
   const module = { exports: {} };
@@ -62,6 +67,10 @@ const monolog = loadTypeScript(path.join(root, 'lib/monolog.ts'), {
   '@/lib/supabase/public': { createSupabasePublic },
 });
 const shared = loadTypeScript(path.join(root, 'lib/monolog-shared.ts'));
+const streamReactions = loadTypeScript(path.join(root, 'lib/stream-reactions.ts'));
+const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.ts'), {
+  '@/lib/stream-reactions': streamReactions,
+});
 
 (async () => {
   const published = await monolog.getPublishedMonologEpisodes();
@@ -76,6 +85,14 @@ const shared = loadTypeScript(path.join(root, 'lib/monolog-shared.ts'));
   assert.equal(shared.monologCategoryLabel('menuju-nikah'), 'Menuju Nikah');
   assert.equal(shared.slugifyMonologTitle('Ngopi & Tenis di Surabaya!'), 'ngopi-tenis-di-surabaya');
   assert.equal(shared.slugifyMonologTitle('  Déjà Vu  '), 'deja-vu');
+  assert.deepEqual(
+    monologReactions.monologReactionTarget('episode-baru', 'heart'),
+    { slug: '/monolog/episode-baru', emoji: 'love' },
+  );
+  assert.deepEqual(
+    monologReactions.monologReactionTarget('episode-baru', 'cheers'),
+    { slug: '/monolog/episode-baru:cheers', emoji: 'love' },
+  );
 
   databaseError = { code: 'PGRST205', message: 'table missing' };
   assert.deepEqual(await monolog.getPublishedMonologEpisodes(), [], 'missing migration should keep public index available');
@@ -86,6 +103,8 @@ const shared = loadTypeScript(path.join(root, 'lib/monolog-shared.ts'));
   const audioUpload = fs.readFileSync(path.join(root, 'app/admin/(protected)/monolog/audio-upload.tsx'), 'utf8');
   const editor = fs.readFileSync(path.join(root, 'app/admin/(protected)/monolog/monolog-editor.tsx'), 'utf8');
   const detail = fs.readFileSync(path.join(root, 'app/monolog/[slug]/page.tsx'), 'utf8');
+  const reactionActions = fs.readFileSync(path.join(root, 'app/monolog/[slug]/reaction-actions.ts'), 'utf8');
+  const reactionQueries = fs.readFileSync(path.join(root, 'lib/monolog-reaction-queries.ts'), 'utf8');
   const adminLayout = fs.readFileSync(path.join(root, 'app/admin/(protected)/layout.tsx'), 'utf8');
   assert.match(migration, /create table if not exists public\.monolog_episodes/);
   assert.match(migration, /using \(status = 'published'\)/, 'public policy must hide drafts');
@@ -99,6 +118,34 @@ const shared = loadTypeScript(path.join(root, 'lib/monolog-shared.ts'));
   assert.match(editor, /slugifyMonologTitle/, 'new episode slug should follow its title');
   assert.match(detail, /verifyDraftToken\(`monolog:/, 'draft preview must verify a namespaced token');
   assert.match(detail, /index: false, follow: false/, 'draft preview must not be indexed');
+  assert.match(detail, /isPreview \? null : await getMonologReactionStates/, 'draft preview must not load reactions');
+  assert.match(reactionActions, /eq\('status', 'published'\)/, 'only published episodes may accept reactions');
+  assert.match(reactionActions, /monolog-reaction:/, 'monolog reactions must have a dedicated rate limit');
+  assert.match(reactionActions, /getStreamVisitorHash\(true\)/, 'anonymous reactions need a stable browser identity');
+  assert.match(reactionActions, /onConflict: 'slug,emoji,ip_hash'/, 'reaction retries must be idempotent');
+  assert.match(reactionQueries, /monologReactionTarget/, 'reaction counts must use the isolated monolog namespace');
+
+  const runtime = require('react/jsx-runtime');
+  const icons = loadTypeScript(path.join(root, 'components/stream-reaction-icon.tsx'), {
+    'react/jsx-runtime': runtime,
+    '@/lib/stream-reactions': streamReactions,
+  });
+  const reactionUi = loadTypeScript(path.join(root, 'components/monolog-reactions.tsx'), {
+    'react/jsx-runtime': runtime,
+    react: require('react'),
+    '@/app/monolog/[slug]/reaction-actions': { setMonologReaction: async () => ({ ok: true, active: true, count: 1 }) },
+    '@/components/stream-reaction-icon': icons,
+    '@/lib/monolog-reactions': monologReactions,
+  });
+  const initial = Object.fromEntries(streamReactions.streamReactionOptions.map(({ kind }) => [
+    kind, { count: 0, active: false, available: true },
+  ]));
+  const reactionHtml = require('react-dom/server').renderToStaticMarkup(runtime.jsx(reactionUi.MonologReactions, {
+    slug: 'episode-baru', title: 'Episode Baru', initial,
+  }));
+  assert.equal((reactionHtml.match(/<button /g) ?? []).length, 4, 'monolog should show four positive reactions');
+  assert.ok(!/love/i.test(reactionHtml), 'monolog reaction UI must not expose a Love label');
+  assert.ok(reactionHtml.includes('<svg'), 'Bersulang should use the bottle illustration');
   assert.match(adminLayout, /href: '\/admin\/monolog'/, 'admin navigation should include Monolog');
   assert.ok(fs.existsSync(path.join(root, 'app/admin/(protected)/monolog/new/page.tsx')));
   assert.ok(fs.existsSync(path.join(root, 'app/admin/(protected)/monolog/[id]/page.tsx')));
