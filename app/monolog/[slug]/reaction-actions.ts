@@ -37,6 +37,7 @@ export async function setMonologReaction(
       .select('slug')
       .eq('slug', slug)
       .eq('status', 'published')
+      .is('archived_at', null)
       .maybeSingle();
     if (episodeError) return { ok: false, error: 'Monolog belum bisa dimuat. Coba lagi.' };
     if (!episode) return { ok: false, error: 'Monolog ini sudah tidak tersedia.' };

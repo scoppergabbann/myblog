@@ -19,6 +19,8 @@ type MonologRow = {
   transcript: string | null;
   reflection: string | null;
   tags: string[] | null;
+  is_pinned: boolean;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -38,6 +40,8 @@ function mapEpisode(row: MonologRow): MonologEpisodeRecord {
     transcript: row.transcript,
     reflection: row.reflection,
     tags: row.tags ?? [],
+    isPinned: Boolean(row.is_pinned),
+    archivedAt: row.archived_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -45,6 +49,7 @@ function mapEpisode(row: MonologRow): MonologEpisodeRecord {
 
 function isPublished(episode: MonologEpisodeRecord): episode is PublishedMonologEpisode {
   return episode.status === 'published'
+    && episode.archivedAt === null
     && episode.audioUrl.length > 0
     && typeof episode.publishedAt === 'string'
     && episode.durationSeconds > 0;
@@ -57,8 +62,10 @@ function migrationMissing(code?: string): boolean {
 export async function getPublishedMonologEpisodes(): Promise<PublishedMonologEpisode[]> {
   const { data, error } = await createSupabasePublic()
     .from('monolog_episodes')
-    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, created_at, updated_at')
+    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, is_pinned, archived_at, created_at, updated_at')
     .eq('status', 'published')
+    .is('archived_at', null)
+    .order('is_pinned', { ascending: false })
     .order('published_at', { ascending: false })
     .order('id', { ascending: false });
 
@@ -74,9 +81,10 @@ export async function getPublishedMonologEpisodes(): Promise<PublishedMonologEpi
 export async function getPublishedMonologEpisode(slug: string): Promise<PublishedMonologEpisode | null> {
   const { data, error } = await createSupabasePublic()
     .from('monolog_episodes')
-    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, created_at, updated_at')
+    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, is_pinned, archived_at, created_at, updated_at')
     .eq('slug', slug)
     .eq('status', 'published')
+    .is('archived_at', null)
     .maybeSingle();
 
   if (error) {
@@ -94,7 +102,7 @@ export async function getMonologEpisodeForPreview(slug: string): Promise<Monolog
   const { createSupabaseAdmin } = await import('@/lib/supabase/admin');
   const { data, error } = await createSupabaseAdmin()
     .from('monolog_episodes')
-    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, created_at, updated_at')
+    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, is_pinned, archived_at, created_at, updated_at')
     .eq('slug', slug)
     .maybeSingle();
 

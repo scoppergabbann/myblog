@@ -26,17 +26,27 @@ const rows = [
     audio_url: 'https://cdn.example.com/baru.m4a', audio_path: '2026/11/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.m4a',
     duration_seconds: 125, published_at: '2026-11-15T08:00:00+07:00', status: 'published',
     transcript: 'Transkrip', reflection: null, tags: ['komunikasi'], created_at: '2026-11-15', updated_at: '2026-11-15',
+    is_pinned: true, archived_at: null,
   },
   {
     id: 1, slug: 'episode-lama', title: 'Episode Lama', description: 'Deskripsi lama.', category: 'karier',
     audio_url: 'https://cdn.example.com/lama.m4a', audio_path: null, duration_seconds: 61,
     published_at: '2026-10-01T08:00:00+07:00', status: 'published', transcript: null,
     reflection: null, tags: ['komunikasi'], created_at: '2026-10-01', updated_at: '2026-10-01',
+    is_pinned: false, archived_at: null,
   },
   {
     id: 3, slug: 'draft', title: 'Draft', description: 'Belum publik.', category: 'random',
     audio_url: '', audio_path: null, duration_seconds: 0, published_at: null, status: 'draft',
     transcript: null, reflection: null, tags: [], created_at: '2026-11-16', updated_at: '2026-11-16',
+    is_pinned: false, archived_at: null,
+  },
+  {
+    id: 4, slug: 'arsip', title: 'Arsip', description: 'Tidak publik.', category: 'karier',
+    audio_url: 'https://cdn.example.com/arsip.m4a', audio_path: null, duration_seconds: 90,
+    published_at: '2026-09-01T08:00:00+07:00', status: 'published', transcript: null,
+    reflection: null, tags: [], created_at: '2026-09-01', updated_at: '2026-09-01',
+    is_pinned: false, archived_at: '2026-11-17T08:00:00+07:00',
   },
 ];
 
@@ -49,6 +59,7 @@ function createSupabasePublic() {
       const builder = {
         select() { return builder; },
         eq(column, value) { filters.push([column, value]); return builder; },
+        is(column, value) { filters.push([column, value]); return builder; },
         order() { return builder; },
         maybeSingle() { single = true; return builder; },
         then(resolve) {
@@ -75,6 +86,8 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
 (async () => {
   const published = await monolog.getPublishedMonologEpisodes();
   assert.equal(published.length, 2, 'draft episodes must not be returned');
+  assert.equal(published[0].isPinned, true, 'pinned metadata should be mapped');
+  assert.equal(published.some((episode) => episode.slug === 'arsip'), false, 'archived episodes must be hidden');
   assert.equal(published[0].audioUrl, 'https://cdn.example.com/baru.m4a');
   assert.equal(published[0].audioPath, '2026/11/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.m4a');
   assert.equal((await monolog.getPublishedMonologEpisode('draft')), null, 'draft detail must be hidden');
@@ -99,6 +112,7 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   databaseError = null;
 
   const migration = fs.readFileSync(path.join(root, 'supabase/migrations/019_monolog.sql'), 'utf8');
+  const controlsMigration = fs.readFileSync(path.join(root, 'supabase/migrations/020_monolog_library_controls.sql'), 'utf8');
   const actions = fs.readFileSync(path.join(root, 'app/admin/(protected)/monolog/actions.ts'), 'utf8');
   const audioUpload = fs.readFileSync(path.join(root, 'app/admin/(protected)/monolog/audio-upload.tsx'), 'utf8');
   const editor = fs.readFileSync(path.join(root, 'app/admin/(protected)/monolog/monolog-editor.tsx'), 'utf8');
@@ -114,16 +128,23 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(migration, /create table if not exists public\.monolog_episodes/);
   assert.match(migration, /using \(status = 'published'\)/, 'public policy must hide drafts');
   assert.match(migration, /'monolog-audio'/, 'migration must create the audio bucket');
+  assert.match(controlsMigration, /add column if not exists is_pinned/);
+  assert.match(controlsMigration, /add column if not exists archived_at/);
+  assert.match(controlsMigration, /active_in_category >= 5/, 'database must cap active published episodes per category');
+  assert.match(controlsMigration, /status = 'published' and archived_at is null/, 'public policy must hide archived episodes');
   assert.match(actions, /requireAdmin\(\)/, 'CRUD and upload actions must require admin');
   assert.match(actions, /createSignedUploadUrl/, 'audio must use direct signed upload');
   assert.match(actions, /referencedAudioPaths/, 'orphan cleanup must protect referenced audio');
   assert.match(actions, /discardMonologAudio/, 'abandoned uploads must be removable');
+  assert.match(actions, /setMonologPinned/, 'admin should be able to pin episodes');
+  assert.match(actions, /setMonologArchived/, 'admin should be able to archive episodes');
   assert.match(audioUpload, /XMLHttpRequest/, 'audio upload should expose progress events');
   assert.match(audioUpload, /role="progressbar"/, 'audio upload should render accessible progress');
   assert.match(editor, /slugifyMonologTitle/, 'new episode slug should follow its title');
   assert.match(detail, /verifyDraftToken\(`monolog:/, 'draft preview must verify a namespaced token');
   assert.match(detail, /index: false, follow: false/, 'draft preview must not be indexed');
   assert.match(detail, /isPreview \? null : await getMonologReactionStates/, 'draft preview must not load reactions');
+  assert.match(reactionActions, /is\('archived_at', null\)/, 'archived episodes must reject public reactions');
   assert.match(reactionActions, /eq\('status', 'published'\)/, 'only published episodes may accept reactions');
   assert.match(reactionActions, /monolog-reaction:/, 'monolog reactions must have a dedicated rate limit');
   assert.match(reactionActions, /getStreamVisitorHash\(true\)/, 'anonymous reactions need a stable browser identity');

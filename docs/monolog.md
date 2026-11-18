@@ -29,6 +29,9 @@ Upload memakai signed upload URL yang hanya dapat dibuat oleh admin. File dikiri
 ## Perilaku CRUD
 
 - Draft tidak muncul di halaman publik, detail, atau sitemap.
+- Episode published dapat disematkan dari tabel admin; episode yang disematkan selalu berada di urutan teratas perpustakaan.
+- Archive/restore hanya tersedia untuk admin. Episode arsip tidak muncul di halaman publik, detail, sitemap, atau reaction dan pin dilepas otomatis.
+- Maksimal 5 episode published aktif per kategori. Draft tidak dihitung; mengarsipkan atau menjadikan draft sebuah episode akan membuka slot kategori.
 - Setiap episode published memiliki empat reaction positif anonim: Suka, Bersulang, Semangat, dan Keren.
 - Reaction dibatasi satu per jenis per browser dan dapat dibatalkan dengan mengeklik pilihan yang sama.
 - Timeline pemutar berbentuk waveform minimal: bagian yang sudah diputar berubah warna, bergerak halus saat play, berhenti saat pause, dan menghormati pengaturan reduced motion perangkat.
@@ -38,6 +41,10 @@ Upload memakai signed upload URL yang hanya dapat dibuat oleh admin. File dikiri
 - Mengganti audio lalu menyimpan akan menghapus file lama dari bucket.
 - Menghapus episode juga menghapus file audio yang tersimpan di bucket.
 - Upload yang dibatalkan atau diganti sebelum disimpan dibersihkan otomatis. File yatim yang lebih lama dari 24 jam juga dibersihkan saat admin memulai upload berikutnya.
+
+## Kontrol perpustakaan
+
+Jalankan `supabase/migrations/020_monolog_library_controls.sql` setelah migrasi 019. Migrasi ini menambahkan kolom pin/arsip, memperketat policy publik, mengurutkan episode pinned, dan menerapkan batas lima episode published aktif per kategori melalui trigger database.
 - URL HTTPS `.m4a` eksternal tetap dapat dipakai melalui kolom URL audio.
 
 ## Kategori

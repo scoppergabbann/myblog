@@ -21,6 +21,8 @@ export type MonologEpisodeRecord = {
   transcript: string | null;
   reflection: string | null;
   tags: string[];
+  isPinned: boolean;
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -30,4 +32,5 @@ export type PublishedMonologEpisode = MonologEpisodeRecord & {
   audioUrl: string;
   durationSeconds: number;
   publishedAt: string;
+  archivedAt: null;
 };

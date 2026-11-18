@@ -114,7 +114,7 @@ export default async function MonologEpisodePage({
 
       {isPreview && (
         <div role="status" className="mb-7 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-          Preview draft — halaman ini hanya dapat dibuka melalui tautan rahasia dari dashboard admin.
+          {episode.archivedAt ? 'Preview arsip' : 'Preview draft'} — halaman ini hanya dapat dibuka melalui tautan rahasia dari dashboard admin.
         </div>
       )}
 

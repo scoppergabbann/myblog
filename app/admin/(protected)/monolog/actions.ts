@@ -32,7 +32,13 @@ function databaseError(code: string | undefined, message: string): string {
   if (code === 'PGRST205' || code === '42P01') {
     return 'Fitur Monolog belum aktif. Jalankan migrasi 019_monolog.sql di Supabase terlebih dahulu.';
   }
+  if (code === 'PGRST204') {
+    return 'Kontrol pin dan arsip belum aktif. Jalankan migrasi 020_monolog_library_controls.sql di Supabase.';
+  }
   if (code === '23505') return 'Slug sudah dipakai. Pilih slug lain.';
+  if (message.includes('MONOLOG_CATEGORY_LIMIT')) {
+    return 'Kategori ini sudah memiliki 5 episode published. Arsipkan atau jadikan draft salah satunya terlebih dahulu.';
+  }
   return message;
 }
 
@@ -269,17 +275,61 @@ export async function setMonologStatus(
   const db = createSupabaseAdmin();
   const { data: row, error: readError } = await db
     .from('monolog_episodes')
-    .select('slug, audio_url, duration_seconds, published_at')
+    .select('slug, audio_url, duration_seconds, published_at, archived_at')
     .eq('id', id)
     .maybeSingle();
   if (readError) return { ok: false, error: databaseError(readError.code, readError.message) };
   if (!row) return { ok: false, error: 'Episode tidak ditemukan.' };
+  if (row.archived_at) return { ok: false, error: 'Pulihkan episode dari arsip sebelum mengubah status publikasinya.' };
   if (status === 'published' && (!row.audio_url || row.duration_seconds <= 0)) {
     return { ok: false, error: 'Upload audio dan isi durasinya sebelum publish.' };
   }
 
   const update: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === 'published' && !row.published_at) update.published_at = currentJakartaTimestamptz();
+  const { error } = await db.from('monolog_episodes').update(update).eq('id', id);
+  if (error) return { ok: false, error: databaseError(error.code, error.message) };
+  refresh([row.slug]);
+  return { ok: true };
+}
+
+export async function setMonologPinned(id: number, pinned: boolean): Promise<MonologActionResult> {
+  await requireAdmin();
+  if (!Number.isSafeInteger(id) || id <= 0 || typeof pinned !== 'boolean') {
+    return { ok: false, error: 'Episode tidak valid.' };
+  }
+
+  const db = createSupabaseAdmin();
+  const { data: row, error: readError } = await db.from('monolog_episodes')
+    .select('slug, status, archived_at').eq('id', id).maybeSingle();
+  if (readError) return { ok: false, error: databaseError(readError.code, readError.message) };
+  if (!row) return { ok: false, error: 'Episode tidak ditemukan.' };
+  if (pinned && (row.status !== 'published' || row.archived_at)) {
+    return { ok: false, error: 'Hanya episode published yang aktif yang dapat disematkan.' };
+  }
+
+  const { error } = await db.from('monolog_episodes')
+    .update({ is_pinned: pinned, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) return { ok: false, error: databaseError(error.code, error.message) };
+  refresh([row.slug]);
+  return { ok: true };
+}
+
+export async function setMonologArchived(id: number, archived: boolean): Promise<MonologActionResult> {
+  await requireAdmin();
+  if (!Number.isSafeInteger(id) || id <= 0 || typeof archived !== 'boolean') {
+    return { ok: false, error: 'Episode tidak valid.' };
+  }
+
+  const db = createSupabaseAdmin();
+  const { data: row, error: readError } = await db.from('monolog_episodes')
+    .select('slug').eq('id', id).maybeSingle();
+  if (readError) return { ok: false, error: databaseError(readError.code, readError.message) };
+  if (!row) return { ok: false, error: 'Episode tidak ditemukan.' };
+
+  const update = archived
+    ? { archived_at: new Date().toISOString(), is_pinned: false, updated_at: new Date().toISOString() }
+    : { archived_at: null, updated_at: new Date().toISOString() };
   const { error } = await db.from('monolog_episodes').update(update).eq('id', id);
   if (error) return { ok: false, error: databaseError(error.code, error.message) };
   refresh([row.slug]);

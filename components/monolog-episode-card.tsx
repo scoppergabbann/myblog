@@ -20,6 +20,7 @@ export function MonologEpisodeCard({ episode, index }: { episode: PublishedMonol
 
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10.5px] text-[var(--color-ink-4)]">
+            {episode.isPinned && <span title="Disematkan" className="text-[var(--color-accent)]" aria-label="Episode disematkan">◆</span>}
             <span className="uppercase tracking-[0.08em] text-[var(--color-accent)]">{monologCategoryLabel(episode.category)}</span>
             <span aria-hidden="true">·</span>
             <time dateTime={episode.publishedAt}>{formatDate(episode.publishedAt)}</time>

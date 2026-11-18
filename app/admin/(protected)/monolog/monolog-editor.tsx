@@ -24,11 +24,14 @@ export type AdminMonologEpisode = {
   transcript: string | null;
   reflection: string | null;
   tags: string[];
+  is_pinned: boolean;
+  archived_at: string | null;
 };
 
 const DEFAULT_EPISODE: AdminMonologEpisode = {
   slug: '', title: '', description: '', category: 'random', audio_url: '', audio_path: null,
   duration_seconds: 0, published_at: null, status: 'draft', transcript: null, reflection: null, tags: [],
+  is_pinned: false, archived_at: null,
 };
 
 export function MonologEditor({
@@ -83,15 +86,21 @@ export function MonologEditor({
             {isNew ? 'New Monolog' : 'Edit Monolog'}
           </h1>
           <p className="mt-1 text-sm text-[var(--color-ink-3)]">Upload rekaman, lengkapi metadata, lalu publish saat siap.</p>
+          {!isNew && (episode.is_pinned || episode.archived_at) && (
+            <div className="mt-2 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-wide">
+              {episode.is_pinned && <span className="text-[var(--color-accent)]">◆ pinned</span>}
+              {episode.archived_at && <span className="text-slate-500">archived · hanya admin</span>}
+            </div>
+          )}
         </div>
         {!isNew && (
           <div className="flex flex-wrap items-center gap-2">
-            {episode.status === 'draft' && previewToken && (
+            {(episode.status === 'draft' || episode.archived_at) && previewToken && (
               <Link href={`/monolog/${episode.slug}?preview=${encodeURIComponent(previewToken)}`} target="_blank" className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
-                Preview draft ↗
+                {episode.archived_at ? 'Preview arsip ↗' : 'Preview draft ↗'}
               </Link>
             )}
-            {episode.status === 'published' && (
+            {episode.status === 'published' && !episode.archived_at && (
               <Link href={`/monolog/${episode.slug}`} target="_blank" className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs text-[var(--color-ink-3)] hover:text-[var(--color-accent)]">
                 Lihat publik ↗
               </Link>
