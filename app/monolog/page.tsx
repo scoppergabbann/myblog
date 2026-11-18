@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { JsonLd } from '@/components/json-ld';
 import { MonologList } from '@/components/monolog-list';
 import { getPublishedMonologEpisodes } from '@/lib/monolog';
+import { getMonologReactionStatesForSlugs } from '@/lib/monolog-reaction-queries';
 import { pageMetadata } from '@/lib/seo';
 import { siteConfig } from '@/lib/site-config';
 
@@ -12,6 +13,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function MonologPage() {
   const episodes = await getPublishedMonologEpisodes();
+  const reactionStatesBySlug = await getMonologReactionStatesForSlugs(episodes.map((episode) => episode.slug));
   const totalDuration = episodes.reduce((total, episode) => total + episode.durationSeconds, 0);
   const categoryCount = new Set(episodes.map((episode) => episode.category)).size;
 
@@ -51,7 +53,7 @@ export default async function MonologPage() {
         </div>
       </header>
 
-      <MonologList episodes={episodes} />
+      <MonologList episodes={episodes} reactionStatesBySlug={reactionStatesBySlug} />
     </div>
   );
 }

@@ -4,10 +4,17 @@ import { useMemo, useState } from 'react';
 import { MonologEpisodeCard } from '@/components/monolog-episode-card';
 import { monologCategories } from '@/lib/monolog-shared';
 import type { MonologCategorySlug, PublishedMonologEpisode } from '@/types/monolog';
+import type { MonologReactionStates } from '@/lib/monolog-reactions';
 
 type CategoryFilter = 'all' | MonologCategorySlug;
 
-export function MonologList({ episodes }: { episodes: PublishedMonologEpisode[] }) {
+export function MonologList({
+  episodes,
+  reactionStatesBySlug,
+}: {
+  episodes: PublishedMonologEpisode[];
+  reactionStatesBySlug: Record<string, MonologReactionStates>;
+}) {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
   const [query, setQuery] = useState('');
   const categoryCounts = useMemo(() => new Map(
@@ -78,7 +85,14 @@ export function MonologList({ episodes }: { episodes: PublishedMonologEpisode[] 
 
       {filtered.length > 0 ? (
         <div className="divide-y divide-[var(--color-line)]">
-          {filtered.map((episode, index) => <MonologEpisodeCard key={episode.id} episode={episode} index={index} />)}
+          {filtered.map((episode, index) => (
+            <MonologEpisodeCard
+              key={episode.id}
+              episode={episode}
+              index={index}
+              reactionStates={reactionStatesBySlug[episode.slug]}
+            />
+          ))}
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-[var(--color-line-2)] px-6 py-12 text-center">

@@ -8,16 +8,32 @@ import {
 } from '@/lib/monolog-reactions';
 
 export async function getMonologReactionStates(slug: string): Promise<MonologReactionStates> {
-  const result = Object.fromEntries(
+  const all = await getMonologReactionStatesForSlugs([slug]);
+  return all[slug] ?? emptyMonologReactionStates();
+}
+
+function emptyMonologReactionStates(): MonologReactionStates {
+  return Object.fromEntries(
     monologReactionOptions.map(({ kind }) => [kind, { count: 0, active: false, available: false }]),
   ) as MonologReactionStates;
+}
 
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return result;
+export async function getMonologReactionStatesForSlugs(slugs: string[]): Promise<Record<string, MonologReactionStates>> {
+  const validSlugs = [...new Set(slugs.filter((slug) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)))];
+  const result = Object.fromEntries(
+    validSlugs.map((slug) => [slug, emptyMonologReactionStates()]),
+  ) as Record<string, MonologReactionStates>;
+
+  if (validSlugs.length === 0) return result;
 
   try {
     const db = createSupabasePublic();
     const visitorHash = await getStreamVisitorHash();
-    const targets = monologReactionOptions.map(({ kind }) => ({ kind, ...monologReactionTarget(slug, kind) }));
+    const targets = validSlugs.flatMap((episodeSlug) => monologReactionOptions.map(({ kind }) => ({
+      episodeSlug,
+      kind,
+      ...monologReactionTarget(episodeSlug, kind),
+    })));
     const [counts, mine] = await Promise.all([
       Promise.all(targets.map(async (target) => {
         const count = await db.from('reactions').select('id', { count: 'exact', head: true })
@@ -31,7 +47,7 @@ export async function getMonologReactionStates(slug: string): Promise<MonologRea
     ]);
     const active = new Set((mine.data ?? []).map((row) => `${row.slug}|${row.emoji}`));
     for (const item of counts) {
-      result[item.kind] = {
+      result[item.episodeSlug][item.kind] = {
         count: item.count,
         active: active.has(`${item.slug}|${item.emoji}`),
         available: item.available && !mine.error,

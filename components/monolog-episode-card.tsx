@@ -1,10 +1,20 @@
 import Link from 'next/link';
 import { MonologAudioPlayer } from '@/components/monolog-audio-player';
+import { MonologReactions } from '@/components/monolog-reactions';
+import type { MonologReactionStates } from '@/lib/monolog-reactions';
 import { formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
 import { formatDate } from '@/lib/utils';
 import type { PublishedMonologEpisode } from '@/types/monolog';
 
-export function MonologEpisodeCard({ episode, index }: { episode: PublishedMonologEpisode; index: number }) {
+export function MonologEpisodeCard({
+  episode,
+  index,
+  reactionStates,
+}: {
+  episode: PublishedMonologEpisode;
+  index: number;
+  reactionStates?: MonologReactionStates;
+}) {
   return (
     <article className="group py-7 first:pt-5">
       <div className="grid grid-cols-[76px_minmax(0,1fr)] gap-4 sm:grid-cols-[108px_minmax(0,1fr)] sm:gap-6">
@@ -50,6 +60,14 @@ export function MonologEpisodeCard({ episode, index }: { episode: PublishedMonol
           durationSeconds={episode.durationSeconds}
           variant="compact"
         />
+        {reactionStates && (
+          <MonologReactions
+            slug={episode.slug}
+            title={episode.title}
+            initial={reactionStates}
+            compact
+          />
+        )}
       </div>
     </article>
   );

@@ -119,6 +119,9 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   const detail = fs.readFileSync(path.join(root, 'app/monolog/[slug]/page.tsx'), 'utf8');
   const reactionActions = fs.readFileSync(path.join(root, 'app/monolog/[slug]/reaction-actions.ts'), 'utf8');
   const reactionQueries = fs.readFileSync(path.join(root, 'lib/monolog-reaction-queries.ts'), 'utf8');
+  const listPage = fs.readFileSync(path.join(root, 'app/monolog/page.tsx'), 'utf8');
+  const episodeCard = fs.readFileSync(path.join(root, 'components/monolog-episode-card.tsx'), 'utf8');
+  const reactionUiSource = fs.readFileSync(path.join(root, 'components/monolog-reactions.tsx'), 'utf8');
   const audioPlayer = fs.readFileSync(path.join(root, 'components/monolog-audio-player.tsx'), 'utf8');
   const globalCss = fs.readFileSync(path.join(root, 'app/globals.css'), 'utf8');
   const listUi = fs.readFileSync(path.join(root, 'components/monolog-list.tsx'), 'utf8');
@@ -150,6 +153,10 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(reactionActions, /getStreamVisitorHash\(true\)/, 'anonymous reactions need a stable browser identity');
   assert.match(reactionActions, /onConflict: 'slug,emoji,ip_hash'/, 'reaction retries must be idempotent');
   assert.match(reactionQueries, /monologReactionTarget/, 'reaction counts must use the isolated monolog namespace');
+  assert.match(reactionQueries, /getMonologReactionStatesForSlugs/, 'the library must batch reaction state loading');
+  assert.match(listPage, /reactionStatesBySlug/, 'the public library must receive reaction states');
+  assert.match(episodeCard, /<MonologReactions/, 'reaction controls must be available directly on each library card');
+  assert.match(reactionUiSource, /monolog-celebration/, 'a saved positive reaction must trigger the celebration overlay');
   assert.match(audioPlayer, /WAVEFORM_BARS/, 'audio player should render a waveform timeline');
   assert.match(audioPlayer, /isPlaying \? 'is-playing'/, 'equalizer animation must follow playback state');
   assert.match(audioPlayer, /passed = progress > 0/, 'waveform should visualize elapsed progress');
