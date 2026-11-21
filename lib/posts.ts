@@ -14,6 +14,8 @@ type PostRow = {
   is_premium: boolean;
 };
 
+type ViewRow = { slug: string; count: number };
+
 function rowToWriting(
   row: PostRow,
   options: { includeContent?: boolean } = {}
@@ -89,6 +91,31 @@ export async function getAllWritings(): Promise<Writing[]> {
     );
   } catch (error) {
     throw new Error('Articles temporarily unavailable', { cause: error });
+  }
+}
+
+export function rankWritingsByViews(writings: Writing[], views: ViewRow[]): Writing[] {
+  const counts = new Map(views.map((view) => [view.slug, Math.max(0, Number(view.count) || 0)]));
+  const recency = new Map(writings.map((writing, index) => [writing.slug, index]));
+  return [...writings].sort((left, right) =>
+    (counts.get(right.slug) ?? 0) - (counts.get(left.slug) ?? 0)
+    || (recency.get(left.slug) ?? 0) - (recency.get(right.slug) ?? 0)
+  );
+}
+
+export async function getTopWritings(limit = 3): Promise<Writing[]> {
+  const writings = await getAllWritings();
+  if (!Number.isSafeInteger(limit) || limit <= 0) return [];
+
+  try {
+    const { data, error } = await createSupabaseAdmin()
+      .from('views')
+      .select('slug, count')
+      .order('count', { ascending: false });
+    if (error) return writings.slice(0, limit);
+    return rankWritingsByViews(writings, (data ?? []) as ViewRow[]).slice(0, limit);
+  } catch {
+    return writings.slice(0, limit);
   }
 }
 
