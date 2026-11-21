@@ -78,6 +78,7 @@ const monolog = loadTypeScript(path.join(root, 'lib/monolog.ts'), {
   '@/lib/supabase/public': { createSupabasePublic },
 });
 const shared = loadTypeScript(path.join(root, 'lib/monolog-shared.ts'));
+const monologAudio = loadTypeScript(path.join(root, 'lib/monolog-audio.ts'));
 const streamReactions = loadTypeScript(path.join(root, 'lib/stream-reactions.ts'));
 const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.ts'), {
   '@/lib/stream-reactions': streamReactions,
@@ -98,6 +99,18 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.equal(shared.monologCategoryLabel('menuju-nikah'), 'Menuju Nikah');
   assert.equal(shared.slugifyMonologTitle('Ngopi & Tenis di Surabaya!'), 'ngopi-tenis-di-surabaya');
   assert.equal(shared.slugifyMonologTitle('  Déjà Vu  '), 'deja-vu');
+  assert.equal(monologAudio.monologAudioExtension('Voice 001.mp4'), '.mp4');
+  assert.equal(monologAudio.monologAudioExtension('Voice 001.m4a'), '.m4a');
+  assert.equal(monologAudio.monologAudioExtension('Voice 001.mp3'), null);
+  assert.equal(monologAudio.monologAudioMimeValid('video/mp4'), true);
+  assert.equal(monologAudio.monologAudioMimeValid('application/mp4'), true);
+  assert.equal(monologAudio.monologAudioUrlValid('https://cdn.example.com/voice.mp4'), true);
+  assert.equal(monologAudio.monologAudioUrlValid('https://cdn.example.com/voice.mp3'), false);
+  const samsungRecording = new File(['audio-only-mp4'], 'Voice 001.mp4', { type: 'video/mp4' });
+  const normalizedRecording = monologAudio.normalizeMonologAudioFile(samsungRecording);
+  assert.equal(normalizedRecording.name, 'Voice 001.m4a');
+  assert.equal(normalizedRecording.type, 'audio/mp4');
+  assert.equal(normalizedRecording.size, samsungRecording.size, 'normalization must preserve the recording bytes');
   assert.deepEqual(
     monologReactions.monologReactionTarget('episode-baru', 'heart'),
     { slug: '/monolog/episode-baru', emoji: 'love' },
@@ -142,6 +155,8 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(actions, /setMonologPinned/, 'admin should be able to pin episodes');
   assert.match(actions, /setMonologArchived/, 'admin should be able to archive episodes');
   assert.match(audioUpload, /XMLHttpRequest/, 'audio upload should expose progress events');
+  assert.match(audioUpload, /\.m4a,\.mp4/, 'file picker should accept Samsung MP4 recordings');
+  assert.match(audioUpload, /normalizeMonologAudioFile/, 'MP4 uploads should be normalized for the existing audio bucket');
   assert.match(audioUpload, /role="progressbar"/, 'audio upload should render accessible progress');
   assert.match(editor, /slugifyMonologTitle/, 'new episode slug should follow its title');
   assert.match(detail, /verifyDraftToken\(`monolog:/, 'draft preview must verify a namespaced token');

@@ -4,11 +4,11 @@ import { randomBytes } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { auth, isAdmin } from '@/auth';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
+import { monologAudioExtension, monologAudioMimeValid, monologAudioUrlValid } from '@/lib/monolog-audio';
 import { monologCategories } from '@/lib/monolog-shared';
 
 const AUDIO_BUCKET = 'monolog-audio';
 const MAX_AUDIO_SIZE = 50 * 1024 * 1024;
-const ALLOWED_AUDIO_TYPES = new Set(['', 'audio/mp4', 'audio/x-m4a', 'audio/m4a']);
 const AUDIO_PATH_PATTERN = /^[0-9]{4}\/[0-9]{2}\/[a-f0-9]{32}\.m4a$/;
 
 export type MonologFormState =
@@ -63,17 +63,6 @@ function parseTags(value: string): string[] {
   return [...new Set(value.split(',').map((tag) => tag.trim()).filter(Boolean))];
 }
 
-function audioUrlValid(value: string): boolean {
-  if (!value) return true;
-  if (/^\/audio\/monolog\/[A-Za-z0-9._-]+\.m4a(?:\?.*)?$/.test(value)) return true;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && url.pathname.toLowerCase().endsWith('.m4a');
-  } catch {
-    return false;
-  }
-}
-
 function fromForm(formData: FormData) {
   return {
     slug: String(formData.get('slug') ?? '').trim().toLowerCase(),
@@ -103,7 +92,7 @@ function validate(input: ReturnType<typeof fromForm>): string | null {
   if (!Number.isSafeInteger(input.duration_seconds) || input.duration_seconds < 0 || input.duration_seconds > 86400) {
     return 'Durasi harus berupa detik antara 0 dan 86400.';
   }
-  if (!audioUrlValid(input.audio_url)) return 'URL audio harus berupa HTTPS .m4a yang valid.';
+  if (!monologAudioUrlValid(input.audio_url)) return 'URL audio harus berupa HTTPS .m4a atau .mp4 yang valid.';
   if (input.audio_path && !AUDIO_PATH_PATTERN.test(input.audio_path)) return 'Path audio tidak valid.';
   if (input.tags.length > 20) return 'Maksimal 20 tag.';
   if ((input.transcript?.length ?? 0) > 100000) return 'Transkrip terlalu panjang.';
@@ -343,10 +332,10 @@ export async function prepareMonologAudioUpload(input: {
 }): Promise<MonologUploadResult> {
   await requireAdmin();
   const name = input.name.trim().toLowerCase();
-  if (!name.endsWith('.m4a')) return { ok: false, error: 'Pilih file Voice Memos berformat .m4a.' };
+  if (!monologAudioExtension(name)) return { ok: false, error: 'Pilih file rekaman berformat .m4a atau .mp4.' };
   if (!Number.isSafeInteger(input.size) || input.size <= 0) return { ok: false, error: 'File audio kosong atau tidak valid.' };
   if (input.size > MAX_AUDIO_SIZE) return { ok: false, error: 'Ukuran audio maksimal 50 MB.' };
-  if (!ALLOWED_AUDIO_TYPES.has(input.type.toLowerCase())) return { ok: false, error: 'Tipe file audio tidak didukung.' };
+  if (!monologAudioMimeValid(input.type)) return { ok: false, error: 'Tipe file audio tidak didukung.' };
 
   await cleanupOrphanedMonologAudio();
 

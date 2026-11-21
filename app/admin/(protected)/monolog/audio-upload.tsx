@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { normalizeMonologAudioFile } from '@/lib/monolog-audio';
 import { discardMonologAudio, prepareMonologAudioUpload } from './actions';
 
 function readDuration(file: File): Promise<number> {
@@ -126,7 +127,7 @@ export function MonologAudioUpload({
     }
 
     try {
-      await uploadWithProgress(signed.signedUrl, file, setUploadProgress);
+      await uploadWithProgress(signed.signedUrl, normalizeMonologAudioFile(file), setUploadProgress);
       const previousPath = activePathRef.current;
       if (previousPath && previousPath !== initialPathRef.current && previousPath !== signed.path) {
         void discardMonologAudio(previousPath);
@@ -151,7 +152,7 @@ export function MonologAudioUpload({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-[var(--color-ink)]">Audio Voice Memos</p>
-          <p className="mt-0.5 text-xs text-[var(--color-ink-3)]">File .m4a, maksimal 50 MB.</p>
+          <p className="mt-0.5 text-xs text-[var(--color-ink-3)]">File .m4a atau .mp4, maksimal 50 MB.</p>
         </div>
         <button
           type="button"
@@ -159,12 +160,12 @@ export function MonologAudioUpload({
           onClick={() => inputRef.current?.click()}
           className="inline-flex min-h-10 items-center rounded-lg border border-[var(--color-line-2)] bg-[var(--color-paper)] px-3 py-2 text-xs text-[var(--color-ink-2)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-wait disabled:opacity-50"
         >
-          {uploading ? `Mengunggah ${uploadProgress}%` : audioUrl ? 'Ganti audio' : 'Upload .m4a'}
+          {uploading ? `Mengunggah ${uploadProgress}%` : audioUrl ? 'Ganti audio' : 'Upload audio'}
         </button>
         <input
           ref={inputRef}
           type="file"
-          accept=".m4a,audio/mp4,audio/x-m4a,audio/m4a"
+          accept=".m4a,.mp4,audio/mp4,audio/x-m4a,audio/m4a,video/mp4,application/mp4"
           className="hidden"
           onChange={(event) => void onFileChange(event)}
         />
@@ -200,7 +201,7 @@ export function MonologAudioUpload({
             setAudioUrl(event.currentTarget.value);
             setCurrentAudioPath('');
           }}
-          placeholder="Upload file atau tempel URL HTTPS .m4a"
+          placeholder="Upload file atau tempel URL HTTPS .m4a/.mp4"
           className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 font-mono text-xs text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
         />
         <input type="hidden" name="audio_path" value={audioPath} />
