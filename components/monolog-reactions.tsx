@@ -10,12 +10,14 @@ import {
   type MonologReactionStates,
 } from '@/lib/monolog-reactions';
 
+const CELEBRATION_DURATION_MS = 2800;
+
 const CELEBRATION_STYLES = `
 .monolog-celebration{background:rgba(10,9,7,.88);backdrop-filter:blur(10px)}
-.monolog-celebration-glow{position:absolute;width:min(72vw,460px);aspect-ratio:1;border-radius:999px;background:radial-gradient(circle,color-mix(in srgb,var(--color-accent) 72%,white) 0 2%,color-mix(in srgb,var(--color-accent) 42%,transparent) 3% 20%,transparent 62%);animation:monolog-celebration-glow 1650ms ease-out both}
-.monolog-celebration-card{animation:monolog-celebration-card 520ms cubic-bezier(.2,.85,.25,1) both}
+.monolog-celebration-glow{position:absolute;width:min(72vw,460px);aspect-ratio:1;border-radius:999px;background:radial-gradient(circle,color-mix(in srgb,var(--color-accent) 72%,white) 0 2%,color-mix(in srgb,var(--color-accent) 42%,transparent) 3% 20%,transparent 62%);animation:monolog-celebration-glow ${CELEBRATION_DURATION_MS}ms ease-out both}
+.monolog-celebration-card{animation:monolog-celebration-card 650ms cubic-bezier(.2,.85,.25,1) both}
 .monolog-celebration-icon{display:grid;width:104px;height:104px;place-items:center;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:color-mix(in srgb,var(--color-accent) 72%,#21130c);font-size:50px;box-shadow:0 0 0 12px rgba(255,255,255,.05)}
-.monolog-celebration-spark{position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:999px;background:#f6b86c;animation:monolog-celebration-spark 900ms ease-out both}
+.monolog-celebration-spark{position:absolute;left:50%;top:50%;width:9px;height:9px;border-radius:999px;background:#f6b86c;animation:monolog-celebration-spark 1200ms ease-out both}
 .monolog-celebration-spark-1{--spark-x:-150px;--spark-y:-120px}.monolog-celebration-spark-2{--spark-x:145px;--spark-y:-105px;animation-delay:70ms}.monolog-celebration-spark-3{--spark-x:-185px;--spark-y:20px;animation-delay:120ms}.monolog-celebration-spark-4{--spark-x:180px;--spark-y:30px;animation-delay:40ms}.monolog-celebration-spark-5{--spark-x:-105px;--spark-y:145px;animation-delay:90ms}.monolog-celebration-spark-6{--spark-x:115px;--spark-y:140px;animation-delay:150ms}
 @keyframes monolog-celebration-glow{0%{opacity:0;transform:scale(.45)}28%,72%{opacity:.82;transform:scale(1)}100%{opacity:0;transform:scale(1.12)}}
 @keyframes monolog-celebration-card{0%{transform:translateY(20px) scale(.78) rotate(-2deg)}55%{transform:translateY(0) scale(1.06) rotate(1deg)}100%{transform:scale(1) rotate(0)}}
@@ -48,7 +50,7 @@ export function MonologReactions({
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (!celebration) return;
-    const timeout = window.setTimeout(() => setCelebration(null), 1650);
+    const timeout = window.setTimeout(() => setCelebration(null), CELEBRATION_DURATION_MS);
     return () => window.clearTimeout(timeout);
   }, [celebration]);
 

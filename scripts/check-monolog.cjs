@@ -159,6 +159,7 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(reactionUiSource, /monolog-celebration/, 'a saved positive reaction must trigger the celebration overlay');
   assert.match(reactionUiSource, /bg-black\/80/, 'celebration needs an opaque utility fallback for the backdrop');
   assert.match(reactionUiSource, /bg-\[#1b1815\]/, 'celebration needs a solid panel even when runtime animation styles fail');
+  assert.match(reactionUiSource, /CELEBRATION_DURATION_MS\s*=\s*2800/, 'celebration should linger long enough to be read');
   assert.match(audioPlayer, /WAVEFORM_BARS/, 'audio player should render a waveform timeline');
   assert.match(audioPlayer, /isPlaying \? 'is-playing'/, 'equalizer animation must follow playback state');
   assert.match(audioPlayer, /passed = progress > 0/, 'waveform should visualize elapsed progress');
