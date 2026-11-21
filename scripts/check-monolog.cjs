@@ -122,6 +122,8 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.equal(monologAudio.monologRecordingExtension('audio/mp4;codecs=mp4a.40.2'), 'm4a');
   assert.equal(monologAudio.monologRecordingExtension('video/mp4'), 'm4a');
   assert.equal(monologAudio.monologRecordingExtension('audio/webm;codecs=opus'), 'webm');
+  assert.equal(monologAudio.MONOLOG_RECORDING_MIME_CANDIDATES[0], 'audio/webm;codecs=opus');
+  assert.equal(monologAudio.MONOLOG_RECORDING_AUDIO_BITS_PER_SECOND, 192000);
   assert.deepEqual(
     monologReactions.monologReactionTarget('episode-baru', 'heart'),
     { slug: '/monolog/episode-baru', emoji: 'love' },
@@ -174,6 +176,10 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(audioUpload, /normalizeMonologAudioFile/, 'MP4 uploads should be normalized for the existing audio bucket');
   assert.match(audioUpload, /navigator\.mediaDevices\.getUserMedia/, 'admin should be able to record directly with the microphone');
   assert.match(audioUpload, /new MediaRecorder/, 'direct recording should use the browser MediaRecorder API');
+  assert.match(audioUpload, /sampleRate: \{ ideal: 48_000 \}/, 'recording should request a clear 48 kHz source');
+  assert.match(audioUpload, /echoCancellation: noiseReduction/, 'browser audio processing should be optional');
+  assert.match(audioUpload, /audioBitsPerSecond: MONOLOG_RECORDING_AUDIO_BITS_PER_SECOND/, 'recording should request a high bitrate');
+  assert.match(audioUpload, /Redam suara latar/, 'admin should control browser noise reduction explicitly');
   assert.match(audioUpload, /Selesai &amp; gunakan/, 'the recording UI should provide an explicit finish action');
   assert.match(audioUpload, /role="progressbar"/, 'audio upload should render accessible progress');
   assert.match(editor, /slugifyMonologTitle/, 'new episode slug should follow its title');

@@ -19,7 +19,7 @@ Tidak ada environment variable atau dependency baru.
 1. Masuk ke `/admin`, lalu pilih menu `monolog`.
 2. Klik **Tambah episode**.
 3. Isi judul; slug dibuat otomatis dan masih dapat diedit. Lengkapi deskripsi, kategori, tanggal publikasi, dan tag.
-4. Klik **Rekam di sini**, izinkan mikrofon, lalu klik **Selesai & gunakan**. Audio langsung diunggah dan durasinya diisi otomatis. Sebagai alternatif, pilih file `.m4a` dari iPhone atau `.mp4` dari Android/Samsung.
+4. Klik **Rekam di sini**, izinkan mikrofon, lalu klik **Selesai & gunakan**. Mode default merekam natural pada target 48 kHz dan 192 kbps tanpa pemrosesan browser. Aktifkan **Redam suara latar** hanya untuk ruangan bising. Audio langsung diunggah dan durasinya diisi otomatis. Sebagai alternatif, pilih file `.m4a` dari iPhone atau `.mp4` dari Android/Samsung.
 5. Progress upload tampil dalam persen. Durasi dibaca otomatis dari metadata audio; jika browser tidak bisa membacanya, isi durasi dalam detik secara manual.
 6. Isi transkrip atau refleksi jika tersedia.
 7. Simpan sebagai Draft, atau pilih Published jika semua data sudah siap.

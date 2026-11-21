@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import {
+  MONOLOG_RECORDING_AUDIO_BITS_PER_SECOND,
   MONOLOG_RECORDING_MIME_CANDIDATES,
   monologRecordingExtension,
   normalizeMonologAudioFile,
@@ -93,6 +94,7 @@ export function MonologAudioUpload({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [noiseReduction, setNoiseReduction] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
@@ -192,10 +194,21 @@ export function MonologAudioUpload({
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        audio: {
+          channelCount: { ideal: 1 },
+          sampleRate: { ideal: 48_000 },
+          sampleSize: { ideal: 16 },
+          echoCancellation: noiseReduction,
+          noiseSuppression: noiseReduction,
+          autoGainControl: noiseReduction,
+        },
       });
       const mimeType = MONOLOG_RECORDING_MIME_CANDIDATES.find((candidate) => MediaRecorder.isTypeSupported(candidate));
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const recorderOptions: MediaRecorderOptions = {
+        audioBitsPerSecond: MONOLOG_RECORDING_AUDIO_BITS_PER_SECOND,
+        ...(mimeType ? { mimeType } : {}),
+      };
+      const recorder = new MediaRecorder(stream, recorderOptions);
       recordingStreamRef.current = stream;
       recorderRef.current = recorder;
       recordingChunksRef.current = [];
@@ -241,7 +254,9 @@ export function MonologAudioUpload({
 
       recorder.start(1000);
       setRecording(true);
-      setNote('Mikrofon aktif. Rekaman belum disimpan sampai kamu menekan “Selesai & gunakan”.');
+      setNote(noiseReduction
+        ? 'Mikrofon aktif dengan peredam bising. Rekaman belum disimpan sampai kamu menekan “Selesai & gunakan”.'
+        : 'Mikrofon aktif dalam mode jernih natural. Rekaman belum disimpan sampai kamu menekan “Selesai & gunakan”.');
       recordingTimerRef.current = setInterval(() => {
         setRecordingSeconds(Math.floor((Date.now() - recordingStartedAtRef.current) / 1000));
       }, 250);
@@ -298,6 +313,23 @@ export function MonologAudioUpload({
           onChange={(event) => void onFileChange(event)}
         />
       </div>
+
+      {!recording && !uploading && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] p-3">
+          <input
+            type="checkbox"
+            checked={noiseReduction}
+            onChange={(event) => setNoiseReduction(event.currentTarget.checked)}
+            className="mt-1 h-4 w-4 accent-[var(--color-accent)]"
+          />
+          <span>
+            <span className="block text-[14px] font-medium text-[var(--color-ink)]">Redam suara latar</span>
+            <span className="mt-0.5 block text-[13px] leading-relaxed text-[var(--color-ink-3)]">
+              Nonaktif secara default agar suara lebih natural. Aktifkan hanya jika ruangan cukup bising.
+            </span>
+          </span>
+        </label>
+      )}
 
       {recording && (
         <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/25 bg-red-500/5 p-3">

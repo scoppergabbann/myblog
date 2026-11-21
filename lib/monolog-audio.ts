@@ -21,13 +21,15 @@ export const MONOLOG_AUDIO_STORAGE_MIME_TYPES = [
 ];
 
 export const MONOLOG_RECORDING_MIME_CANDIDATES = [
-  'audio/mp4;codecs=mp4a.40.2',
-  'audio/mp4',
   'audio/webm;codecs=opus',
   'audio/webm',
+  'audio/mp4;codecs=mp4a.40.2',
+  'audio/mp4',
   'audio/ogg;codecs=opus',
   'audio/ogg',
 ];
+
+export const MONOLOG_RECORDING_AUDIO_BITS_PER_SECOND = 192_000;
 
 export function monologAudioExtension(name: string): (typeof supportedExtensions)[number] | null {
   const normalized = name.trim().toLowerCase();
