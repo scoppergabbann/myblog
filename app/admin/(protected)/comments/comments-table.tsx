@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useOptimistic, useTransition } from 'react';
 import { DataTable, type Column, type BulkAction } from '@/components/admin/data-table';
 import { formatDate } from '@/lib/utils';
+import { commentTargetFromStorageSlug } from '@/lib/comment-target';
 import {
   setCommentApproval,
   deleteComment,
@@ -56,17 +57,18 @@ export function CommentsTable({ initialData }: { initialData: Row[] }) {
     },
     {
       key: 'article',
-      header: 'artikel',
+      header: 'halaman',
       width: '180px',
-      render: (r) => (
-        <Link
-          href={`/writing/${r.slug}#comments`}
+      render: (r) => {
+        const target = commentTargetFromStorageSlug(r.slug);
+        return <Link
+          href={target.href}
           target="_blank"
           className="inline-block max-w-full truncate font-mono text-[11.5px] text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-accent)]"
         >
-          {r.slug}
-        </Link>
-      ),
+          {target.label}
+        </Link>;
+      },
     },
     {
       key: 'name',
@@ -177,7 +179,7 @@ export function CommentsTable({ initialData }: { initialData: Row[] }) {
       rowId={(r) => r.id}
       bulkActions={bulkActions}
       emptyMessage="Belum ada komentar."
-      filterPlaceholder="Filter nama, artikel, atau komentar..."
+      filterPlaceholder="Filter nama, halaman, atau komentar..."
       filterFn={(r, q) =>
         r.name.toLowerCase().includes(q) ||
         r.message.toLowerCase().includes(q) ||

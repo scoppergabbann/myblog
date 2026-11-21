@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { auth, isAdmin } from '@/auth';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
+import { commentTargetFromStorageSlug } from '@/lib/comment-target';
 
 async function requireAdmin() {
   const session = await auth();
@@ -31,7 +32,7 @@ export async function setCommentApproval(id: number, approved: boolean) {
     return { ok: false as const, error: error.message };
   }
   revalidatePath('/admin/comments');
-  if (row?.slug) revalidatePath(`/writing/${row.slug}`);
+  if (row?.slug) revalidatePath(commentTargetFromStorageSlug(row.slug).href.split('#')[0]);
   return { ok: true as const };
 }
 
@@ -51,7 +52,7 @@ export async function deleteComment(id: number) {
     return { ok: false as const, error: error.message };
   }
   revalidatePath('/admin/comments');
-  if (row?.slug) revalidatePath(`/writing/${row.slug}`);
+  if (row?.slug) revalidatePath(commentTargetFromStorageSlug(row.slug).href.split('#')[0]);
   return { ok: true as const };
 }
 
@@ -82,6 +83,6 @@ export async function bulkActionComments(
     if (error) return { ok: false as const, error: error.message };
   }
   revalidatePath('/admin/comments');
-  for (const slug of slugs) revalidatePath(`/writing/${slug}`);
+  for (const slug of slugs) revalidatePath(commentTargetFromStorageSlug(slug).href.split('#')[0]);
   return { ok: true as const, affected: ids.length };
 }

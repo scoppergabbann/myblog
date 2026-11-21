@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/json-ld';
 import { MonologAudioPlayer } from '@/components/monolog-audio-player';
 import { MonologReactions } from '@/components/monolog-reactions';
+import { CommentsSection } from '@/components/comments-section';
 import { getMonologEpisodeForPreview, getPublishedMonologEpisode, getPublishedMonologEpisodes, getRelatedMonologEpisodes } from '@/lib/monolog';
 import { getMonologReactionStates } from '@/lib/monolog-reaction-queries';
 import { audioDurationIso, formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
@@ -181,6 +182,8 @@ export default async function MonologEpisodePage({
           <MonologReactions slug={episode.slug} title={episode.title} initial={reactionStates} />
         )}
       </article>
+
+      {!isPreview && <CommentsSection slug={episode.slug} kind="monolog" />}
 
       {related.length > 0 && (
         <aside aria-labelledby="related-monolog" className="mt-14 border-t border-[var(--color-line)] pt-8">

@@ -79,6 +79,7 @@ const monolog = loadTypeScript(path.join(root, 'lib/monolog.ts'), {
 });
 const shared = loadTypeScript(path.join(root, 'lib/monolog-shared.ts'));
 const monologAudio = loadTypeScript(path.join(root, 'lib/monolog-audio.ts'));
+const commentTarget = loadTypeScript(path.join(root, 'lib/comment-target.ts'));
 const streamReactions = loadTypeScript(path.join(root, 'lib/stream-reactions.ts'));
 const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.ts'), {
   '@/lib/stream-reactions': streamReactions,
@@ -106,6 +107,11 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.equal(monologAudio.monologAudioMimeValid('application/mp4'), true);
   assert.equal(monologAudio.monologAudioUrlValid('https://cdn.example.com/voice.mp4'), true);
   assert.equal(monologAudio.monologAudioUrlValid('https://cdn.example.com/voice.mp3'), false);
+  assert.equal(commentTarget.commentStorageSlug('monolog', 'episode-baru'), 'monolog:episode-baru');
+  assert.deepEqual(
+    commentTarget.commentTargetFromStorageSlug('monolog:episode-baru'),
+    { kind: 'monolog', slug: 'episode-baru', href: '/monolog/episode-baru#comments', label: 'Monolog · episode-baru' },
+  );
   const samsungRecording = new File(['audio-only-mp4'], 'Voice 001.mp4', { type: 'video/mp4' });
   const normalizedRecording = monologAudio.normalizeMonologAudioFile(samsungRecording);
   assert.equal(normalizedRecording.name, 'Voice 001.m4a');
@@ -130,6 +136,9 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   const audioUpload = fs.readFileSync(path.join(root, 'app/admin/(protected)/monolog/audio-upload.tsx'), 'utf8');
   const editor = fs.readFileSync(path.join(root, 'app/admin/(protected)/monolog/monolog-editor.tsx'), 'utf8');
   const detail = fs.readFileSync(path.join(root, 'app/monolog/[slug]/page.tsx'), 'utf8');
+  const commentForm = fs.readFileSync(path.join(root, 'components/comment-form.tsx'), 'utf8');
+  const commentActions = fs.readFileSync(path.join(root, 'app/writing/[slug]/comment-actions.ts'), 'utf8');
+  const adminComments = fs.readFileSync(path.join(root, 'app/admin/(protected)/comments/comments-table.tsx'), 'utf8');
   const reactionActions = fs.readFileSync(path.join(root, 'app/monolog/[slug]/reaction-actions.ts'), 'utf8');
   const reactionQueries = fs.readFileSync(path.join(root, 'lib/monolog-reaction-queries.ts'), 'utf8');
   const listPage = fs.readFileSync(path.join(root, 'app/monolog/page.tsx'), 'utf8');
@@ -162,6 +171,13 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(detail, /verifyDraftToken\(`monolog:/, 'draft preview must verify a namespaced token');
   assert.match(detail, /index: false, follow: false/, 'draft preview must not be indexed');
   assert.match(detail, /isPreview \? null : await getMonologReactionStates/, 'draft preview must not load reactions');
+  assert.match(detail, /!isPreview && <CommentsSection slug=\{episode\.slug\} kind="monolog"/, 'published monolog detail must show comments');
+  assert.match(commentForm, /komentar tidak dapat kamu hapus sendiri/, 'comment confirmation must explain that visitors cannot delete comments');
+  assert.match(commentForm, /formRef\.current\?\.requestSubmit\(\)/, 'confirmed comments should resume form submission');
+  assert.match(commentActions, /\.eq\('status', 'published'\)/, 'monolog comments must verify published status');
+  assert.match(commentActions, /\.is\('archived_at', null\)/, 'archived monolog must reject new comments');
+  assert.match(commentActions, /commentStorageSlug\(kind, slug\)/, 'monolog comments need an isolated namespace');
+  assert.match(adminComments, /commentTargetFromStorageSlug/, 'admin moderation must link to writing and monolog targets');
   assert.match(reactionActions, /is\('archived_at', null\)/, 'archived episodes must reject public reactions');
   assert.match(reactionActions, /eq\('status', 'published'\)/, 'only published episodes may accept reactions');
   assert.match(reactionActions, /monolog-reaction:/, 'monolog reactions must have a dedicated rate limit');
