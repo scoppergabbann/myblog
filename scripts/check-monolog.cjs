@@ -102,9 +102,11 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.equal(shared.slugifyMonologTitle('  Déjà Vu  '), 'deja-vu');
   assert.equal(monologAudio.monologAudioExtension('Voice 001.mp4'), '.mp4');
   assert.equal(monologAudio.monologAudioExtension('Voice 001.m4a'), '.m4a');
+  assert.equal(monologAudio.monologAudioExtension('platform-recording.webm'), '.webm');
   assert.equal(monologAudio.monologAudioExtension('Voice 001.mp3'), null);
   assert.equal(monologAudio.monologAudioMimeValid('video/mp4'), true);
   assert.equal(monologAudio.monologAudioMimeValid('application/mp4'), true);
+  assert.equal(monologAudio.monologAudioMimeValid('audio/webm;codecs=opus'), true);
   assert.equal(monologAudio.monologAudioUrlValid('https://cdn.example.com/voice.mp4'), true);
   assert.equal(monologAudio.monologAudioUrlValid('https://cdn.example.com/voice.mp3'), false);
   assert.equal(commentTarget.commentStorageSlug('monolog', 'episode-baru'), 'monolog:episode-baru');
@@ -117,6 +119,9 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.equal(normalizedRecording.name, 'Voice 001.m4a');
   assert.equal(normalizedRecording.type, 'audio/mp4');
   assert.equal(normalizedRecording.size, samsungRecording.size, 'normalization must preserve the recording bytes');
+  assert.equal(monologAudio.monologRecordingExtension('audio/mp4;codecs=mp4a.40.2'), 'm4a');
+  assert.equal(monologAudio.monologRecordingExtension('video/mp4'), 'm4a');
+  assert.equal(monologAudio.monologRecordingExtension('audio/webm;codecs=opus'), 'webm');
   assert.deepEqual(
     monologReactions.monologReactionTarget('episode-baru', 'heart'),
     { slug: '/monolog/episode-baru', emoji: 'love' },
@@ -159,6 +164,7 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(controlsMigration, /status = 'published' and archived_at is null/, 'public policy must hide archived episodes');
   assert.match(actions, /requireAdmin\(\)/, 'CRUD and upload actions must require admin');
   assert.match(actions, /createSignedUploadUrl/, 'audio must use direct signed upload');
+  assert.match(actions, /updateBucket\(AUDIO_BUCKET/, 'recorded browser formats must be enabled automatically in storage');
   assert.match(actions, /referencedAudioPaths/, 'orphan cleanup must protect referenced audio');
   assert.match(actions, /discardMonologAudio/, 'abandoned uploads must be removable');
   assert.match(actions, /setMonologPinned/, 'admin should be able to pin episodes');
@@ -166,6 +172,9 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(audioUpload, /XMLHttpRequest/, 'audio upload should expose progress events');
   assert.match(audioUpload, /\.m4a,\.mp4/, 'file picker should accept Samsung MP4 recordings');
   assert.match(audioUpload, /normalizeMonologAudioFile/, 'MP4 uploads should be normalized for the existing audio bucket');
+  assert.match(audioUpload, /navigator\.mediaDevices\.getUserMedia/, 'admin should be able to record directly with the microphone');
+  assert.match(audioUpload, /new MediaRecorder/, 'direct recording should use the browser MediaRecorder API');
+  assert.match(audioUpload, /Selesai &amp; gunakan/, 'the recording UI should provide an explicit finish action');
   assert.match(audioUpload, /role="progressbar"/, 'audio upload should render accessible progress');
   assert.match(editor, /slugifyMonologTitle/, 'new episode slug should follow its title');
   assert.match(detail, /verifyDraftToken\(`monolog:/, 'draft preview must verify a namespaced token');

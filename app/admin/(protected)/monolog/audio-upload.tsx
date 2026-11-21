@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { normalizeMonologAudioFile } from '@/lib/monolog-audio';
+import {
+  MONOLOG_RECORDING_MIME_CANDIDATES,
+  monologRecordingExtension,
+  normalizeMonologAudioFile,
+} from '@/lib/monolog-audio';
 import { discardMonologAudio, prepareMonologAudioUpload } from './actions';
 
 function readDuration(file: File): Promise<number> {
@@ -74,6 +78,12 @@ export function MonologAudioUpload({
   initialDuration: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingStartedAtRef = useRef(0);
+  const recordingCancelledRef = useRef(false);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initialPathRef = useRef(initialPath ?? '');
   const activePathRef = useRef(initialPath ?? '');
   const [audioUrl, setAudioUrl] = useState(initialUrl);
@@ -81,10 +91,21 @@ export function MonologAudioUpload({
   const [duration, setDuration] = useState(initialDuration);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => () => {
+    recordingCancelledRef.current = true;
+    if (recorderRef.current?.state === 'recording') {
+      recorderRef.current.ondataavailable = null;
+      recorderRef.current.onerror = null;
+      recorderRef.current.onstop = null;
+      recorderRef.current.stop();
+    }
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     const path = activePathRef.current;
     if (path && path !== initialPathRef.current) void discardMonologAudio(path);
   }, []);
@@ -99,19 +120,19 @@ export function MonologAudioUpload({
     if (path && path !== initialPathRef.current) void discardMonologAudio(path);
   }
 
-  async function onFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0];
-    if (!file) return;
+  async function uploadAudioFile(file: File, knownDuration = 0) {
     setUploading(true);
     setUploadProgress(0);
     setError(null);
     setNote(null);
 
-    let detectedDuration = 0;
-    try {
-      detectedDuration = await readDuration(file);
-    } catch {
-      setNote('File terunggah, tetapi durasinya perlu diisi manual.');
+    let detectedDuration = knownDuration;
+    if (detectedDuration <= 0) {
+      try {
+        detectedDuration = await readDuration(file);
+      } catch {
+        setNote('File terunggah, tetapi durasinya perlu diisi manual.');
+      }
     }
 
     const signed = await prepareMonologAudioUpload({
@@ -122,7 +143,6 @@ export function MonologAudioUpload({
     if (!signed.ok) {
       setError(signed.error);
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
       return;
     }
 
@@ -144,32 +164,160 @@ export function MonologAudioUpload({
     }
 
     setUploading(false);
+  }
+
+  async function onFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    await uploadAudioFile(file);
     if (inputRef.current) inputRef.current.value = '';
+  }
+
+  function cleanupRecorder() {
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingStreamRef.current = null;
+    recorderRef.current = null;
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+    setRecording(false);
+  }
+
+  async function startRecording() {
+    setError(null);
+    setNote(null);
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setError('Browser ini belum mendukung perekaman audio langsung. Gunakan upload file sebagai alternatif.');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      const mimeType = MONOLOG_RECORDING_MIME_CANDIDATES.find((candidate) => MediaRecorder.isTypeSupported(candidate));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      recordingStreamRef.current = stream;
+      recorderRef.current = recorder;
+      recordingChunksRef.current = [];
+      recordingCancelledRef.current = false;
+      recordingStartedAtRef.current = Date.now();
+      setRecordingSeconds(0);
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        recordingCancelledRef.current = true;
+        cleanupRecorder();
+        setError('Perekaman terhenti karena browser mengalami masalah. Silakan coba lagi.');
+      };
+      recorder.onstop = () => {
+        const cancelled = recordingCancelledRef.current;
+        const seconds = Math.max(1, Math.round((Date.now() - recordingStartedAtRef.current) / 1000));
+        const chunks = recordingChunksRef.current;
+        const recorderType = (recorder.mimeType || mimeType || chunks[0]?.type || 'audio/webm').split(';')[0];
+        const recordedType = recorderType === 'video/webm'
+          ? 'audio/webm'
+          : ['video/mp4', 'application/mp4'].includes(recorderType) ? 'audio/mp4' : recorderType;
+        cleanupRecorder();
+        if (cancelled) {
+          setNote('Rekaman dibatalkan. Tidak ada audio yang disimpan.');
+          return;
+        }
+        if (chunks.length === 0) {
+          setError('Rekaman kosong. Periksa izin mikrofon lalu coba lagi.');
+          return;
+        }
+
+        const extension = monologRecordingExtension(recordedType);
+        const blob = new Blob(chunks, { type: recordedType });
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const file = new File([blob], `monolog-${stamp}.${extension}`, {
+          type: recordedType,
+          lastModified: Date.now(),
+        });
+        void uploadAudioFile(file, seconds);
+      };
+
+      recorder.start(1000);
+      setRecording(true);
+      setNote('Mikrofon aktif. Rekaman belum disimpan sampai kamu menekan “Selesai & gunakan”.');
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds(Math.floor((Date.now() - recordingStartedAtRef.current) / 1000));
+      }, 250);
+    } catch (recordingError) {
+      cleanupRecorder();
+      const permissionDenied = recordingError instanceof DOMException
+        && ['NotAllowedError', 'PermissionDeniedError'].includes(recordingError.name);
+      setError(permissionDenied
+        ? 'Izin mikrofon ditolak. Izinkan mikrofon untuk situs ini lalu coba lagi.'
+        : 'Mikrofon tidak dapat dibuka. Pastikan tidak sedang dipakai aplikasi lain.');
+    }
+  }
+
+  function stopRecording(cancelled: boolean) {
+    recordingCancelledRef.current = cancelled;
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+    else cleanupRecorder();
   }
 
   return (
     <div className="space-y-3 rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)]/45 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-[var(--color-ink)]">Audio Voice Memos</p>
-          <p className="mt-0.5 text-xs text-[var(--color-ink-3)]">File .m4a atau .mp4, maksimal 50 MB.</p>
+          <p className="text-sm font-medium text-[var(--color-ink)]">Audio Monolog</p>
+          <p className="mt-0.5 text-xs text-[var(--color-ink-3)]">Rekam langsung atau pilih file .m4a/.mp4, maksimal 50 MB.</p>
         </div>
-        <button
-          type="button"
-          disabled={uploading}
-          onClick={() => inputRef.current?.click()}
-          className="inline-flex min-h-10 items-center rounded-lg border border-[var(--color-line-2)] bg-[var(--color-paper)] px-3 py-2 text-xs text-[var(--color-ink-2)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-wait disabled:opacity-50"
-        >
-          {uploading ? `Mengunggah ${uploadProgress}%` : audioUrl ? 'Ganti audio' : 'Upload audio'}
-        </button>
+        {!recording && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => void startRecording()}
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[var(--color-ink)] px-3 py-2 text-[14px] font-medium text-[var(--color-paper)] transition-colors hover:bg-[var(--color-accent)] disabled:cursor-wait disabled:opacity-50"
+            >
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-red-500" />
+              Rekam di sini
+            </button>
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => inputRef.current?.click()}
+              className="inline-flex min-h-10 items-center rounded-lg border border-[var(--color-line-2)] bg-[var(--color-paper)] px-3 py-2 text-[14px] text-[var(--color-ink-2)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:cursor-wait disabled:opacity-50"
+            >
+              {uploading ? `Mengunggah ${uploadProgress}%` : audioUrl ? 'Ganti audio' : 'Pilih file'}
+            </button>
+          </div>
+        )}
         <input
           ref={inputRef}
           type="file"
-          accept=".m4a,.mp4,audio/mp4,audio/x-m4a,audio/m4a,video/mp4,application/mp4"
+          accept=".m4a,.mp4,.webm,.ogg,audio/mp4,audio/x-m4a,audio/m4a,video/mp4,application/mp4,audio/webm,audio/ogg"
           className="hidden"
           onChange={(event) => void onFileChange(event)}
         />
       </div>
+
+      {recording && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/25 bg-red-500/5 p-3">
+          <div className="flex items-center gap-3">
+            <span aria-hidden="true" className="h-3 w-3 animate-pulse rounded-full bg-red-500" />
+            <div>
+              <p className="text-[14px] font-medium text-[var(--color-ink)]">Sedang merekam</p>
+              <p className="font-mono text-[13px] text-[var(--color-ink-3)]">{formatDuration(recordingSeconds)}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => stopRecording(true)} className="min-h-10 rounded-lg border border-[var(--color-line-2)] px-3 text-[14px] text-[var(--color-ink-3)] transition-colors hover:text-[var(--color-ink)]">
+              Batalkan
+            </button>
+            <button type="button" onClick={() => stopRecording(false)} className="min-h-10 rounded-lg bg-red-600 px-3 text-[14px] font-medium text-white transition-colors hover:bg-red-700">
+              Selesai &amp; gunakan
+            </button>
+          </div>
+        </div>
+      )}
 
       {uploading && (
         <div
@@ -201,7 +349,7 @@ export function MonologAudioUpload({
             setAudioUrl(event.currentTarget.value);
             setCurrentAudioPath('');
           }}
-          placeholder="Upload file atau tempel URL HTTPS .m4a/.mp4"
+          placeholder="Rekam, upload file, atau tempel URL audio HTTPS"
           className="w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-paper)] px-3 py-2 font-mono text-xs text-[var(--color-ink)] transition-colors focus:border-[var(--color-accent)]"
         />
         <input type="hidden" name="audio_path" value={audioPath} />

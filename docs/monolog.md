@@ -10,7 +10,7 @@ Jalankan `supabase/migrations/019_monolog.sql` di SQL Editor Supabase. Migrasi t
 
 - membuat tabel episode dan aturan agar pengunjung hanya bisa membaca episode published;
 - membuat bucket publik `monolog-audio` dengan batas 50 MB;
-- membatasi upload bucket pada audio MP4/M4A. File rekaman `.mp4` dari perangkat Android dinormalisasi menjadi audio MP4 saat dikirim sehingga kompatibel dengan bucket yang sama.
+- membatasi upload bucket pada audio MP4/M4A, WebM/Opus, dan Ogg. Konfigurasi MIME diperbarui otomatis oleh server saat admin menyiapkan upload.
 
 Tidak ada environment variable atau dependency baru.
 
@@ -19,7 +19,7 @@ Tidak ada environment variable atau dependency baru.
 1. Masuk ke `/admin`, lalu pilih menu `monolog`.
 2. Klik **Tambah episode**.
 3. Isi judul; slug dibuat otomatis dan masih dapat diedit. Lengkapi deskripsi, kategori, tanggal publikasi, dan tag.
-4. Klik **Upload audio** lalu pilih file `.m4a` dari iPhone Voice Memos atau `.mp4` dari perekam suara Android/Samsung.
+4. Klik **Rekam di sini**, izinkan mikrofon, lalu klik **Selesai & gunakan**. Audio langsung diunggah dan durasinya diisi otomatis. Sebagai alternatif, pilih file `.m4a` dari iPhone atau `.mp4` dari Android/Samsung.
 5. Progress upload tampil dalam persen. Durasi dibaca otomatis dari metadata audio; jika browser tidak bisa membacanya, isi durasi dalam detik secara manual.
 6. Isi transkrip atau refleksi jika tersedia.
 7. Simpan sebagai Draft, atau pilih Published jika semua data sudah siap.
@@ -45,7 +45,7 @@ Upload memakai signed upload URL yang hanya dapat dibuat oleh admin. File dikiri
 ## Kontrol perpustakaan
 
 Jalankan `supabase/migrations/020_monolog_library_controls.sql` setelah migrasi 019. Migrasi ini menambahkan kolom pin/arsip, memperketat policy publik, mengurutkan episode pinned, dan menerapkan batas lima episode published aktif per kategori melalui trigger database.
-- URL HTTPS `.m4a` atau `.mp4` eksternal tetap dapat dipakai melalui kolom URL audio.
+- URL HTTPS `.m4a`, `.mp4`, `.webm`, atau `.ogg` eksternal tetap dapat dipakai melalui kolom URL audio.
 
 ## Kategori
 

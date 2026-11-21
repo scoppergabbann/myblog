@@ -4,7 +4,12 @@ import { randomBytes } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { auth, isAdmin } from '@/auth';
 import { createSupabaseAdmin } from '@/lib/supabase/admin';
-import { monologAudioExtension, monologAudioMimeValid, monologAudioUrlValid } from '@/lib/monolog-audio';
+import {
+  MONOLOG_AUDIO_STORAGE_MIME_TYPES,
+  monologAudioExtension,
+  monologAudioMimeValid,
+  monologAudioUrlValid,
+} from '@/lib/monolog-audio';
 import { monologCategories } from '@/lib/monolog-shared';
 
 const AUDIO_BUCKET = 'monolog-audio';
@@ -92,7 +97,7 @@ function validate(input: ReturnType<typeof fromForm>): string | null {
   if (!Number.isSafeInteger(input.duration_seconds) || input.duration_seconds < 0 || input.duration_seconds > 86400) {
     return 'Durasi harus berupa detik antara 0 dan 86400.';
   }
-  if (!monologAudioUrlValid(input.audio_url)) return 'URL audio harus berupa HTTPS .m4a atau .mp4 yang valid.';
+  if (!monologAudioUrlValid(input.audio_url)) return 'URL audio harus berupa HTTPS .m4a, .mp4, .webm, atau .ogg yang valid.';
   if (input.audio_path && !AUDIO_PATH_PATTERN.test(input.audio_path)) return 'Path audio tidak valid.';
   if (input.tags.length > 20) return 'Maksimal 20 tag.';
   if ((input.transcript?.length ?? 0) > 100000) return 'Transkrip terlalu panjang.';
@@ -332,7 +337,7 @@ export async function prepareMonologAudioUpload(input: {
 }): Promise<MonologUploadResult> {
   await requireAdmin();
   const name = input.name.trim().toLowerCase();
-  if (!monologAudioExtension(name)) return { ok: false, error: 'Pilih file rekaman berformat .m4a atau .mp4.' };
+  if (!monologAudioExtension(name)) return { ok: false, error: 'Format audio harus .m4a, .mp4, .webm, atau .ogg.' };
   if (!Number.isSafeInteger(input.size) || input.size <= 0) return { ok: false, error: 'File audio kosong atau tidak valid.' };
   if (input.size > MAX_AUDIO_SIZE) return { ok: false, error: 'Ukuran audio maksimal 50 MB.' };
   if (!monologAudioMimeValid(input.type)) return { ok: false, error: 'Tipe file audio tidak didukung.' };
@@ -343,6 +348,17 @@ export async function prepareMonologAudioUpload(input: {
   const folder = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
   const path = `${folder}/${randomBytes(16).toString('hex')}.m4a`;
   const db = createSupabaseAdmin();
+  const { error: bucketError } = await db.storage.updateBucket(AUDIO_BUCKET, {
+    public: true,
+    fileSizeLimit: MAX_AUDIO_SIZE,
+    allowedMimeTypes: MONOLOG_AUDIO_STORAGE_MIME_TYPES,
+  });
+  if (bucketError) {
+    const message = bucketError.message.toLowerCase().includes('bucket not found')
+      ? 'Bucket monolog-audio belum ada. Jalankan migrasi 019_monolog.sql di Supabase.'
+      : `Konfigurasi penyimpanan audio gagal: ${bucketError.message}`;
+    return { ok: false, error: message };
+  }
   const { data, error } = await db.storage.from(AUDIO_BUCKET).createSignedUploadUrl(path);
   if (error) {
     const message = error.message.toLowerCase().includes('bucket not found')
