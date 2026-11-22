@@ -5,7 +5,7 @@ import { JsonLd } from '@/components/json-ld';
 import { MonologAudioPlayer } from '@/components/monolog-audio-player';
 import { getCoverUrl, getLibraryData, type LibraryItem } from '@/lib/library';
 import { getPublishedMonologEpisodes } from '@/lib/monolog';
-import { formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
+import { formatAudioDuration } from '@/lib/monolog-shared';
 import { getHomeData } from '@/lib/page-queries';
 import { getTopWritings } from '@/lib/posts';
 import { siteConfig } from '@/lib/site-config';
@@ -116,7 +116,7 @@ function FeaturedMonolog({ episode }: { episode: PublishedMonologEpisode }) {
           <span className="monolog-cover-disc" aria-hidden="true" />
           <span className="absolute left-6 top-5 font-mono text-[12px] uppercase tracking-[0.16em] text-white/55">pilihan saat ini</span>
           <span className="absolute bottom-5 left-6 font-mono text-[12px] uppercase tracking-[0.14em] text-white/70">
-            {monologCategoryLabel(episode.category)}
+            {episode.categoryLabel}
           </span>
         </div>
         <div className="flex min-w-0 flex-col justify-center p-7 sm:p-8">

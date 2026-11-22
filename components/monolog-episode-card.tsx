@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { MonologAudioPlayer } from '@/components/monolog-audio-player';
 import { MonologReactions } from '@/components/monolog-reactions';
 import type { MonologReactionStates } from '@/lib/monolog-reactions';
-import { formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
+import { formatAudioDuration } from '@/lib/monolog-shared';
 import { formatDate } from '@/lib/utils';
 import type { PublishedMonologEpisode } from '@/types/monolog';
 
@@ -31,7 +31,7 @@ export function MonologEpisodeCard({
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10.5px] text-[var(--color-ink-4)]">
             {episode.isPinned && <span title="Disematkan" className="text-[var(--color-accent)]" aria-label="Episode disematkan">◆</span>}
-            <span className="uppercase tracking-[0.08em] text-[var(--color-accent)]">{monologCategoryLabel(episode.category)}</span>
+            <span className="uppercase tracking-[0.08em] text-[var(--color-accent)]">{episode.categoryLabel}</span>
             <span aria-hidden="true">·</span>
             <time dateTime={episode.publishedAt}>{formatDate(episode.publishedAt)}</time>
             <span aria-hidden="true">·</span>
@@ -74,11 +74,14 @@ export function MonologEpisodeCard({
 }
 
 function categoryCode(category: PublishedMonologEpisode['category']): string {
-  return ({
+  const knownCode = ({
     'menuju-nikah': 'MN',
     karier: 'KR',
     olahraga: 'OL',
     hobi: 'HB',
     random: 'RD',
-  })[category];
+  } as Record<string, string>)[category];
+  return knownCode
+    || category.split('-').filter(Boolean).map((word) => word[0]).join('').slice(0, 2).toUpperCase()
+    || 'MN';
 }

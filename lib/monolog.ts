@@ -1,4 +1,6 @@
 import { createSupabasePublic } from '@/lib/supabase/public';
+import { getAdminMonologCategories, getMonologCategories } from '@/lib/monolog-category-queries';
+import { monologCategoryLabel } from '@/lib/monolog-shared';
 import type {
   MonologCategorySlug,
   MonologEpisodeRecord,
@@ -25,13 +27,14 @@ type MonologRow = {
   updated_at: string;
 };
 
-function mapEpisode(row: MonologRow): MonologEpisodeRecord {
+function mapEpisode(row: MonologRow, categoryLabels = new Map<string, string>()): MonologEpisodeRecord {
   return {
     id: row.id,
     slug: row.slug,
     title: row.title,
     description: row.description,
     category: row.category,
+    categoryLabel: categoryLabels.get(row.category) ?? monologCategoryLabel(row.category),
     audioUrl: row.audio_url,
     audioPath: row.audio_path,
     durationSeconds: row.duration_seconds,
@@ -60,14 +63,17 @@ function migrationMissing(code?: string): boolean {
 }
 
 export async function getPublishedMonologEpisodes(): Promise<PublishedMonologEpisode[]> {
-  const { data, error } = await createSupabasePublic()
-    .from('monolog_episodes')
-    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, is_pinned, archived_at, created_at, updated_at')
-    .eq('status', 'published')
-    .is('archived_at', null)
-    .order('is_pinned', { ascending: false })
-    .order('published_at', { ascending: false })
-    .order('id', { ascending: false });
+  const [{ data, error }, categories] = await Promise.all([
+    createSupabasePublic()
+      .from('monolog_episodes')
+      .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, is_pinned, archived_at, created_at, updated_at')
+      .eq('status', 'published')
+      .is('archived_at', null)
+      .order('is_pinned', { ascending: false })
+      .order('published_at', { ascending: false })
+      .order('id', { ascending: false }),
+    getMonologCategories(),
+  ]);
 
   if (error) {
     if (migrationMissing(error.code)) return [];
@@ -75,17 +81,21 @@ export async function getPublishedMonologEpisodes(): Promise<PublishedMonologEpi
     throw new Error('Monolog sementara tidak tersedia.');
   }
 
-  return ((data ?? []) as MonologRow[]).map(mapEpisode).filter(isPublished);
+  const categoryLabels = new Map(categories.map((category) => [category.slug, category.label]));
+  return ((data ?? []) as MonologRow[]).map((row) => mapEpisode(row, categoryLabels)).filter(isPublished);
 }
 
 export async function getPublishedMonologEpisode(slug: string): Promise<PublishedMonologEpisode | null> {
-  const { data, error } = await createSupabasePublic()
-    .from('monolog_episodes')
-    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, is_pinned, archived_at, created_at, updated_at')
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .is('archived_at', null)
-    .maybeSingle();
+  const [{ data, error }, categories] = await Promise.all([
+    createSupabasePublic()
+      .from('monolog_episodes')
+      .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, is_pinned, archived_at, created_at, updated_at')
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .is('archived_at', null)
+      .maybeSingle(),
+    getMonologCategories(),
+  ]);
 
   if (error) {
     if (migrationMissing(error.code)) return null;
@@ -94,17 +104,21 @@ export async function getPublishedMonologEpisode(slug: string): Promise<Publishe
   }
 
   if (!data) return null;
-  const episode = mapEpisode(data as MonologRow);
+  const categoryLabels = new Map(categories.map((category) => [category.slug, category.label]));
+  const episode = mapEpisode(data as MonologRow, categoryLabels);
   return isPublished(episode) ? episode : null;
 }
 
 export async function getMonologEpisodeForPreview(slug: string): Promise<MonologEpisodeRecord | null> {
   const { createSupabaseAdmin } = await import('@/lib/supabase/admin');
-  const { data, error } = await createSupabaseAdmin()
-    .from('monolog_episodes')
-    .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, is_pinned, archived_at, created_at, updated_at')
-    .eq('slug', slug)
-    .maybeSingle();
+  const [{ data, error }, categories] = await Promise.all([
+    createSupabaseAdmin()
+      .from('monolog_episodes')
+      .select('id, slug, title, description, category, audio_url, audio_path, duration_seconds, published_at, status, transcript, reflection, tags, is_pinned, archived_at, created_at, updated_at')
+      .eq('slug', slug)
+      .maybeSingle(),
+    getAdminMonologCategories(),
+  ]);
 
   if (error) {
     if (migrationMissing(error.code)) return null;
@@ -112,7 +126,8 @@ export async function getMonologEpisodeForPreview(slug: string): Promise<Monolog
     throw new Error('Preview Monolog sementara tidak tersedia.');
   }
 
-  return data ? mapEpisode(data as MonologRow) : null;
+  const categoryLabels = new Map(categories.map((category) => [category.slug, category.label]));
+  return data ? mapEpisode(data as MonologRow, categoryLabels) : null;
 }
 
 export function getRelatedMonologEpisodes(

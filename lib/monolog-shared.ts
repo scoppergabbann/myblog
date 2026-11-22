@@ -1,19 +1,24 @@
-import type { MonologCategorySlug } from '@/types/monolog';
+import type { MonologCategory, MonologCategorySlug } from '@/types/monolog';
 
-export const monologCategories = [
-  { slug: 'menuju-nikah', label: 'Menuju Nikah' },
-  { slug: 'karier', label: 'Karier' },
-  { slug: 'olahraga', label: 'Olahraga' },
-  { slug: 'hobi', label: 'Hobi' },
-  { slug: 'random', label: 'Random' },
-] as const satisfies readonly { slug: MonologCategorySlug; label: string }[];
+export const defaultMonologCategories: MonologCategory[] = [
+  { id: 1, slug: 'menuju-nikah', label: 'Menuju Nikah', sortOrder: 10 },
+  { id: 2, slug: 'karier', label: 'Karier', sortOrder: 20 },
+  { id: 3, slug: 'olahraga', label: 'Olahraga', sortOrder: 30 },
+  { id: 4, slug: 'hobi', label: 'Hobi', sortOrder: 40 },
+  { id: 5, slug: 'random', label: 'Random', sortOrder: 50 },
+];
 
-const categoryLabels = new Map<MonologCategorySlug, string>(
-  monologCategories.map((category) => [category.slug, category.label]),
-);
+export function monologCategoryLabel(
+  category: MonologCategorySlug,
+  categories: Pick<MonologCategory, 'slug' | 'label'>[] = defaultMonologCategories,
+): string {
+  const fallback = category.split('-').filter(Boolean)
+    .map((word) => `${word[0]?.toUpperCase() ?? ''}${word.slice(1)}`).join(' ');
+  return categories.find((item) => item.slug === category)?.label || fallback || category;
+}
 
-export function monologCategoryLabel(category: MonologCategorySlug): string {
-  return categoryLabels.get(category) ?? category;
+export function slugifyMonologCategory(value: string): string {
+  return slugifyMonologTitle(value).slice(0, 50).replace(/-+$/g, '');
 }
 
 export function slugifyMonologTitle(value: string): string {

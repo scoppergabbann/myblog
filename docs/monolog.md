@@ -47,6 +47,16 @@ Upload memakai signed upload URL yang hanya dapat dibuat oleh admin. File dikiri
 Jalankan `supabase/migrations/020_monolog_library_controls.sql` setelah migrasi 019. Migrasi ini menambahkan kolom pin/arsip, memperketat policy publik, mengurutkan episode pinned, dan menerapkan batas lima episode published aktif per kategori melalui trigger database.
 - URL HTTPS `.m4a`, `.mp4`, `.webm`, atau `.ogg` eksternal tetap dapat dipakai melalui kolom URL audio.
 
+## Kategori dinamis
+
+Jalankan `supabase/migrations/021_monolog_categories.sql` satu kali setelah migrasi 020. Setelah aktif, bagian **Kategori Monolog** tersedia di bawah tabel episode pada `/admin/monolog`.
+
+- Admin dapat menambah kategori, mengubah nama, slug, dan urutannya.
+- Mengubah slug otomatis memperbarui kategori pada episode yang sudah ada.
+- Kategori yang masih dipakai episode tidak dapat dihapus; pindahkan episode terlebih dahulu.
+- Batas lima episode published aktif tetap berlaku pada setiap kategori, termasuk kategori baru.
+- Urutan kategori pada halaman publik mengikuti angka urutan dari dashboard.
+
 ## Kategori
 
 - `menuju-nikah`

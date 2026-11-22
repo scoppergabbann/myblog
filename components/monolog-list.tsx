@@ -2,27 +2,26 @@
 
 import { useMemo, useState } from 'react';
 import { MonologEpisodeCard } from '@/components/monolog-episode-card';
-import { monologCategories } from '@/lib/monolog-shared';
-import type { MonologCategorySlug, PublishedMonologEpisode } from '@/types/monolog';
+import type { MonologCategory, PublishedMonologEpisode } from '@/types/monolog';
 import type { MonologReactionStates } from '@/lib/monolog-reactions';
-
-type CategoryFilter = 'all' | MonologCategorySlug;
 
 export function MonologList({
   episodes,
+  categories,
   reactionStatesBySlug,
 }: {
   episodes: PublishedMonologEpisode[];
+  categories: MonologCategory[];
   reactionStatesBySlug: Record<string, MonologReactionStates>;
 }) {
-  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
+  const [activeCategory, setActiveCategory] = useState('all');
   const [query, setQuery] = useState('');
   const categoryCounts = useMemo(() => new Map(
-    monologCategories.map((category) => [
+    categories.map((category) => [
       category.slug,
       episodes.filter((episode) => episode.category === category.slug).length,
     ]),
-  ), [episodes]);
+  ), [categories, episodes]);
   const filtered = useMemo(
     () => {
       const normalizedQuery = query.trim().toLocaleLowerCase('id-ID');
@@ -66,7 +65,7 @@ export function MonologList({
             label="Semua"
             onClick={() => setActiveCategory('all')}
           />
-          {monologCategories.map((category) => (
+          {categories.map((category) => (
             <CategoryButton
               key={category.slug}
               active={activeCategory === category.slug}

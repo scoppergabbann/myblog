@@ -10,7 +10,7 @@ import {
   monologAudioMimeValid,
   monologAudioUrlValid,
 } from '@/lib/monolog-audio';
-import { monologCategories } from '@/lib/monolog-shared';
+import { defaultMonologCategories } from '@/lib/monolog-shared';
 
 const AUDIO_BUCKET = 'monolog-audio';
 const MAX_AUDIO_SIZE = 50 * 1024 * 1024;
@@ -41,6 +41,7 @@ function databaseError(code: string | undefined, message: string): string {
     return 'Kontrol pin dan arsip belum aktif. Jalankan migrasi 020_monolog_library_controls.sql di Supabase.';
   }
   if (code === '23505') return 'Slug sudah dipakai. Pilih slug lain.';
+  if (code === '23503') return 'Kategori Monolog tidak valid atau sudah dihapus.';
   if (message.includes('MONOLOG_CATEGORY_LIMIT')) {
     return 'Kategori ini sudah memiliki 5 episode published. Arsipkan atau jadikan draft salah satunya terlebih dahulu.';
   }
@@ -92,7 +93,7 @@ function validate(input: ReturnType<typeof fromForm>): string | null {
   }
   if (!input.title || input.title.length > 180) return 'Judul wajib diisi (maks. 180 karakter).';
   if (!input.description || input.description.length > 600) return 'Deskripsi wajib diisi (maks. 600 karakter).';
-  if (!monologCategories.some((category) => category.slug === input.category)) return 'Kategori tidak valid.';
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.category) || input.category.length > 50) return 'Kategori tidak valid.';
   if (!['draft', 'published'].includes(input.status)) return 'Status tidak valid.';
   if (!Number.isSafeInteger(input.duration_seconds) || input.duration_seconds < 0 || input.duration_seconds > 86400) {
     return 'Durasi harus berupa detik antara 0 dan 86400.';
@@ -108,6 +109,19 @@ function validate(input: ReturnType<typeof fromForm>): string | null {
     if (!input.published_at) return 'Tanggal publikasi wajib diisi sebelum menerbitkan.';
   }
   return null;
+}
+
+async function categoryExists(slug: string): Promise<boolean> {
+  const { data, error } = await createSupabaseAdmin()
+    .from('monolog_categories')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error?.code === 'PGRST205' || error?.code === '42P01') {
+    return defaultMonologCategories.some((category) => category.slug === slug);
+  }
+  if (error) throw error;
+  return Boolean(data);
 }
 
 function refresh(slugs: Array<string | null | undefined> = []) {
@@ -193,6 +207,11 @@ export async function createMonolog(
   const input = fromForm(formData);
   const validation = validate(input);
   if (validation) return { ok: false, error: validation };
+  try {
+    if (!await categoryExists(input.category)) return { ok: false, error: 'Kategori tidak valid.' };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Kategori tidak dapat diverifikasi.' };
+  }
 
   const { data, error } = await createSupabaseAdmin()
     .from('monolog_episodes')
@@ -215,6 +234,11 @@ export async function updateMonolog(
   const input = fromForm(formData);
   const validation = validate(input);
   if (validation) return { ok: false, error: validation };
+  try {
+    if (!await categoryExists(input.category)) return { ok: false, error: 'Kategori tidak valid.' };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Kategori tidak dapat diverifikasi.' };
+  }
 
   const db = createSupabaseAdmin();
   const { data: old, error: oldError } = await db

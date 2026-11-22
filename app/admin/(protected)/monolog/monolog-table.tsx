@@ -7,7 +7,7 @@ import { DataTable, type BulkAction, type Column } from '@/components/admin/data
 import { useToast } from '@/components/admin/toast';
 import { formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
 import { formatDate } from '@/lib/utils';
-import type { MonologCategorySlug, MonologStatus } from '@/types/monolog';
+import type { MonologCategory, MonologCategorySlug, MonologStatus } from '@/types/monolog';
 import { deleteMonolog, setMonologArchived, setMonologPinned, setMonologStatus, type MonologActionResult } from './actions';
 
 export type MonologAdminRow = {
@@ -26,7 +26,7 @@ export type MonologAdminRow = {
 
 type MonologFilter = MonologStatus | 'all' | 'archived';
 
-export function MonologTable({ initialData }: { initialData: MonologAdminRow[] }) {
+export function MonologTable({ initialData, categories }: { initialData: MonologAdminRow[]; categories: MonologCategory[] }) {
   const [filter, setFilter] = useState<MonologFilter>('all');
   const [busy, setBusy] = useState(false);
   const [, startTransition] = useTransition();
@@ -63,7 +63,7 @@ export function MonologTable({ initialData }: { initialData: MonologAdminRow[] }
   const columns: Column<MonologAdminRow>[] = [
     { key: 'status', header: 'Status', width: '95px', render: (row) => <span className={`inline-flex rounded-full border px-2 py-1 font-mono text-[10px] ${row.archived_at ? 'border-slate-500/30 text-slate-500' : row.status === 'published' ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'border-[var(--color-line-2)] text-[var(--color-accent)]'}`}>{row.archived_at ? 'archived' : row.status}</span> },
     { key: 'title', header: 'Episode', render: (row) => <div><div className="flex items-center gap-2"><Link href={`/admin/monolog/${row.id}`} className="font-medium text-[var(--color-ink)] hover:text-[var(--color-accent)]">{row.title}</Link>{row.is_pinned && !row.archived_at && <span title="Disematkan" className="text-[var(--color-accent)]">◆</span>}</div><p className="mt-1 line-clamp-2 text-xs text-[var(--color-ink-3)]">{row.description}</p></div> },
-    { key: 'category', header: 'Kategori', width: '110px', render: (row) => <span className="text-xs text-[var(--color-ink-3)]">{monologCategoryLabel(row.category)}</span> },
+    { key: 'category', header: 'Kategori', width: '110px', render: (row) => <span className="text-xs text-[var(--color-ink-3)]">{monologCategoryLabel(row.category, categories)}</span> },
     { key: 'duration', header: 'Durasi', width: '70px', render: (row) => <span className="font-mono text-xs text-[var(--color-ink-3)]">{row.duration_seconds > 0 ? formatAudioDuration(row.duration_seconds) : '—'}</span> },
     { key: 'date', header: 'Publikasi', width: '105px', render: (row) => <span className="text-xs text-[var(--color-ink-4)]">{row.published_at ? formatDate(row.published_at) : '—'}</span> },
     { key: 'actions', header: 'Kelola', width: '250px', render: (row) => <div className="flex flex-wrap gap-1.5">
@@ -104,7 +104,7 @@ export function MonologTable({ initialData }: { initialData: MonologAdminRow[] }
       })}
     </div>
     <fieldset disabled={busy} className="min-w-0">
-      <DataTable data={data} columns={columns} rowId={(row) => row.id} bulkActions={bulkActions} emptyMessage="Belum ada episode Monolog." filterPlaceholder="Cari judul, deskripsi, kategori…" filterFn={(row, query) => row.title.toLowerCase().includes(query) || row.description.toLowerCase().includes(query) || monologCategoryLabel(row.category).toLowerCase().includes(query)} />
+      <DataTable data={data} columns={columns} rowId={(row) => row.id} bulkActions={bulkActions} emptyMessage="Belum ada episode Monolog." filterPlaceholder="Cari judul, deskripsi, kategori…" filterFn={(row, query) => row.title.toLowerCase().includes(query) || row.description.toLowerCase().includes(query) || monologCategoryLabel(row.category, categories).toLowerCase().includes(query)} />
     </fieldset>
     {busy && <p role="status" className="mt-3 text-xs text-[var(--color-ink-3)]">Menyimpan perubahan…</p>}
   </div>;

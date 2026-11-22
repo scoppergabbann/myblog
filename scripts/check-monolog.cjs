@@ -74,10 +74,16 @@ function createSupabasePublic() {
 }
 
 const root = path.resolve(__dirname, '..');
+const shared = loadTypeScript(path.join(root, 'lib/monolog-shared.ts'));
+const categoryRows = shared.defaultMonologCategories;
 const monolog = loadTypeScript(path.join(root, 'lib/monolog.ts'), {
   '@/lib/supabase/public': { createSupabasePublic },
+  '@/lib/monolog-category-queries': {
+    getMonologCategories: async () => categoryRows,
+    getAdminMonologCategories: async () => categoryRows,
+  },
+  '@/lib/monolog-shared': shared,
 });
-const shared = loadTypeScript(path.join(root, 'lib/monolog-shared.ts'));
 const monologAudio = loadTypeScript(path.join(root, 'lib/monolog-audio.ts'));
 const commentTarget = loadTypeScript(path.join(root, 'lib/comment-target.ts'));
 const streamReactions = loadTypeScript(path.join(root, 'lib/stream-reactions.ts'));

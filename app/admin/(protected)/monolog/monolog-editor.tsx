@@ -5,8 +5,8 @@ import { useActionState, useEffect, useState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/admin/toast';
-import { monologCategories, slugifyMonologTitle } from '@/lib/monolog-shared';
-import type { MonologCategorySlug, MonologStatus } from '@/types/monolog';
+import { slugifyMonologTitle } from '@/lib/monolog-shared';
+import type { MonologCategory, MonologCategorySlug, MonologStatus } from '@/types/monolog';
 import { MonologAudioUpload } from './audio-upload';
 import { createMonolog, deleteMonolog, updateMonolog, type MonologFormState } from './actions';
 
@@ -36,9 +36,11 @@ const DEFAULT_EPISODE: AdminMonologEpisode = {
 
 export function MonologEditor({
   episode = DEFAULT_EPISODE,
+  categories,
   previewToken,
 }: {
   episode?: AdminMonologEpisode;
+  categories: MonologCategory[];
   previewToken?: string;
 }) {
   const isNew = !episode.id;
@@ -52,6 +54,9 @@ export function MonologEditor({
   const [, startTransition] = useTransition();
   const router = useRouter();
   const toast = useToast();
+  const selectedCategory = categories.some((category) => category.slug === episode.category)
+    ? episode.category
+    : categories[0]?.slug ?? episode.category;
 
   useEffect(() => {
     if (!state) return;
@@ -157,8 +162,8 @@ export function MonologEditor({
 
         <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
           <Field label="Kategori" htmlFor="monolog-category">
-            <select id="monolog-category" name="category" defaultValue={episode.category} className={inputClass}>
-              {monologCategories.map((category) => <option key={category.slug} value={category.slug}>{category.label}</option>)}
+            <select id="monolog-category" name="category" defaultValue={selectedCategory} className={inputClass}>
+              {categories.map((category) => <option key={category.slug} value={category.slug}>{category.label}</option>)}
             </select>
           </Field>
           <Field label="Status" htmlFor="monolog-status">

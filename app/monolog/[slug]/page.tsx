@@ -7,7 +7,7 @@ import { MonologReactions } from '@/components/monolog-reactions';
 import { CommentsSection } from '@/components/comments-section';
 import { getMonologEpisodeForPreview, getPublishedMonologEpisode, getPublishedMonologEpisodes, getRelatedMonologEpisodes } from '@/lib/monolog';
 import { getMonologReactionStates } from '@/lib/monolog-reaction-queries';
-import { audioDurationIso, formatAudioDuration, monologCategoryLabel } from '@/lib/monolog-shared';
+import { audioDurationIso, formatAudioDuration } from '@/lib/monolog-shared';
 import { verifyDraftToken } from '@/lib/draft-token';
 import { siteConfig } from '@/lib/site-config';
 import { formatDate } from '@/lib/utils';
@@ -129,7 +129,7 @@ export default async function MonologEpisodePage({
         <header className="mb-8">
           <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11.5px] text-[var(--color-ink-4)]">
             <span className="rounded-full bg-[var(--color-accent-soft)] px-2.5 py-1 text-[var(--color-accent)]">
-              {monologCategoryLabel(episode.category)}
+              {episode.categoryLabel}
             </span>
             <span aria-hidden="true">·</span>
             {episode.publishedAt ? (
@@ -195,7 +195,7 @@ export default async function MonologEpisodePage({
               <Link key={item.id} href={`/monolog/${item.slug}`} className="group flex items-center justify-between gap-5 py-4">
                 <span>
                   <span className="block text-[14.5px] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-accent)]">{item.title}</span>
-                  <span className="mt-1 block font-mono text-[11px] text-[var(--color-ink-4)]">{monologCategoryLabel(item.category)} · {formatAudioDuration(item.durationSeconds)}</span>
+                  <span className="mt-1 block font-mono text-[11px] text-[var(--color-ink-4)]">{item.categoryLabel} · {formatAudioDuration(item.durationSeconds)}</span>
                 </span>
                 <span aria-hidden="true" className="text-[var(--color-ink-4)]">→</span>
               </Link>
