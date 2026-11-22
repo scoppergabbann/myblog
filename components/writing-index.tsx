@@ -77,7 +77,7 @@ export function WritingIndex({
             Catatan personal tentang hidup sehari-hari, hal yang dipelajari, dan cerita yang layak tinggal sedikit lebih lama.
           </p>
           <p className="mt-6 font-mono text-[12px] uppercase tracking-[0.16em] text-[var(--color-ink-4)]">
-            {String(allWritings.length).padStart(2, '0')} artikel · terus bertumbuh
+            {String(totalItems).padStart(2, '0')} artikel · terus bertumbuh
           </p>
         </div>
       </header>

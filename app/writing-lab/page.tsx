@@ -12,14 +12,17 @@ export const metadata: Metadata = {
 
 export default async function WritingLabPage() {
   const allWritings = await getAllWritings();
+  const archiveWritings = allWritings.filter((writing) =>
+    !writing.tags.some((tag) => tag.trim().toLowerCase() === 'saham')
+  );
   const pageSize = 8;
   return (
     <WritingIndex
       allWritings={allWritings}
-      paginated={allWritings.slice(0, pageSize)}
+      paginated={archiveWritings.slice(0, pageSize)}
       page={1}
-      totalPages={Math.max(1, Math.ceil(allWritings.length / pageSize))}
-      totalItems={allWritings.length}
+      totalPages={Math.max(1, Math.ceil(archiveWritings.length / pageSize))}
+      totalItems={archiveWritings.length}
       pageSize={pageSize}
     />
   );

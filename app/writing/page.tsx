@@ -31,12 +31,15 @@ export default async function WritingPage({
 }) {
   const { page: rawPage } = await searchParams;
   const allWritings = await getAllWritings();
-  const totalPages = Math.max(1, Math.ceil(allWritings.length / PAGE_SIZE));
+  const archiveWritings = allWritings.filter((writing) =>
+    !writing.tags.some((tag) => tag.trim().toLowerCase() === 'saham')
+  );
+  const totalPages = Math.max(1, Math.ceil(archiveWritings.length / PAGE_SIZE));
   const page = pageNumber(rawPage);
   if (page > totalPages) notFound();
 
   const start = (page - 1) * PAGE_SIZE;
-  const paginated = allWritings.slice(start, start + PAGE_SIZE);
+  const paginated = archiveWritings.slice(start, start + PAGE_SIZE);
 
   return (
     <WritingIndex
@@ -44,7 +47,7 @@ export default async function WritingPage({
       paginated={paginated}
       page={page}
       totalPages={totalPages}
-      totalItems={allWritings.length}
+      totalItems={archiveWritings.length}
       pageSize={PAGE_SIZE}
     />
   );

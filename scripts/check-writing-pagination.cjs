@@ -39,19 +39,15 @@ const page = async (number) => findProps(await Page({ searchParams: Promise.reso
     index % 3 === 0 ? ['saham'] : index % 3 === 1 ? ['investasi'] : ['kehidupan']));
 
   const first = await page(1);
-  assert.equal(first.totalItems, 18, 'stock and investment articles should be restored');
-  assert.equal(first.totalPages, 3);
+  assert.equal(first.totalItems, 12, 'stock articles should stay outside the main archive count');
+  assert.equal(first.totalPages, 2);
   assert.equal(first.paginated.length, 8, 'the main archive should show eight articles per page');
-  assert.equal(first.allWritings.length, 18);
+  assert.equal(first.allWritings.length, 18, 'stock articles must remain available to category filters and search');
 
   const second = await page(2);
-  assert.equal(second.paginated.length, 8);
-  assert.equal(second.paginated[0].slug, '9');
-
-  const last = await page(3);
-  assert.equal(last.paginated.length, 2);
-  assert.equal(last.paginated[0].slug, '17');
-  await assert.rejects(page(4), /404/);
+  assert.equal(second.paginated.length, 4);
+  assert.equal(second.paginated[0].slug, '14');
+  await assert.rejects(page(3), /404/);
 
   articles = [];
   const empty = await page(1);
@@ -59,5 +55,5 @@ const page = async (number) => findProps(await Page({ searchParams: Promise.reso
   assert.equal(empty.totalItems, 0);
   assert.equal(empty.paginated.length, 0);
 
-  console.log('PASS: restored stock topics, 8-per-page archive, last-page totals, 404, and empty lists');
+  console.log('PASS: stock category remains searchable but excluded from the 8-per-page archive count');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

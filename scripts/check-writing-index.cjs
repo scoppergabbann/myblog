@@ -18,7 +18,8 @@ assert.match(index, /hover:bg-\[var\(--color-paper-2\)\]/, 'cards should use col
 assert.doesNotMatch(index, /shadow-/, 'the writing index must not introduce shadows');
 assert.match(livePage, /const PAGE_SIZE = 8/, 'the main writing archive should show eight articles per page');
 assert.match(livePage, /<WritingIndex/, 'the approved editorial design should be live on Writing');
-assert.doesNotMatch(livePage, /investasi.*saham|saham.*investasi/, 'investment and stock articles must not be hidden');
+assert.match(livePage, /tag\.trim\(\)\.toLowerCase\(\) === 'saham'/, 'stock posts should stay outside the main archive count');
+assert.match(index, /String\(totalItems\)/, 'the hero count should use the non-stock archive total');
 assert.match(tagPage, /const PAGE_SIZE = 6/, 'dedicated category pages should show six articles per page');
 assert.match(tagPage, /dynamic = 'force-dynamic'/, 'category pagination must render dynamically in production');
 
