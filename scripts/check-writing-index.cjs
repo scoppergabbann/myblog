@@ -20,5 +20,6 @@ assert.match(livePage, /const PAGE_SIZE = 8/, 'the main writing archive should s
 assert.match(livePage, /<WritingIndex/, 'the approved editorial design should be live on Writing');
 assert.doesNotMatch(livePage, /investasi.*saham|saham.*investasi/, 'investment and stock articles must not be hidden');
 assert.match(tagPage, /const PAGE_SIZE = 6/, 'dedicated category pages should show six articles per page');
+assert.match(tagPage, /dynamic = 'force-dynamic'/, 'category pagination must render dynamically in production');
 
 console.log('PASS production Writing design, restored topics, and pagination limits');

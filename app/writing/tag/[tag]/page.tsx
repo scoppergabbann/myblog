@@ -5,17 +5,13 @@ import { WritingCard, WritingPagination } from '@/components/writing-index';
 import { getAllWritings } from '@/lib/posts';
 import { pageMetadata } from '@/lib/seo';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 const PAGE_SIZE = 6;
 
 function pageNumber(value?: string) {
   const requested = Number(value ?? 1);
   return Number.isFinite(requested) && requested >= 1 ? Math.floor(requested) : 1;
-}
-
-export async function generateStaticParams() {
-  return [];
 }
 
 export async function generateMetadata({
