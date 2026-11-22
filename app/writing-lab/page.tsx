@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { getAllWritings } from '@/lib/posts';
-import { WritingLab } from './writing-lab';
+import { WritingIndex } from '@/components/writing-index';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,9 +12,15 @@ export const metadata: Metadata = {
 
 export default async function WritingLabPage() {
   const allWritings = await getAllWritings();
-  const writings = allWritings.filter((post) =>
-    !post.tags.some((tag) => ['investasi', 'saham'].includes(tag.trim().toLowerCase()))
+  const pageSize = 8;
+  return (
+    <WritingIndex
+      allWritings={allWritings}
+      paginated={allWritings.slice(0, pageSize)}
+      page={1}
+      totalPages={Math.max(1, Math.ceil(allWritings.length / pageSize))}
+      totalItems={allWritings.length}
+      pageSize={pageSize}
+    />
   );
-
-  return <WritingLab writings={writings} />;
 }

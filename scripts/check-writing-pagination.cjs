@@ -4,10 +4,10 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const React = require('react');
-const { renderToStaticMarkup } = require('react-dom/server');
 
 const root = path.join(__dirname, '..');
 let articles = [];
+
 function load(file, mocks) {
   const context = { exports: {}, require: (name) => name in mocks ? mocks[name] : require(name) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), {
@@ -15,44 +15,49 @@ function load(file, mocks) {
   }).outputText, context);
   return context.exports;
 }
-const { WritingFilter } = load('app/writing/writing-filter.tsx', {
-  'next/link': { __esModule: true, default: ({ children, ...props }) => React.createElement('a', props, children) },
-  '@/components/writing-item': { WritingItem: ({ writing }) => React.createElement('article', null, writing.title) },
-});
+
+function WritingIndex() { return null; }
+
 const { default: Page } = load('app/writing/page.tsx', {
+  '@/components/writing-index': { WritingIndex },
   '@/lib/seo': { pageMetadata: () => ({}) },
   'next/navigation': { notFound: () => { throw new Error('404'); } },
   '@/lib/posts': { getAllWritings: async () => articles },
-  './writing-filter': { WritingFilter },
 });
-function filterProps(node) {
+
+function findProps(node) {
   if (!node || typeof node !== 'object') return null;
-  if (node.type === WritingFilter) return node.props;
-  return React.Children.toArray(node.props?.children).map(filterProps).find(Boolean);
+  if (node.type === WritingIndex) return node.props;
+  return React.Children.toArray(node.props?.children).map(findProps).find(Boolean);
 }
+
 const post = (id, tags) => ({ slug: String(id), title: `Post ${id}`, summary: '', tags });
-const page = async (number) => filterProps(await Page({ searchParams: Promise.resolve({ page: String(number) }) }));
+const page = async (number) => findProps(await Page({ searchParams: Promise.resolve({ page: String(number) }) }));
+
 (async () => {
-  articles = Array.from({ length: 13 }, (_, i) => post(i, i % 2 ? ['general'] : ['investasi']));
-  articles.push(post(13, ['general']), post(14, ['general', ' Investasi ']), post(15, ['SAHAM']));
+  articles = Array.from({ length: 18 }, (_, index) => post(index + 1,
+    index % 3 === 0 ? ['saham'] : index % 3 === 1 ? ['investasi'] : ['kehidupan']));
+
   const first = await page(1);
-  assert.equal(first.totalItems, 7);
-  assert.equal(first.totalPages, 2);
-  assert.equal(first.paginated.length, 6);
-  assert.equal(first.allWritings.length, 16, 'Tag filters and search keep access to all articles');
-  const last = await page(2);
-  assert.equal(last.paginated.length, 1);
-  assert.equal(last.paginated[0].slug, '13');
-  const html = renderToStaticMarkup(React.createElement(WritingFilter, last));
-  assert.match(html, /7–7 dari 7/);
-  assert.doesNotMatch(html, /dari 16/);
-  await assert.rejects(page(3), /404/);
-  articles = [post(1, ['investasi']), post(2, ['saham'])];
-  const hiddenOnly = await page(1);
-  assert.equal(hiddenOnly.totalPages, 1);
-  assert.equal(hiddenOnly.totalItems, 0);
-  assert.equal(hiddenOnly.paginated.length, 0);
+  assert.equal(first.totalItems, 18, 'stock and investment articles should be restored');
+  assert.equal(first.totalPages, 3);
+  assert.equal(first.paginated.length, 8, 'the main archive should show eight articles per page');
+  assert.equal(first.allWritings.length, 18);
+
+  const second = await page(2);
+  assert.equal(second.paginated.length, 8);
+  assert.equal(second.paginated[0].slug, '9');
+
+  const last = await page(3);
+  assert.equal(last.paginated.length, 2);
+  assert.equal(last.paginated[0].slug, '17');
+  await assert.rejects(page(4), /404/);
+
   articles = [];
-  assert.equal((await page(1)).totalPages, 1);
-  console.log('PASS: excluded tags, mixed tags/case, 6-per-page, last-page totals, 404, empty lists, full search dataset');
+  const empty = await page(1);
+  assert.equal(empty.totalPages, 1);
+  assert.equal(empty.totalItems, 0);
+  assert.equal(empty.paginated.length, 0);
+
+  console.log('PASS: restored stock topics, 8-per-page archive, last-page totals, 404, and empty lists');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

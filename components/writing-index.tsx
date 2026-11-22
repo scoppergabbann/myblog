@@ -5,31 +5,60 @@ import { useMemo, useState } from 'react';
 import { formatDate } from '@/lib/utils';
 import type { Writing } from '@/types/content';
 
-export function WritingLab({ writings }: { writings: Writing[] }) {
+export function WritingIndex({
+  allWritings,
+  paginated,
+  page,
+  totalPages,
+  totalItems,
+  pageSize,
+}: {
+  allWritings: Writing[];
+  paginated: Writing[];
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+}) {
   const [activeTag, setActiveTag] = useState('all');
   const [search, setSearch] = useState('');
+  const [filterPage, setFilterPage] = useState(1);
   const tags = useMemo(() => [
     'all',
-    ...new Set(writings.flatMap((writing) => writing.tags)),
-  ].sort((left, right) => left === 'all' ? -1 : right === 'all' ? 1 : left.localeCompare(right)), [writings]);
+    ...new Set(allWritings.flatMap((writing) => writing.tags)),
+  ].sort((left, right) => left === 'all' ? -1 : right === 'all' ? 1 : left.localeCompare(right)), [allWritings]);
 
   const query = search.trim().toLowerCase();
   const isFiltering = activeTag !== 'all' || query.length > 0;
-  const filtered = useMemo(() => writings.filter((writing) => {
+  const filtered = useMemo(() => allWritings.filter((writing) => {
     const matchesTag = activeTag === 'all' || writing.tags.includes(activeTag);
     const matchesQuery = !query
       || writing.title.toLowerCase().includes(query)
       || writing.summary.toLowerCase().includes(query)
       || writing.tags.some((tag) => tag.toLowerCase().includes(query));
     return matchesTag && matchesQuery;
-  }), [activeTag, query, writings]);
+  }), [activeTag, allWritings, query]);
 
-  const featured = !isFiltering ? filtered[0] : null;
-  const collection = featured ? filtered.slice(1) : filtered;
+  const categoryPageSize = 6;
+  const filteredTotalPages = Math.max(1, Math.ceil(filtered.length / categoryPageSize));
+  const safeFilterPage = Math.min(filterPage, filteredTotalPages);
+  const filteredStart = (safeFilterPage - 1) * categoryPageSize;
+  const featured = !isFiltering && page === 1 ? paginated[0] : null;
+  const collection = isFiltering
+    ? filtered.slice(filteredStart, filteredStart + categoryPageSize)
+    : featured
+      ? paginated.slice(1)
+      : paginated;
 
   function resetFilters() {
     setActiveTag('all');
     setSearch('');
+    setFilterPage(1);
+  }
+
+  function goToFilterPage(nextPage: number) {
+    setFilterPage(nextPage);
+    document.getElementById('writing-collection-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   return (
@@ -48,7 +77,7 @@ export function WritingLab({ writings }: { writings: Writing[] }) {
             Catatan personal tentang hidup sehari-hari, hal yang dipelajari, dan cerita yang layak tinggal sedikit lebih lama.
           </p>
           <p className="mt-6 font-mono text-[12px] uppercase tracking-[0.16em] text-[var(--color-ink-4)]">
-            {String(writings.length).padStart(2, '0')} artikel · terus bertumbuh
+            {String(allWritings.length).padStart(2, '0')} artikel · terus bertumbuh
           </p>
         </div>
       </header>
@@ -62,7 +91,9 @@ export function WritingLab({ writings }: { writings: Writing[] }) {
               Jelajahi arsip
             </p>
             <h2 id="writing-collection-title" className="mt-2 text-[32px] font-medium tracking-[-0.035em] text-[var(--color-ink)]">
-              {isFiltering ? `${filtered.length} hasil ditemukan` : 'Tulisan lainnya'}
+              {isFiltering
+                ? `${filtered.length} hasil ditemukan`
+                : page === 1 ? 'Tulisan lainnya' : `Arsip halaman ${page}`}
             </h2>
           </div>
           {isFiltering && (
@@ -82,7 +113,10 @@ export function WritingLab({ writings }: { writings: Writing[] }) {
             <input
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.currentTarget.value)}
+              onChange={(event) => {
+                setSearch(event.currentTarget.value);
+                setFilterPage(1);
+              }}
               placeholder="Cari judul, cerita, atau topik..."
               className="min-h-12 w-full rounded-full border border-[var(--color-line)] bg-[var(--color-paper)] pl-11 pr-5 text-[14px] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-accent)]"
             />
@@ -93,7 +127,10 @@ export function WritingLab({ writings }: { writings: Writing[] }) {
                 key={tag}
                 type="button"
                 aria-pressed={tag === activeTag}
-                onClick={() => setActiveTag(tag)}
+                onClick={() => {
+                  setActiveTag(tag);
+                  setFilterPage(1);
+                }}
                 className={`min-h-10 rounded-full border px-4 font-mono text-[12px] transition-colors ${tag === activeTag
                   ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
                   : 'border-[var(--color-line)] text-[var(--color-ink-3)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
@@ -108,7 +145,13 @@ export function WritingLab({ writings }: { writings: Writing[] }) {
         {collection.length > 0 ? (
           <div className="grid grid-cols-2 border-l border-t border-[var(--color-line)] max-md:grid-cols-1">
             {collection.map((writing, index) => (
-              <WritingCard key={writing.slug} writing={writing} index={featured ? index + 2 : index + 1} />
+              <WritingCard
+                key={writing.slug}
+                writing={writing}
+                index={isFiltering
+                  ? filteredStart + index + 1
+                  : (page - 1) * pageSize + index + (featured ? 2 : 1)}
+              />
             ))}
           </div>
         ) : (
@@ -118,6 +161,25 @@ export function WritingLab({ writings }: { writings: Writing[] }) {
               Lihat semua tulisan
             </button>
           </div>
+        )}
+
+        {isFiltering && filteredTotalPages > 1 && (
+          <FilterPagination
+            page={safeFilterPage}
+            totalPages={filteredTotalPages}
+            totalItems={filtered.length}
+            pageSize={categoryPageSize}
+            onPageChange={goToFilterPage}
+          />
+        )}
+        {!isFiltering && totalPages > 1 && (
+          <WritingPagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            basePath="/writing"
+          />
         )}
       </section>
     </main>
@@ -156,7 +218,7 @@ function FeaturedWriting({ writing }: { writing: Writing }) {
   );
 }
 
-function WritingCard({ writing, index }: { writing: Writing; index: number }) {
+export function WritingCard({ writing, index }: { writing: Writing; index: number }) {
   return (
     <article className="border-b border-r border-[var(--color-line)]">
       <Link href={`/writing/${writing.slug}`} className="group flex h-full min-h-[290px] flex-col justify-between p-7 transition-colors hover:bg-[var(--color-paper-2)] sm:p-8">
@@ -185,4 +247,104 @@ function WritingCard({ writing, index }: { writing: Writing; index: number }) {
       </Link>
     </article>
   );
+}
+
+export function WritingPagination({
+  page,
+  totalPages,
+  totalItems,
+  pageSize,
+  basePath,
+}: {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+  basePath: string;
+}) {
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, totalItems);
+
+  return (
+    <nav aria-label="Pagination tulisan" className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--color-line)] pt-6">
+      <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-4)]">
+        {start}–{end} dari {totalItems}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <PageLink href={page > 1 ? pageHref(basePath, page - 1) : null}>Sebelumnya</PageLink>
+        {pageNumbers(page, totalPages).map((value, index) => value === 'ellipsis'
+          ? <span key={`ellipsis-${index}`} className="px-1 text-[var(--color-ink-4)]">…</span>
+          : <PageLink key={value} href={pageHref(basePath, value)} active={value === page}>{value}</PageLink>
+        )}
+        <PageLink href={page < totalPages ? pageHref(basePath, page + 1) : null}>Berikutnya</PageLink>
+      </div>
+    </nav>
+  );
+}
+
+function FilterPagination({
+  page,
+  totalPages,
+  totalItems,
+  pageSize,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, totalItems);
+  return (
+    <nav aria-label="Pagination hasil filter" className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--color-line)] pt-6">
+      <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-4)]">
+        {start}–{end} dari {totalItems}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <PageButton disabled={page === 1} onClick={() => onPageChange(page - 1)}>Sebelumnya</PageButton>
+        {pageNumbers(page, totalPages).map((value, index) => value === 'ellipsis'
+          ? <span key={`ellipsis-${index}`} className="px-1 text-[var(--color-ink-4)]">…</span>
+          : <PageButton key={value} active={value === page} onClick={() => onPageChange(value)}>{value}</PageButton>
+        )}
+        <PageButton disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>Berikutnya</PageButton>
+      </div>
+    </nav>
+  );
+}
+
+function PageLink({ href, active = false, children }: { href: string | null; active?: boolean; children: React.ReactNode }) {
+  const className = pageControlClass(active, href === null);
+  if (!href) return <span aria-disabled="true" className={className}>{children}</span>;
+  return <Link href={href} aria-current={active ? 'page' : undefined} className={className}>{children}</Link>;
+}
+
+function PageButton({ disabled = false, active = false, onClick, children }: { disabled?: boolean; active?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return <button type="button" disabled={disabled} aria-current={active ? 'page' : undefined} onClick={onClick} className={pageControlClass(active, disabled)}>{children}</button>;
+}
+
+function pageControlClass(active: boolean, disabled: boolean) {
+  return `inline-flex min-h-9 min-w-9 items-center justify-center rounded-full border px-3 text-[12px] transition-colors ${active
+    ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
+    : disabled
+      ? 'cursor-not-allowed border-[var(--color-line)] text-[var(--color-ink-4)] opacity-40'
+      : 'border-[var(--color-line)] text-[var(--color-ink-3)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]'
+  }`;
+}
+
+function pageHref(basePath: string, page: number) {
+  return page === 1 ? basePath : `${basePath}?page=${page}`;
+}
+
+function pageNumbers(current: number, total: number): (number | 'ellipsis')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  const values: (number | 'ellipsis')[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) values.push('ellipsis');
+  for (let page = start; page <= end; page += 1) values.push(page);
+  if (end < total - 1) values.push('ellipsis');
+  values.push(total);
+  return values;
 }
