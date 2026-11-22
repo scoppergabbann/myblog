@@ -189,6 +189,8 @@ const monologReactions = loadTypeScript(path.join(root, 'lib/monolog-reactions.t
   assert.match(audioUpload, /Selesai &amp; gunakan/, 'the recording UI should provide an explicit finish action');
   assert.match(audioUpload, /role="progressbar"/, 'audio upload should render accessible progress');
   assert.match(editor, /slugifyMonologTitle/, 'new episode slug should follow its title');
+  assert.match(editor, /readOnly=\{isNew && !slugIsManual\}/, 'automatic episode slugs should ignore accidental edits');
+  assert.match(editor, /Pakai otomatis/, 'manual episode slugs should be able to return to automatic mode');
   assert.match(detail, /verifyDraftToken\(`monolog:/, 'draft preview must verify a namespaced token');
   assert.match(detail, /index: false, follow: false/, 'draft preview must not be indexed');
   assert.match(detail, /isPreview \? null : await getMonologReactionStates/, 'draft preview must not load reactions');

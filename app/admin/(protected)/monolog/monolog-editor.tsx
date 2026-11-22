@@ -140,19 +140,36 @@ export function MonologEditor({
               maxLength={100}
               pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
               value={slug}
+              readOnly={isNew && !slugIsManual}
               onChange={(event) => {
                 setSlug(event.currentTarget.value);
                 setSlugIsManual(true);
               }}
               placeholder="judul-episode"
               aria-describedby="monolog-slug-help"
-              className={`${inputClass} font-mono text-sm`}
+              className={`${inputClass} font-mono text-sm ${isNew && !slugIsManual ? 'cursor-default bg-[var(--color-paper-2)]' : ''}`}
             />
-            <p id="monolog-slug-help" className="mt-1 text-[11px] text-[var(--color-ink-4)]">
-              {isNew
-                ? 'Dibuat otomatis dari judul, tetapi tetap bisa diubah.'
-                : 'Tidak ikut berubah saat judul diedit agar tautan lama tetap aman.'}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+              <p id="monolog-slug-help" className="text-[11px] text-[var(--color-ink-4)]">
+                {isNew
+                  ? slugIsManual
+                    ? 'Mode manual aktif. Pilih otomatis untuk mengikuti judul lagi.'
+                    : 'Otomatis mengikuti judul. Klik kolom ini tidak akan mematikannya.'
+                  : 'Tidak ikut berubah saat judul diedit agar tautan lama tetap aman.'}
+              </p>
+              {isNew && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (slugIsManual) setSlug(slugifyMonologTitle(title));
+                    setSlugIsManual((current) => !current);
+                  }}
+                  className="text-[11px] font-medium text-[var(--color-accent)] hover:text-[var(--color-ink)]"
+                >
+                  {slugIsManual ? 'Pakai otomatis' : 'Ubah manual'}
+                </button>
+              )}
+            </div>
           </Field>
         </div>
 

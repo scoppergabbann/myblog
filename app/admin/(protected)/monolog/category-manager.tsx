@@ -140,7 +140,26 @@ function CategoryForm({
         <input value={label} maxLength={60} onChange={(event) => { const value = event.currentTarget.value; setLabel(value); if (!slugManual) setSlug(slugifyMonologCategory(value)); }} className={inputClass} autoFocus />
       </label>
       <label className="text-[13px] text-[var(--color-ink-3)]">Slug
-        <input value={slug} maxLength={50} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" onChange={(event) => { setSlug(event.currentTarget.value); setSlugManual(true); }} className={`${inputClass} font-mono`} />
+        <input
+          value={slug}
+          maxLength={50}
+          pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+          readOnly={mode === 'create' && !slugManual}
+          onChange={(event) => { setSlug(event.currentTarget.value); setSlugManual(true); }}
+          className={`${inputClass} font-mono ${mode === 'create' && !slugManual ? 'cursor-default bg-[var(--color-paper-2)]' : ''}`}
+        />
+        {mode === 'create' && (
+          <button
+            type="button"
+            onClick={() => {
+              if (slugManual) setSlug(slugifyMonologCategory(label));
+              setSlugManual((current) => !current);
+            }}
+            className="mt-1 text-[11px] font-medium text-[var(--color-accent)] hover:text-[var(--color-ink)]"
+          >
+            {slugManual ? 'Pakai otomatis' : 'Ubah manual'}
+          </button>
+        )}
       </label>
       <label className="text-[13px] text-[var(--color-ink-3)]">Urutan
         <input type="number" min={0} max={10000} value={sortOrder} onChange={(event) => setSortOrder(Number(event.currentTarget.value))} className={inputClass} />

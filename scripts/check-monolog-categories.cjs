@@ -37,6 +37,8 @@ const publicList = fs.readFileSync(path.join(root, 'components/monolog-list.tsx'
 
 assert.match(migration, /create table if not exists public\.monolog_categories/);
 assert.match(migration, /on update cascade/i, 'renaming category slugs must update existing episodes');
+assert.match(manager, /readOnly=\{mode === 'create' && !slugManual\}/, 'automatic category slugs should ignore accidental edits');
+assert.match(manager, /Pakai otomatis/, 'manual category slugs should be able to return to automatic mode');
 assert.match(migration, /on delete restrict/i, 'used categories must be protected from deletion');
 assert.match(migration, /monolog_categories_read_all/, 'public pages must be able to read categories');
 assert.match(adminPage, /<CategoryManager/, 'admin Monolog page must expose category management');
