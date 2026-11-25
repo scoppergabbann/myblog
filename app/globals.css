@@ -760,6 +760,54 @@ input:focus, textarea:focus, select:focus {
   animation: homeBirdRoam 26s cubic-bezier(.4, 0, .22, 1) infinite;
   will-change: transform;
 }
+.home-bird-route-sprite { transition: opacity 100ms linear; }
+.home-bird-notifier.is-open .home-bird-route-sprite { opacity: 0; }
+
+/* When the news box opens, the same bird leaves its branch and lands on the box edge. */
+.home-bird-box-perch {
+  position: absolute;
+  z-index: 2;
+  top: -54px;
+  right: 58px;
+  display: block;
+  width: 72px;
+  height: 66px;
+  pointer-events: none;
+  transform-origin: 55% 100%;
+  animation: homeBirdLandOnBox 760ms cubic-bezier(.2, .72, .2, 1) both;
+  will-change: transform;
+}
+.home-bird-box-perch::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: 5px;
+  bottom: 4px;
+  width: 48px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+.home-bird-box-perch .home-bird-body {
+  animation: none;
+  transform: scaleX(-1);
+}
+.home-bird-box-perch .home-bird-wing-back {
+  opacity: 1;
+  animation: homeBirdBoxWingBack 230ms ease-in-out 3 alternate, homeBirdBoxFlightPart 760ms linear both;
+}
+.home-bird-box-perch .home-bird-wing-front {
+  opacity: 1;
+  animation: homeBirdBoxWingFront 230ms ease-in-out 3 alternate, homeBirdBoxFlightPart 760ms linear both;
+}
+.home-bird-box-perch .home-bird-folded-wing,
+.home-bird-box-perch .home-bird-legs {
+  opacity: 0;
+  animation: homeBirdBoxRestPart 760ms linear both;
+}
+.home-bird-box-perch .home-bird-tail {
+  animation: homeBirdTail 640ms ease-in-out infinite alternate;
+}
 .home-bird-body {
   transform-box: fill-box;
   transform-origin: center;
@@ -787,12 +835,12 @@ input:focus, textarea:focus, select:focus {
   animation: homeBirdTail 640ms ease-in-out infinite alternate;
 }
 .home-bird-notifier.is-open .home-bird-sprite,
-.home-bird-notifier.is-open .home-bird-body,
-.home-bird-notifier.is-open .home-bird-wing-back,
-.home-bird-notifier.is-open .home-bird-wing-front,
-.home-bird-notifier.is-open .home-bird-folded-wing,
-.home-bird-notifier.is-open .home-bird-legs,
-.home-bird-notifier.is-open .home-bird-tail {
+.home-bird-notifier.is-open .home-bird-route-sprite .home-bird-body,
+.home-bird-notifier.is-open .home-bird-route-sprite .home-bird-wing-back,
+.home-bird-notifier.is-open .home-bird-route-sprite .home-bird-wing-front,
+.home-bird-notifier.is-open .home-bird-route-sprite .home-bird-folded-wing,
+.home-bird-notifier.is-open .home-bird-route-sprite .home-bird-legs,
+.home-bird-notifier.is-open .home-bird-route-sprite .home-bird-tail {
   animation-play-state: paused;
 }
 
@@ -832,6 +880,29 @@ input:focus, textarea:focus, select:focus {
 @keyframes homeBirdTail {
   from { transform: rotate(-3deg); }
   to { transform: rotate(7deg); }
+}
+@keyframes homeBirdLandOnBox {
+  0% { opacity: 0; transform: translate(82px, calc(min(56vh, 430px) + 105px)) rotate(12deg) scale(.92); }
+  8% { opacity: 1; }
+  76% { transform: translate(0, -9px) rotate(-5deg) scale(1.03); }
+  90% { transform: translate(0, 2px) rotate(2deg) scale(.99); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+@keyframes homeBirdBoxFlightPart {
+  0%, 73% { opacity: 1; }
+  74%, 100% { opacity: 0; }
+}
+@keyframes homeBirdBoxRestPart {
+  0%, 73% { opacity: 0; }
+  74%, 100% { opacity: 1; }
+}
+@keyframes homeBirdBoxWingBack {
+  from { transform: rotate(14deg) translateY(2px); }
+  to { transform: rotate(-52deg) translateY(-4px); }
+}
+@keyframes homeBirdBoxWingFront {
+  from { transform: rotate(-12deg) translateY(1px); }
+  to { transform: rotate(36deg) translateY(4px); }
 }
 
 @media (max-width: 640px) {
@@ -873,7 +944,10 @@ input:focus, textarea:focus, select:focus {
   .home-bird-wing-front,
   .home-bird-folded-wing,
   .home-bird-legs,
-  .home-bird-tail { animation: none !important; }
+  .home-bird-tail,
+  .home-bird-box-perch { animation: none !important; }
   .home-bird-wing-back,
   .home-bird-wing-front { opacity: 0; }
+  .home-bird-box-perch .home-bird-folded-wing,
+  .home-bird-box-perch .home-bird-legs { opacity: 1; }
 }

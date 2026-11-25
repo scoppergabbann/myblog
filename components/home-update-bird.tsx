@@ -54,8 +54,11 @@ export function HomeUpdateBird({ updates }: { updates: HomeContentUpdate[] }) {
           role="dialog"
           aria-modal="false"
           aria-labelledby="home-update-title"
-          className="pointer-events-auto fixed bottom-[122px] right-4 w-[min(390px,calc(100vw-2rem))] overflow-hidden rounded-[24px] border border-[var(--color-line-2)] bg-[var(--color-paper)] sm:right-6"
+          className="pointer-events-auto fixed bottom-[122px] right-4 isolate w-[min(390px,calc(100vw-2rem))] overflow-visible rounded-[24px] border border-[var(--color-line-2)] bg-[var(--color-paper)] sm:right-6"
         >
+          <span className="home-bird-box-perch" aria-hidden="true">
+            <BirdSvg />
+          </span>
           <header className="flex items-start justify-between gap-5 border-b border-[var(--color-line)] px-5 py-5">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)]">Dari seluruh kebun</p>
@@ -65,7 +68,7 @@ export function HomeUpdateBird({ updates }: { updates: HomeContentUpdate[] }) {
             <button type="button" onClick={() => setOpen(false)} aria-label="Tutup kabar terbaru" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--color-line)] text-[var(--color-ink-3)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]">×</button>
           </header>
 
-          <div className="max-h-[min(56vh,480px)] overflow-y-auto overscroll-contain">
+          <div className="max-h-[min(42vh,360px)] overflow-y-auto overscroll-contain">
             {updates.length > 0 ? updates.map((update) => (
               <Link key={update.id} href={update.href} className="group block border-b border-[var(--color-line)] px-5 py-4 last:border-b-0 hover:bg-[var(--color-paper-2)]">
                 <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.13em] text-[var(--color-ink-4)]">
@@ -93,7 +96,7 @@ export function HomeUpdateBird({ updates }: { updates: HomeContentUpdate[] }) {
         onClick={togglePanel}
         className="home-bird-perch pointer-events-auto fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] right-[max(0.75rem,env(safe-area-inset-right))] h-[108px] w-[148px] sm:right-[max(1.25rem,env(safe-area-inset-right))]"
       >
-        <span className="home-bird-sprite absolute bottom-[29px] right-[39px] block h-[66px] w-[72px]" aria-hidden="true">
+        <span className="home-bird-sprite home-bird-route-sprite absolute bottom-[29px] right-[39px] block h-[66px] w-[72px]" aria-hidden="true">
           <BirdSvg />
         </span>
         <BranchSvg />

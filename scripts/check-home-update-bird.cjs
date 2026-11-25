@@ -27,6 +27,9 @@ assert.match(css, /animation-duration: 480ms, 23s/, 'mobile wing flaps must stay
 assert.match(css, /@keyframes homeBirdWingFront/, 'the flight pose should use a full wing flap');
 assert.match(bird, /home-bird-wing-back/, 'the bird should have a layered flight silhouette');
 assert.match(bird, /home-bird-legs/, 'the bird should tuck its legs during flight');
+assert.match(bird, /home-bird-box-perch/, 'the bird should land on the opened notification box');
+assert.match(css, /@keyframes homeBirdLandOnBox/, 'opening the box should include a landing transition');
+assert.match(css, /home-bird-notifier\.is-open \.home-bird-route-sprite \{ opacity: 0/, 'the roaming copy should leave its branch while the box is open');
 assert.match(css, /prefers-reduced-motion: reduce[\s\S]*home-bird-sprite/, 'motion preference must stop bird animation');
 assert.doesNotMatch(bird, /shadow-/, 'the notifier must not introduce shadows');
 
