@@ -111,15 +111,24 @@ export function HomeUpdateBird({ updates }: { updates: HomeContentUpdate[] }) {
 function BirdSvg() {
   return (
     <svg viewBox="0 0 82 72" className="h-full w-full overflow-visible" role="presentation">
-      <path d="M21 47c-4 8-3 15 1 19M35 49c-1 8 1 13 6 17" fill="none" stroke="#68412c" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M19 65h10M38 66h10" fill="none" stroke="#68412c" strokeWidth="2.5" strokeLinecap="round" />
-      <ellipse cx="36" cy="37" rx="25" ry="20" fill="#c75a31" />
-      <circle cx="57" cy="25" r="15" fill="#d86c3c" />
-      <path d="m70 25 11 5-11 4Z" fill="#e5a23c" />
-      <circle cx="61" cy="21" r="2.3" fill="#201b17" />
-      <path d="M25 49c-9-2-17-8-20-17 10 0 21 3 29 10" fill="#9d4228" />
-      <path className="home-bird-wing" d="M39 34c-13-13-25-14-32-7 8 5 16 13 23 23 9-3 14-8 9-16Z" fill="#f0a34c" />
-      <path d="M50 10c3-7 9-9 14-8-2 5-5 9-10 12" fill="#3d7a58" />
+      <g className="home-bird-body">
+        <g className="home-bird-legs">
+          <path d="M21 47c-4 8-3 15 1 19M35 49c-1 8 1 13 6 17" fill="none" stroke="#68412c" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M19 65h10M38 66h10" fill="none" stroke="#68412c" strokeWidth="2.5" strokeLinecap="round" />
+        </g>
+        <path className="home-bird-wing-back" d="M39 36C31 15 18 4 7 8c4 15 14 29 29 39Z" fill="#b94b31" />
+        <g className="home-bird-tail">
+          <path d="M25 48C14 49 6 45 1 37c10-3 20-1 30 6Z" fill="#873b2c" />
+          <path d="M27 44C16 40 10 34 8 26c10 1 19 6 27 14Z" fill="#a8482e" />
+        </g>
+        <ellipse cx="37" cy="37" rx="25" ry="19" fill="#c75a31" />
+        <path className="home-bird-folded-wing" d="M42 34c-10-8-23-7-29 2 8 4 14 11 21 17 9-3 13-10 8-19Z" fill="#efa049" />
+        <path className="home-bird-wing-front" d="M42 36C27 25 13 25 4 34c9 9 21 16 34 17 8-4 10-9 4-15Z" fill="#f5b052" />
+        <circle cx="57" cy="25" r="15" fill="#d86c3c" />
+        <path d="m70 25 11 5-11 4Z" fill="#e5a23c" />
+        <circle cx="61" cy="21" r="2.3" fill="#201b17" />
+        <path d="M50 10c3-7 9-9 14-8-2 5-5 9-10 12" fill="#3d7a58" />
+      </g>
     </svg>
   );
 }

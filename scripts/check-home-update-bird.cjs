@@ -20,6 +20,10 @@ assert.match(updates, /kind: 'now'/);
 assert.match(bird, /localStorage\.setItem\(STORAGE_KEY/, 'opened updates should be remembered per browser');
 assert.match(bird, /aria-expanded=\{open\}/, 'the wooden perch must expose its panel state');
 assert.match(css, /@keyframes homeBirdRoam/, 'the bird should roam around the homepage');
+assert.match(css, /@keyframes homeBirdDirection/, 'the bird should face its direction of travel');
+assert.match(css, /@keyframes homeBirdWingFront/, 'the flight pose should use a full wing flap');
+assert.match(bird, /home-bird-wing-back/, 'the bird should have a layered flight silhouette');
+assert.match(bird, /home-bird-legs/, 'the bird should tuck its legs during flight');
 assert.match(css, /prefers-reduced-motion: reduce[\s\S]*home-bird-sprite/, 'motion preference must stop bird animation');
 assert.doesNotMatch(bird, /shadow-/, 'the notifier must not introduce shadows');
 

@@ -757,39 +757,97 @@ input:focus, textarea:focus, select:focus {
 /* Homepage update bird — it roams, then returns to its fixed wooden perch. */
 .home-bird-sprite {
   transform-origin: 50% 100%;
-  animation: homeBirdRoam 26s cubic-bezier(.45, 0, .28, 1) infinite;
+  animation: homeBirdRoam 26s cubic-bezier(.4, 0, .22, 1) infinite;
   will-change: transform;
 }
-.home-bird-wing {
+.home-bird-body {
   transform-box: fill-box;
-  transform-origin: 80% 75%;
-  animation: homeBirdWing 420ms ease-in-out infinite alternate;
+  transform-origin: center;
+  animation: homeBirdDirection 26s linear infinite;
+}
+.home-bird-wing-back,
+.home-bird-wing-front {
+  transform-box: fill-box;
+  transform-origin: 88% 70%;
+  opacity: 0;
+}
+.home-bird-wing-back {
+  animation: homeBirdWingBack 480ms cubic-bezier(.45, 0, .55, 1) infinite alternate, homeBirdFlightPart 26s linear infinite;
+}
+.home-bird-wing-front {
+  animation: homeBirdWingFront 480ms cubic-bezier(.45, 0, .55, 1) infinite alternate, homeBirdFlightPart 26s linear infinite;
+}
+.home-bird-folded-wing,
+.home-bird-legs {
+  animation: homeBirdRestPart 26s linear infinite;
+}
+.home-bird-tail {
+  transform-box: fill-box;
+  transform-origin: 90% 50%;
+  animation: homeBirdTail 640ms ease-in-out infinite alternate;
 }
 .home-bird-notifier.is-open .home-bird-sprite,
-.home-bird-notifier.is-open .home-bird-wing {
+.home-bird-notifier.is-open .home-bird-body,
+.home-bird-notifier.is-open .home-bird-wing-back,
+.home-bird-notifier.is-open .home-bird-wing-front,
+.home-bird-notifier.is-open .home-bird-folded-wing,
+.home-bird-notifier.is-open .home-bird-legs,
+.home-bird-notifier.is-open .home-bird-tail {
   animation-play-state: paused;
 }
 
 @keyframes homeBirdRoam {
-  0%, 14%, 88%, 100% { transform: translate(0, 0) rotate(0deg); }
-  24% { transform: translate(-18vw, -18vh) rotate(-7deg); }
-  39% { transform: translate(-52vw, -52vh) rotate(4deg); }
-  55% { transform: translate(-76vw, -28vh) rotate(-3deg); }
-  71% { transform: translate(-43vw, -62vh) rotate(5deg); }
+  0%, 12%, 90%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  17% { transform: translate(-8vw, -17vh) rotate(-18deg) scale(.98); }
+  29% { transform: translate(-38vw, -48vh) rotate(7deg) scale(1.06); }
+  41% { transform: translate(-74vw, -61vh) rotate(-8deg) scale(.92); }
+  53% { transform: translate(-83vw, -25vh) rotate(12deg) scale(1.04); }
+  64% { transform: translate(-55vw, -38vh) rotate(-10deg) scale(.94); }
+  72% { transform: translate(-25vw, -57vh) rotate(5deg) scale(1.03); }
+  82% { transform: translate(-8vw, -22vh) rotate(18deg) scale(.97); }
+  88% { transform: translate(-1vw, -3vh) rotate(7deg) scale(1); }
 }
-@keyframes homeBirdWing {
-  from { transform: rotate(8deg) translateY(0); }
-  to { transform: rotate(-24deg) translateY(-2px); }
+@keyframes homeBirdDirection {
+  0%, 13.5%, 90%, 100% { transform: scaleX(1) rotate(0deg); }
+  15%, 70% { transform: scaleX(-1) rotate(-7deg); }
+  72.5%, 88% { transform: scaleX(1) rotate(-5deg); }
+}
+@keyframes homeBirdFlightPart {
+  0%, 13%, 89%, 100% { opacity: 0; }
+  15%, 87% { opacity: 1; }
+}
+@keyframes homeBirdRestPart {
+  0%, 13%, 89%, 100% { opacity: 1; }
+  15%, 87% { opacity: 0; }
+}
+@keyframes homeBirdWingBack {
+  from { transform: rotate(18deg) translateY(2px); }
+  to { transform: rotate(-54deg) translateY(-4px) scaleY(1.08); }
+}
+@keyframes homeBirdWingFront {
+  from { transform: rotate(-15deg) translateY(1px); }
+  to { transform: rotate(38deg) translateY(4px) scaleY(.92); }
+}
+@keyframes homeBirdTail {
+  from { transform: rotate(-3deg); }
+  to { transform: rotate(7deg); }
 }
 
 @media (max-width: 640px) {
   .home-bird-sprite { animation-name: homeBirdRoamMobile; animation-duration: 23s; }
+  .home-bird-body,
+  .home-bird-wing-back,
+  .home-bird-wing-front,
+  .home-bird-folded-wing,
+  .home-bird-legs { animation-duration: 23s; }
   @keyframes homeBirdRoamMobile {
-    0%, 15%, 86%, 100% { transform: translate(0, 0) rotate(0deg); }
-    27% { transform: translate(-24vw, -22vh) rotate(-7deg); }
-    44% { transform: translate(-61vw, -48vh) rotate(4deg); }
-    62% { transform: translate(-58vw, -18vh) rotate(-4deg); }
-    76% { transform: translate(-20vw, -57vh) rotate(5deg); }
+    0%, 13%, 90%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    19% { transform: translate(-18vw, -24vh) rotate(-17deg) scale(.97); }
+    34% { transform: translate(-58vw, -51vh) rotate(8deg) scale(1.06); }
+    49% { transform: translate(-68vw, -23vh) rotate(-10deg) scale(.93); }
+    65% { transform: translate(-48vw, -39vh) rotate(11deg) scale(1.03); }
+    76% { transform: translate(-18vw, -57vh) rotate(-6deg) scale(.96); }
+    86% { transform: translate(-3vw, -13vh) rotate(17deg) scale(1); }
   }
 }
 
@@ -802,5 +860,12 @@ input:focus, textarea:focus, select:focus {
   .stream-reaction-button:hover .stream-reaction-icon { animation: none; }
   .stream-reaction-burst { display: none; }
   .home-bird-sprite,
-  .home-bird-wing { animation: none !important; }
+  .home-bird-body,
+  .home-bird-wing-back,
+  .home-bird-wing-front,
+  .home-bird-folded-wing,
+  .home-bird-legs,
+  .home-bird-tail { animation: none !important; }
+  .home-bird-wing-back,
+  .home-bird-wing-front { opacity: 0; }
 }
