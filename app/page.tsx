@@ -1,14 +1,17 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { HomeHero } from '@/components/home-hero';
+import { HomeUpdateBird } from '@/components/home-update-bird';
 import { JsonLd } from '@/components/json-ld';
 import { MonologAudioPlayer } from '@/components/monolog-audio-player';
 import { getCoverUrl, getLibraryData, type LibraryItem } from '@/lib/library';
 import { getPublishedMonologEpisodes } from '@/lib/monolog';
 import { formatAudioDuration } from '@/lib/monolog-shared';
 import { getHomeData } from '@/lib/page-queries';
-import { getTopWritings } from '@/lib/posts';
+import { getAllWritings, getTopWritings } from '@/lib/posts';
+import { buildHomeContentUpdates } from '@/lib/home-updates';
 import { siteConfig } from '@/lib/site-config';
+import { getStreamEntries } from '@/lib/stream-queries';
 import { formatDate } from '@/lib/utils';
 import type { Writing } from '@/types/content';
 import type { PublishedMonologEpisode } from '@/types/monolog';
@@ -18,16 +21,24 @@ export const dynamic = 'force-dynamic';
 export const metadata = { alternates: { canonical: '/' } };
 
 export default async function HomePage() {
-  const [home, topWritings, monologEpisodes, library] = await Promise.all([
+  const [home, topWritings, allWritings, monologEpisodes, library, streamEntries] = await Promise.all([
     getHomeData(),
     getTopWritings(3).catch(() => []),
+    getAllWritings().catch(() => []),
     getPublishedMonologEpisodes().catch(() => []),
     getLibraryData().catch(() => ({ categories: [], itemsByCategory: {}, updated: new Date().toISOString() })),
+    getStreamEntries().catch(() => []),
   ]);
   const featuredMonolog = monologEpisodes.find((episode) => episode.isPinned) ?? monologEpisodes[0] ?? null;
   const readingBook = Object.values(library.itemsByCategory)
     .flat()
     .find((item) => item.item_type === 'book' && item.badge?.trim().toLocaleLowerCase('id-ID') === 'sedang dibaca') ?? null;
+  const contentUpdates = buildHomeContentUpdates({
+    writings: allWritings,
+    monologEpisodes,
+    library,
+    streamEntries,
+  });
 
   return (
     <div className="page-fade mx-auto max-w-[960px] px-6 pb-24">
@@ -82,6 +93,7 @@ export default async function HomePage() {
       </Section>
 
       <GuestbookCallout />
+      <HomeUpdateBird updates={contentUpdates} />
     </div>
   );
 }
