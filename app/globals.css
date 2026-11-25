@@ -808,9 +808,10 @@ input:focus, textarea:focus, select:focus {
   88% { transform: translate(-1vw, -3vh) rotate(7deg) scale(1); }
 }
 @keyframes homeBirdDirection {
-  0%, 13.5%, 90%, 100% { transform: scaleX(1) rotate(0deg); }
-  15%, 70% { transform: scaleX(-1) rotate(-7deg); }
-  72.5%, 88% { transform: scaleX(1) rotate(-5deg); }
+  0%, 11.99% { transform: scaleX(1) rotate(0deg); }
+  12%, 52.99% { transform: scaleX(-1) rotate(-7deg); }
+  53%, 89.99% { transform: scaleX(1) rotate(-5deg); }
+  90%, 100% { transform: scaleX(1) rotate(0deg); }
 }
 @keyframes homeBirdFlightPart {
   0%, 13%, 89%, 100% { opacity: 0; }
@@ -836,10 +837,11 @@ input:focus, textarea:focus, select:focus {
 @media (max-width: 640px) {
   .home-bird-sprite { animation-name: homeBirdRoamMobile; animation-duration: 23s; }
   .home-bird-body,
-  .home-bird-wing-back,
-  .home-bird-wing-front,
   .home-bird-folded-wing,
   .home-bird-legs { animation-duration: 23s; }
+  .home-bird-body { animation-name: homeBirdDirectionMobile; }
+  .home-bird-wing-back,
+  .home-bird-wing-front { animation-duration: 480ms, 23s; }
   @keyframes homeBirdRoamMobile {
     0%, 13%, 90%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
     19% { transform: translate(-18vw, -24vh) rotate(-17deg) scale(.97); }
@@ -848,6 +850,12 @@ input:focus, textarea:focus, select:focus {
     65% { transform: translate(-48vw, -39vh) rotate(11deg) scale(1.03); }
     76% { transform: translate(-18vw, -57vh) rotate(-6deg) scale(.96); }
     86% { transform: translate(-3vw, -13vh) rotate(17deg) scale(1); }
+  }
+  @keyframes homeBirdDirectionMobile {
+    0%, 12.99% { transform: scaleX(1) rotate(0deg); }
+    13%, 48.99% { transform: scaleX(-1) rotate(-7deg); }
+    49%, 89.99% { transform: scaleX(1) rotate(-5deg); }
+    90%, 100% { transform: scaleX(1) rotate(0deg); }
   }
 }
 

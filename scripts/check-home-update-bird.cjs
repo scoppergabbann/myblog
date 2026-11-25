@@ -21,6 +21,9 @@ assert.match(bird, /localStorage\.setItem\(STORAGE_KEY/, 'opened updates should 
 assert.match(bird, /aria-expanded=\{open\}/, 'the wooden perch must expose its panel state');
 assert.match(css, /@keyframes homeBirdRoam/, 'the bird should roam around the homepage');
 assert.match(css, /@keyframes homeBirdDirection/, 'the bird should face its direction of travel');
+assert.match(css, /53%, 89\.99% \{ transform: scaleX\(1\)/, 'desktop direction must flip at the return-path turning point');
+assert.match(css, /@keyframes homeBirdDirectionMobile/, 'mobile must use its own synchronized turning point');
+assert.match(css, /animation-duration: 480ms, 23s/, 'mobile wing flaps must stay fast while the route uses its longer cycle');
 assert.match(css, /@keyframes homeBirdWingFront/, 'the flight pose should use a full wing flap');
 assert.match(bird, /home-bird-wing-back/, 'the bird should have a layered flight silhouette');
 assert.match(bird, /home-bird-legs/, 'the bird should tuck its legs during flight');
